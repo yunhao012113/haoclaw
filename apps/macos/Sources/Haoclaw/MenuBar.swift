@@ -286,6 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             CLIInstallPrompter.shared.checkAndPromptIfNeeded(reason: "launch")
         }
+        self.presentDesktopClientOnLaunch()
 
         // Developer/testing helper: auto-open chat when launched with --chat (or legacy --webchat).
         if CommandLine.arguments.contains("--chat") || CommandLine.arguments.contains("--webchat") {
@@ -321,6 +322,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             OnboardingController.shared.show()
         }
+    }
+
+    private func presentDesktopClientOnLaunch() {
+        let delays: [TimeInterval] = [0.15, 0.6, 1.2]
+        for delay in delays {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                self.activateDesktopWindowIfNeeded()
+            }
+        }
+    }
+
+    @MainActor
+    private func activateDesktopWindowIfNeeded() {
+        let candidate = NSApp.windows.first { window in
+            !window.isKind(of: NSPanel.self) &&
+                "\(type(of: window))" != "NSPopupMenuWindow" &&
+                window.contentViewController != nil
+        }
+        guard let candidate else { return }
+        DockIconManager.shared.temporarilyShowDock()
+        NSApp.activate(ignoringOtherApps: true)
+        candidate.makeKeyAndOrderFront(nil)
+        candidate.orderFrontRegardless()
     }
 
     private func isDuplicateInstance() -> Bool {

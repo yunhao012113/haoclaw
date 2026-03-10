@@ -42,23 +42,23 @@
     <string></string>
 
     <key>NSUserNotificationUsageDescription</key>
-    <string>Haoclaw needs notification permission to show alerts for agent actions.</string>
+    <string>Haoclaw 需要通知权限，用于显示代理执行和系统提醒。</string>
     <key>NSScreenCaptureDescription</key>
-    <string>Haoclaw captures the screen when the agent needs screenshots for context.</string>
+    <string>当代理需要截图辅助理解上下文时，Haoclaw 会请求屏幕录制权限。</string>
     <key>NSCameraUsageDescription</key>
-    <string>Haoclaw can capture photos or short video clips when requested by the agent.</string>
+    <string>当代理需要拍照或录制短视频时，Haoclaw 会请求摄像头权限。</string>
 	<key>NSLocationUsageDescription</key>
-	<string>Haoclaw can share your location when requested by the agent.</string>
+	<string>当代理需要基于位置完成任务时，Haoclaw 会请求定位权限。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Haoclaw can share your location when requested by the agent.</string>
+	<string>当代理需要基于位置完成任务时，Haoclaw 会请求定位权限。</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Haoclaw can share your location when requested by the agent.</string>
+	<string>当代理需要基于位置完成任务时，Haoclaw 会请求定位权限。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Haoclaw needs the mic for Voice Wake tests and agent audio capture.</string>
+	<string>Haoclaw 需要麦克风权限，用于语音唤醒和语音输入。</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Haoclaw uses speech recognition to detect your Voice Wake trigger phrase.</string>
+    <string>Haoclaw 使用语音识别来检测你的语音唤醒词。</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Haoclaw needs Automation (AppleScript) permission to drive Terminal and other apps for agent actions.</string>
+    <string>Haoclaw 需要自动化权限，用于控制终端和其他应用完成代理任务。</string>
 
     <key>NSAppTransportSecurity</key>
     <dict>

@@ -488,7 +488,7 @@ private struct DesktopConversationSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Picker("Section", selection: self.$model.sidebarSection) {
+            Picker("栏目", selection: self.$model.sidebarSection) {
                 ForEach(DesktopSidebarSection.allCases) { section in
                     Text(section.title).tag(section)
                 }
@@ -571,7 +571,7 @@ private struct DesktopConversationCenter: View {
                 Button("文件") {}
                     .buttonStyle(.bordered)
                     .disabled(true)
-                Button("Agent") {}
+                Button("助手") {}
                     .buttonStyle(.bordered)
                     .disabled(true)
             }
@@ -646,7 +646,7 @@ private struct DesktopAgentInspector: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Haoclaw")
                             .font(.title3.weight(.semibold))
-                        Text("AI coworker")
+                        Text("AI 助手")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -669,7 +669,7 @@ private struct DesktopAgentInspector: View {
                     ])
 
                 DesktopInfoSection(
-                    title: "记忆区",
+                    title: "本地信息",
                     rows: [
                         ("Gateway URL", self.model.gatewayURL),
                         ("配置文件", self.model.configPath),
@@ -734,7 +734,7 @@ private struct DesktopModelSettingsSheet: View {
             }
 
             DesktopInfoSection(
-                title: "Gateway",
+                title: "网关",
                 rows: [
                     ("状态", self.model.gatewayStatus),
                     ("URL", self.model.gatewayURL),
@@ -744,7 +744,7 @@ private struct DesktopModelSettingsSheet: View {
                 Text("连接方式")
                     .font(.headline)
 
-                Picker("Connection Mode", selection: self.$model.settingsDraft.connectionMode) {
+                Picker("连接方式", selection: self.$model.settingsDraft.connectionMode) {
                     ForEach(AppState.ConnectionMode.allCases, id: \.rawValue) { mode in
                         Text(self.connectionModeTitle(mode)).tag(mode)
                     }
@@ -752,7 +752,7 @@ private struct DesktopModelSettingsSheet: View {
                 .pickerStyle(.segmented)
 
                 if self.model.settingsDraft.connectionMode == .remote {
-                    Picker("Remote Transport", selection: self.$model.settingsDraft.remoteTransport) {
+                    Picker("远程连接方式", selection: self.$model.settingsDraft.remoteTransport) {
                         ForEach(AppState.RemoteTransport.allCases, id: \.rawValue) { transport in
                             Text(self.remoteTransportTitle(transport)).tag(transport)
                         }
@@ -760,20 +760,20 @@ private struct DesktopModelSettingsSheet: View {
                     .pickerStyle(.segmented)
 
                     if self.model.settingsDraft.remoteTransport == .direct {
-                        TextField("Gateway URL", text: self.$model.settingsDraft.remoteURL)
+                        TextField("网关地址", text: self.$model.settingsDraft.remoteURL)
                             .textFieldStyle(.roundedBorder)
                     } else {
-                        TextField("SSH Target", text: self.$model.settingsDraft.remoteTarget)
+                        TextField("SSH 目标", text: self.$model.settingsDraft.remoteTarget)
                             .textFieldStyle(.roundedBorder)
 
-                        TextField("SSH Identity", text: self.$model.settingsDraft.remoteIdentity)
+                        TextField("SSH 密钥路径", text: self.$model.settingsDraft.remoteIdentity)
                             .textFieldStyle(.roundedBorder)
 
-                        TextField("Gateway URL", text: self.$model.settingsDraft.remoteURL)
+                        TextField("网关地址", text: self.$model.settingsDraft.remoteURL)
                             .textFieldStyle(.roundedBorder)
                     }
 
-                    SecureField("Gateway Token", text: self.$model.settingsDraft.remoteToken)
+                    SecureField("网关令牌", text: self.$model.settingsDraft.remoteToken)
                         .textFieldStyle(.roundedBorder)
                 }
             }
@@ -782,7 +782,7 @@ private struct DesktopModelSettingsSheet: View {
                 Text("模型与 API")
                     .font(.headline)
 
-                Picker("Provider Preset", selection: self.$model.settingsDraft.providerPreset) {
+                Picker("服务商预设", selection: self.$model.settingsDraft.providerPreset) {
                     ForEach(DesktopProviderPreset.allCases) { preset in
                         Text(preset.title).tag(preset)
                     }
@@ -796,19 +796,19 @@ private struct DesktopModelSettingsSheet: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                TextField("Provider ID", text: self.$model.settingsDraft.providerId)
+                TextField("服务商 ID", text: self.$model.settingsDraft.providerId)
                     .textFieldStyle(.roundedBorder)
 
-                TextField("Base URL", text: self.$model.settingsDraft.baseURL)
+                TextField("接口地址", text: self.$model.settingsDraft.baseURL)
                     .textFieldStyle(.roundedBorder)
 
                 SecureField("API Key", text: self.$model.settingsDraft.apiKey)
                     .textFieldStyle(.roundedBorder)
 
-                TextField("Model ID", text: self.$model.settingsDraft.modelID)
+                TextField("模型 ID", text: self.$model.settingsDraft.modelID)
                     .textFieldStyle(.roundedBorder)
 
-                TextField("Adapter", text: self.$model.settingsDraft.apiAdapter)
+                TextField("适配器", text: self.$model.settingsDraft.apiAdapter)
                     .textFieldStyle(.roundedBorder)
 
                 if !self.model.models.isEmpty {

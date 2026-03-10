@@ -47,16 +47,16 @@ struct MenuContent: View {
                     self.statusLine(label: self.healthStatus.label, color: self.healthStatus.color)
                     if self.pairingPrompter.pendingCount > 0 {
                         let repairCount = self.pairingPrompter.pendingRepairCount
-                        let repairSuffix = repairCount > 0 ? " · \(repairCount) repair" : ""
+                        let repairSuffix = repairCount > 0 ? " · 修复 \(repairCount)" : ""
                         self.statusLine(
-                            label: "Pairing approval pending (\(self.pairingPrompter.pendingCount))\(repairSuffix)",
+                            label: "待确认配对（\(self.pairingPrompter.pendingCount)）\(repairSuffix)",
                             color: .orange)
                     }
                     if self.devicePairingPrompter.pendingCount > 0 {
                         let repairCount = self.devicePairingPrompter.pendingRepairCount
-                        let repairSuffix = repairCount > 0 ? " · \(repairCount) repair" : ""
+                        let repairSuffix = repairCount > 0 ? " · 修复 \(repairCount)" : ""
                         self.statusLine(
-                            label: "Device pairing pending (\(self.devicePairingPrompter.pendingCount))\(repairSuffix)",
+                            label: "待确认设备配对（\(self.devicePairingPrompter.pendingCount)）\(repairSuffix)",
                             color: .orange)
                     }
                 }
@@ -66,7 +66,7 @@ struct MenuContent: View {
             Divider()
             Toggle(isOn: self.heartbeatsBinding) {
                 HStack(spacing: 8) {
-                    Label("Send Heartbeats", systemImage: "waveform.path.ecg")
+                    Label("发送心跳", systemImage: "waveform.path.ecg")
                     Spacer(minLength: 0)
                     self.statusLine(label: self.heartbeatStatus.label, color: self.heartbeatStatus.color)
                 }
@@ -78,20 +78,20 @@ struct MenuContent: View {
                         self.browserControlEnabled = enabled
                         Task { await self.saveBrowserControlEnabled(enabled) }
                     })) {
-                Label("Browser Control", systemImage: "globe")
+                Label("浏览器控制", systemImage: "globe")
             }
             Toggle(isOn: self.$cameraEnabled) {
-                Label("Allow Camera", systemImage: "camera")
+                Label("允许摄像头", systemImage: "camera")
             }
             Picker(selection: self.execApprovalModeBinding) {
                 ForEach(ExecApprovalQuickMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
             } label: {
-                Label("Exec Approvals", systemImage: "terminal")
+                Label("执行审批", systemImage: "terminal")
             }
             Toggle(isOn: Binding(get: { self.state.canvasEnabled }, set: { self.state.canvasEnabled = $0 })) {
-                Label("Allow Canvas", systemImage: "rectangle.and.pencil.and.ellipsis")
+                Label("允许画布", systemImage: "rectangle.and.pencil.and.ellipsis")
             }
             .onChange(of: self.state.canvasEnabled) { _, enabled in
                 if !enabled {
@@ -99,7 +99,7 @@ struct MenuContent: View {
                 }
             }
             Toggle(isOn: self.voiceWakeBinding) {
-                Label("Voice Wake", systemImage: "mic.fill")
+                Label("语音唤醒", systemImage: "mic.fill")
             }
             .disabled(!voiceWakeSupported)
             .opacity(voiceWakeSupported ? 1 : 0.5)
@@ -112,12 +112,13 @@ struct MenuContent: View {
                     await self.openDashboard()
                 }
             } label: {
-                Label("Open Dashboard", systemImage: "gauge")
+                Label("打开控制台", systemImage: "gauge")
             }
             Button {
                 self.openWindow(id: "desktop-client")
+                NSApp.activate(ignoringOtherApps: true)
             } label: {
-                Label("Open Desktop Client", systemImage: "macwindow")
+                Label("打开桌面客户端", systemImage: "macwindow")
             }
             Button {
                 Task { @MainActor in
@@ -125,7 +126,7 @@ struct MenuContent: View {
                     WebChatManager.shared.show(sessionKey: sessionKey)
                 }
             } label: {
-                Label("Open Chat", systemImage: "bubble.left.and.bubble.right")
+                Label("打开聊天", systemImage: "bubble.left.and.bubble.right")
             }
             if self.state.canvasEnabled {
                 Button {
@@ -140,26 +141,26 @@ struct MenuContent: View {
                     }
                 } label: {
                     Label(
-                        self.state.canvasPanelVisible ? "Close Canvas" : "Open Canvas",
+                        self.state.canvasPanelVisible ? "关闭画布" : "打开画布",
                         systemImage: "rectangle.inset.filled.on.rectangle")
                 }
             }
             Button {
                 Task { await self.state.setTalkEnabled(!self.state.talkEnabled) }
             } label: {
-                Label(self.state.talkEnabled ? "Stop Talk Mode" : "Talk Mode", systemImage: "waveform.circle.fill")
+                Label(self.state.talkEnabled ? "关闭通话模式" : "通话模式", systemImage: "waveform.circle.fill")
             }
             .disabled(!voiceWakeSupported)
             .opacity(voiceWakeSupported ? 1 : 0.5)
             Divider()
-            Button("Settings…") { self.open(tab: .general) }
+            Button("设置…") { self.open(tab: .general) }
                 .keyboardShortcut(",", modifiers: [.command])
             self.debugMenu
-            Button("About Haoclaw") { self.open(tab: .about) }
+            Button("关于 Haoclaw") { self.open(tab: .about) }
             if let updater, updater.isAvailable, self.updateStatus.isUpdateReady {
-                Button("Update ready, restart now?") { updater.checkForUpdates(nil) }
+                Button("更新已就绪，立即重启") { updater.checkForUpdates(nil) }
             }
-            Button("Quit") { NSApplication.shared.terminate(nil) }
+            Button("退出") { NSApplication.shared.terminate(nil) }
         }
         .task(id: self.state.swabbleEnabled) {
             if self.state.swabbleEnabled {
@@ -195,11 +196,11 @@ struct MenuContent: View {
     private var connectionLabel: String {
         switch self.state.connectionMode {
         case .unconfigured:
-            "Haoclaw Not Configured"
+            "Haoclaw 未配置"
         case .remote:
-            "Remote Haoclaw Active"
+            "远程 Haoclaw 已连接"
         case .local:
-            "Haoclaw Active"
+            "Haoclaw 运行中"
         }
     }
 
@@ -239,26 +240,26 @@ struct MenuContent: View {
                 Button {
                     DebugActions.openConfigFolder()
                 } label: {
-                    Label("Open Config Folder", systemImage: "folder")
+                    Label("打开配置目录", systemImage: "folder")
                 }
                 Button {
                     Task { await DebugActions.runHealthCheckNow() }
                 } label: {
-                    Label("Run Health Check Now", systemImage: "stethoscope")
+                    Label("立即执行健康检查", systemImage: "stethoscope")
                 }
                 Button {
                     Task { _ = await DebugActions.sendTestHeartbeat() }
                 } label: {
-                    Label("Send Test Heartbeat", systemImage: "waveform.path.ecg")
+                    Label("发送测试心跳", systemImage: "waveform.path.ecg")
                 }
                 if self.state.connectionMode == .remote {
                     Button {
                         Task { @MainActor in
                             let result = await DebugActions.resetGatewayTunnel()
-                            self.presentDebugResult(result, title: "Remote Tunnel")
+                            self.presentDebugResult(result, title: "远程隧道")
                         }
                     } label: {
-                        Label("Reset Remote Tunnel", systemImage: "arrow.triangle.2.circlepath")
+                        Label("重置远程隧道", systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
                 Button {
@@ -271,7 +272,7 @@ struct MenuContent: View {
                         systemImage: "text.alignleft")
                 }
                 Menu {
-                    Picker("Verbosity", selection: self.$appLogLevelRaw) {
+                    Picker("日志级别", selection: self.$appLogLevelRaw) {
                         ForEach(AppLogLevel.allCases) { level in
                             Text(level.title).tag(level.rawValue)
                         }
@@ -284,51 +285,51 @@ struct MenuContent: View {
                             systemImage: "doc.text.magnifyingglass")
                     }
                 } label: {
-                    Label("App Logging", systemImage: "doc.text")
+                    Label("应用日志", systemImage: "doc.text")
                 }
                 Button {
                     DebugActions.openSessionStore()
                 } label: {
-                    Label("Open Session Store", systemImage: "externaldrive")
+                    Label("打开会话存储", systemImage: "externaldrive")
                 }
                 Divider()
                 Button {
                     DebugActions.openAgentEventsWindow()
                 } label: {
-                    Label("Open Agent Events…", systemImage: "bolt.horizontal.circle")
+                    Label("打开 Agent 事件…", systemImage: "bolt.horizontal.circle")
                 }
                 Button {
                     DebugActions.openLog()
                 } label: {
-                    Label("Open Log", systemImage: "doc.text.magnifyingglass")
+                    Label("打开日志", systemImage: "doc.text.magnifyingglass")
                 }
                 Button {
                     Task { _ = await DebugActions.sendDebugVoice() }
                 } label: {
-                    Label("Send Debug Voice Text", systemImage: "waveform.circle")
+                    Label("发送调试语音文本", systemImage: "waveform.circle")
                 }
                 Button {
                     Task { await DebugActions.sendTestNotification() }
                 } label: {
-                    Label("Send Test Notification", systemImage: "bell")
+                    Label("发送测试通知", systemImage: "bell")
                 }
                 Divider()
                 if self.state.connectionMode == .local {
                     Button {
                         DebugActions.restartGateway()
                     } label: {
-                        Label("Restart Gateway", systemImage: "arrow.clockwise")
+                        Label("重启网关", systemImage: "arrow.clockwise")
                     }
                 }
                 Button {
                     DebugActions.restartOnboarding()
                 } label: {
-                    Label("Restart Onboarding", systemImage: "arrow.counterclockwise")
+                    Label("重新开始引导", systemImage: "arrow.counterclockwise")
                 }
                 Button {
                     DebugActions.restartApp()
                 } label: {
-                    Label("Restart App", systemImage: "arrow.triangle.2.circlepath")
+                    Label("重启应用", systemImage: "arrow.triangle.2.circlepath")
                 }
             }
         }
@@ -448,14 +449,14 @@ struct MenuContent: View {
 
             if self.loadingMics {
                 Divider()
-                Label("Refreshing microphones…", systemImage: "arrow.triangle.2.circlepath")
+                Label("正在刷新麦克风…", systemImage: "arrow.triangle.2.circlepath")
                     .labelStyle(.titleOnly)
                     .foregroundStyle(.secondary)
                     .disabled(true)
             }
         } label: {
             HStack {
-                Text("Microphone")
+                Text("麦克风")
                 Spacer()
                 Text(self.selectedMicLabel)
                     .foregroundStyle(.secondary)
@@ -470,13 +471,13 @@ struct MenuContent: View {
             return match.name
         }
         if !self.state.voiceWakeMicName.isEmpty { return self.state.voiceWakeMicName }
-        return "Unavailable"
+        return "不可用"
     }
 
     private var microphoneMenuItems: some View {
         Group {
             if self.isSelectedMicUnavailable {
-                Label("Disconnected (using System default)", systemImage: "exclamationmark.triangle")
+                Label("设备已断开（已改用系统默认）", systemImage: "exclamationmark.triangle")
                     .labelStyle(.titleAndIcon)
                     .foregroundStyle(.secondary)
                     .disabled(true)
@@ -512,9 +513,9 @@ struct MenuContent: View {
 
     private var defaultMicLabel: String {
         if let host = Host.current().localizedName, !host.isEmpty {
-            return "Auto-detect (\(host))"
+            return "自动识别（\(host)）"
         }
-        return "System default"
+        return "系统默认"
     }
 
     @MainActor
