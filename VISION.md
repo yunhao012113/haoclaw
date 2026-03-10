@@ -6,7 +6,6 @@ It runs on your devices, in your channels, with your rules.
 This document explains the current state and direction of the project.
 We are still early, so iteration is fast.
 Project overview and developer docs: [`README.md`](README.md)
-Contribution guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 Haoclaw started as a personal playground to learn AI and build something genuinely useful:
 an assistant that can run real tasks on a real computer.
@@ -31,13 +30,6 @@ Next priorities:
 - Ergonomics across CLI and web frontend
 - Companion apps on macOS, iOS, Android, Windows, and Linux
 
-Contribution rules:
-
-- One PR = one issue/topic. Do not bundle multiple unrelated fixes/features.
-- PRs over ~5,000 changed lines are reviewed only in exceptional circumstances.
-- Do not open large batches of tiny PRs at once; each PR has review cost.
-- For very small related fixes, grouping into one focused PR is encouraged.
-
 ## Security
 
 Security in Haoclaw is a deliberate tradeoff: strong defaults without killing capability.
@@ -58,7 +50,6 @@ Preferred plugin path is npm package distribution plus local extension loading f
 If you build a plugin, host and maintain it in your own repository.
 The bar for adding optional plugins to core is intentionally high.
 Plugin docs: [`docs/tools/plugin.md`](docs/tools/plugin.md)
-Community plugin listing + PR bar: https://docs.haoclaw.ai/plugins/community
 
 Memory is a special plugin slot where only one memory plugin can be active at a time.
 Today we ship multiple memory options; over time we plan to converge on one recommended default path.
@@ -66,7 +57,6 @@ Today we ship multiple memory options; over time we plan to converge on one reco
 ### Skills
 
 We still ship some bundled skills for baseline UX.
-New skills should be published to ClawHub first (`clawhub.ai`), not added to core by default.
 Core skill additions should be rare and require a strong product or security reason.
 
 ### MCP Support

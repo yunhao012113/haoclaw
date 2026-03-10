@@ -119,8 +119,6 @@
 - Create commits with `scripts/committer "<msg>" <file...>`; avoid manual `git add`/`git commit` so staging stays scoped.
 - Follow concise, action-oriented commit messages (e.g., `CLI: add verbose flag to send`).
 - Group related changes; avoid bundling unrelated refactors.
-- PR submission template (canonical): `.github/pull_request_template.md`
-- Issue submission templates (canonical): `.github/ISSUE_TEMPLATE/`
 
 ## Shorthand Commands
 

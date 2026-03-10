@@ -54,7 +54,7 @@ Looking for chat channel docs (WhatsApp/Telegram/Discord/Slack/Mattermost (plugi
 
 - [Deepgram (audio transcription)](/providers/deepgram)
 
-## Community tools
+## Additional tools
 
 - [Claude Max API Proxy](/providers/claude-max-api-proxy) - Community proxy for Claude subscription credentials (verify Anthropic policy/terms before use)
 

@@ -37,9 +37,9 @@ describe("wrapFileReferencesInHtml", () => {
   });
 
   it("handles mixed content correctly", () => {
-    const result = wrapFileReferencesInHtml("Check README.md and CONTRIBUTING.md");
+    const result = wrapFileReferencesInHtml("Check README.md and RELEASING.md");
     expect(result).toContain("<code>README.md</code>");
-    expect(result).toContain("<code>CONTRIBUTING.md</code>");
+    expect(result).toContain("<code>RELEASING.md</code>");
   });
 
   it("handles boundary and punctuation wrapping cases", () => {
