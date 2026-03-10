@@ -1,0 +1,59 @@
+{
+  "name": "haoclaw-windows-desktop",
+  "private": true,
+  "version": "2026.3.9",
+  "description": "Haoclaw desktop shell for Windows",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir win nsis",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "40.8.0",
+    "electron-builder": "26.8.1"
+  },
+  "build": {
+    "appId": "ai.haoclaw.windows",
+    "productName": "Haoclaw",
+    "asar": true,
+    "directories": {
+      "output": "../../dist/windows",
+      "buildResources": "resources"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../dist/control-ui",
+        "to": "control-ui",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Haoclaw-${version}-setup.${ext}",
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Haoclaw"
+    }
+  }
+}

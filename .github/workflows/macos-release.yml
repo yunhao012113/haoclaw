@@ -43,6 +43,7 @@ jobs:
         with:
           install-bun: "false"
           use-sticky-disk: "false"
+          frozen-lockfile: "false"
 
       - name: Show toolchain versions
         shell: bash
@@ -78,7 +79,7 @@ jobs:
         env:
           ALLOW_ADHOC_SIGNING: "1"
           BUILD_CONFIG: release
-          BUILD_ARCHS: arm64
+          BUILD_ARCHS: all
           HAOCLAW_A2UI_ALLOW_STUB: "1"
           SKIP_DMG_STYLE: "1"
           SKIP_NOTARIZE: ${{ env.SKIP_NOTARIZE }}

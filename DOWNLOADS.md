@@ -31,20 +31,22 @@
 - 当前 release 已提供真正的桌面安装包，不是源码压缩包
 - 如果 macOS 提示安全风险，这是因为当前还是公开测试版签名流程
 - `PKG` 安装完成后会自动在桌面创建 `Haoclaw.app` 快捷方式
+- 新版 macOS 安装包会同时支持 Intel 和 Apple Silicon
 
 ## Windows
 
-Windows 原生桌面版还在开发中。
+Windows 原生桌面版已经接入安装包构建流程。
 
 当前建议：
 
-- 如果你要立即使用，请先走 WSL2 方案
+- 打开 [Latest Release](https://github.com/yunhao012113/haoclaw/releases/latest) 看是否已有最新 `Haoclaw-*-setup.exe`
+- 如果当前 release 还没有 Windows 资产，请先走 WSL2 方案
 - 说明文档在 [docs/platforms/windows.md](./docs/platforms/windows.md)
 
 后续目标：
 
-- 提供原生 `exe` 或 `msi`
-- 让用户在发布页里直接选择 Windows 安装包
+- 提供更完整的本地 Gateway 集成
+- 继续补 `msi` 或自动更新
 
 ## Linux / WSL2
 
@@ -69,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/yunhao012113/haoclaw/main/scripts/q
 
 - `Download for macOS (PKG)`
 - `Download for macOS (DMG)`
-- `Windows Coming Soon`
+- `Download for Windows`
 - `Run on Linux / WSL2`
 
 对应链接：

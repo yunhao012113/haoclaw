@@ -14,7 +14,9 @@ tooling far more compatible (Node/Bun/pnpm, Linux binaries, skills). Native
 Windows might be trickier. WSL2 gives you the full Linux experience — one command
 to install: `wsl --install`.
 
-Native Windows companion apps are planned.
+Native Windows desktop installers are now wired into the release pipeline.
+If the latest GitHub Release already contains `Haoclaw-*-setup.exe`, you can
+install the desktop shell directly. If not, use WSL2 for now.
 
 ## Install (WSL2)
 
@@ -197,7 +199,14 @@ haoclaw onboard
 
 Full guide: [Getting Started](/start/getting-started)
 
-## Windows companion app
+## Windows desktop app
 
-We do not have a Windows companion app yet. Contributions are welcome if you want
-contributions to make it happen.
+Haoclaw now has a Windows desktop packaging path that produces an `exe`
+installer. The first release is focused on:
+
+- launching the Haoclaw desktop shell directly on Windows
+- loading the built-in Control UI
+- letting users connect to a local or remote Gateway without editing config files
+
+The embedded local Gateway experience is still evolving. If you need the full
+runtime today, WSL2 remains the most reliable path.

@@ -7,6 +7,7 @@ This fork can be published from a normal GitHub repository without custom CI run
 - CI runs on pushes to `main` and pull requests
 - Docker release workflow publishes images to `ghcr.io/<owner>/<repo>`
 - macOS desktop release workflow publishes `pkg`, `dmg`, and `zip` assets on `v*` tags
+- Windows desktop release workflow publishes `exe` assets on `v*` tags
 - package metadata is already branded as `haoclaw`
 
 ## Before your first public release
@@ -41,6 +42,13 @@ What happens next:
    - `Haoclaw-<version>.zip`
 3. The same workflow attaches those assets to the GitHub Release for that tag.
 4. Users can download the desktop client directly from the release page.
+
+Windows release flow:
+
+1. `.github/workflows/windows-release.yml` builds the Windows desktop shell on GitHub-hosted Windows runners.
+2. The workflow uploads:
+   - `Haoclaw-<version>-setup.exe`
+3. The same workflow attaches those assets to the GitHub Release for that tag.
 
 If you want to rerun packaging manually, open `Actions` and run `macOS Desktop Release`.
 Set `release_tag` if you want the manual run to upload assets to an existing GitHub Release.

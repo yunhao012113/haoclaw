@@ -1,0 +1,79 @@
+name: Windows Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing tag to publish to GitHub Releases. Leave empty to only build artifacts.
+        required: false
+        type: string
+      draft:
+        description: Create the GitHub Release as a draft.
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: windows-release-${{ github.workflow }}-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  package-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node-env
+        with:
+          install-bun: "false"
+          use-sticky-disk: "false"
+          frozen-lockfile: "false"
+
+      - name: Package Windows desktop client
+        shell: bash
+        run: node scripts/package-windows-desktop.mjs
+
+      - name: Summarize packaged assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Windows package"
+            echo ""
+            echo "- Assets:"
+            find dist/windows -maxdepth 1 \( -name 'Haoclaw-*.exe' -o -name 'latest*.yml' -o -name '*.blockmap' \) -print | sed 's#^#  - #'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Windows build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: haoclaw-windows-${{ github.ref_name || github.run_id }}
+          path: |
+            dist/windows/Haoclaw-*.exe
+            dist/windows/latest*.yml
+            dist/windows/*.blockmap
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          generate_release_notes: true
+          files: |
+            dist/windows/Haoclaw-*.exe
+            dist/windows/latest*.yml
+            dist/windows/*.blockmap
