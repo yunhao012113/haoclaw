@@ -20,6 +20,7 @@ struct HaoclawApp: App {
     @State private var isMenuPresented = false
     @State private var isPanelVisible = false
     @State private var tailscaleService = TailscaleService.shared
+    @Environment(\.openWindow) private var openWindow
 
     @MainActor
     private func updateStatusHighlight() {
@@ -95,6 +96,9 @@ struct HaoclawApp: App {
         }
         .defaultSize(width: 1420, height: 900)
         .windowResizability(.contentSize)
+        .onAppear {
+            DesktopWindowOpener.shared.register(openWindow: self.openWindow)
+        }
     }
 
     private func applyStatusItemAppearance(paused: Bool, sleeping: Bool) {
@@ -328,23 +332,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let delays: [TimeInterval] = [0.15, 0.6, 1.2]
         for delay in delays {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                self.activateDesktopWindowIfNeeded()
+                self.openDesktopWindowAndActivate()
             }
         }
     }
 
     @MainActor
-    private func activateDesktopWindowIfNeeded() {
-        let candidate = NSApp.windows.first { window in
+    private func openDesktopWindowAndActivate() {
+        DockIconManager.shared.temporarilyShowDock()
+        DesktopWindowOpener.shared.openDesktopClient()
+        NSApp.activate(ignoringOtherApps: true)
+        if let candidate = NSApp.windows.first(where: { window in
             !window.isKind(of: NSPanel.self) &&
                 "\(type(of: window))" != "NSPopupMenuWindow" &&
                 window.contentViewController != nil
+        }) {
+            candidate.makeKeyAndOrderFront(nil)
+            candidate.orderFrontRegardless()
         }
-        guard let candidate else { return }
-        DockIconManager.shared.temporarilyShowDock()
-        NSApp.activate(ignoringOtherApps: true)
-        candidate.makeKeyAndOrderFront(nil)
-        candidate.orderFrontRegardless()
     }
 
     private func isDuplicateInstance() -> Bool {
