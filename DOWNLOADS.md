@@ -4,6 +4,10 @@
 
 不要点 GitHub 的 `Code -> Download ZIP`。那个下载下来是源码，不是桌面应用。
 
+如果你要一个统一的下载网站，优先用：
+
+- `https://yunhao012113.github.io/haoclaw/`
+
 ## 直接选系统
 
 ### macOS

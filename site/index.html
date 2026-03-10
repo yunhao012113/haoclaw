@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Haoclaw Downloads</title>
+    <meta
+      name="description"
+      content="Haoclaw 桌面客户端下载页。一个页面选择 macOS 或 Windows 安装包。" />
+    <style>
+      :root {
+        --bg: #f4efe7;
+        --panel: rgba(255, 255, 255, 0.86);
+        --line: rgba(17, 17, 17, 0.08);
+        --text: #181818;
+        --muted: #6c655d;
+        --accent: #ff5b2e;
+        --accent-dark: #cf3f19;
+        --shadow: 0 24px 60px rgba(55, 34, 19, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(255, 187, 120, 0.46), transparent 28%),
+          radial-gradient(circle at top right, rgba(255, 102, 61, 0.18), transparent 24%),
+          linear-gradient(180deg, #fbf7f0 0%, var(--bg) 100%);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .shell {
+        width: min(1120px, calc(100vw - 32px));
+        margin: 32px auto;
+      }
+
+      .hero {
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .logo {
+        width: 76px;
+        height: 76px;
+        flex: none;
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 14px 28px rgba(255, 91, 46, 0.2);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 5vw, 56px);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .subtitle {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .tip {
+        margin-top: 22px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(255, 91, 46, 0.08);
+        color: #7b351f;
+        font-size: 14px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .card {
+        padding: 24px;
+        border-radius: 24px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 16px 40px rgba(18, 18, 18, 0.06);
+      }
+
+      .card.active {
+        outline: 2px solid rgba(255, 91, 46, 0.26);
+        box-shadow: 0 18px 45px rgba(255, 91, 46, 0.12);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(17, 17, 17, 0.05);
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .card h2 {
+        margin: 16px 0 8px;
+        font-size: 28px;
+        letter-spacing: -0.03em;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 18px;
+        border-radius: 14px;
+        background: var(--accent);
+        color: white;
+        font-weight: 650;
+        box-shadow: 0 10px 22px rgba(255, 91, 46, 0.2);
+      }
+
+      .button.secondary {
+        background: white;
+        color: var(--text);
+        border: 1px solid var(--line);
+        box-shadow: none;
+      }
+
+      .meta {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .status {
+        margin-top: 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .shell {
+          width: min(100vw - 20px, 1120px);
+          margin: 10px auto 24px;
+        }
+
+        .hero,
+        .card {
+          border-radius: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="octo-body" x1="22" y1="18" x2="98" y2="108" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#ff6a3d" />
+                  <stop offset="1" stop-color="#ff3b1f" />
+                </linearGradient>
+              </defs>
+              <rect x="4" y="4" width="112" height="112" rx="24" fill="#fffdf9" stroke="#f3a35c" stroke-width="6" />
+              <circle cx="60" cy="39" r="26" fill="url(#octo-body)" stroke="#111111" stroke-width="5" />
+              <circle cx="47" cy="57" r="10" fill="#ffffff" stroke="#111111" stroke-width="4" />
+              <circle cx="73" cy="57" r="10" fill="#ffffff" stroke="#111111" stroke-width="4" />
+              <circle cx="50" cy="59" r="5" fill="#111111" />
+              <circle cx="70" cy="59" r="5" fill="#111111" />
+              <circle cx="52" cy="57" r="1.7" fill="#ffffff" />
+              <circle cx="72" cy="57" r="1.7" fill="#ffffff" />
+              <path d="M53 69c2.8 4 11.2 4 14 0" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+              <path d="M39 84c-6 1-12 4-16 8" stroke="#111111" stroke-width="5" stroke-linecap="round" />
+              <path d="M81 84c6 1 12 4 16 8" stroke="#111111" stroke-width="5" stroke-linecap="round" />
+              <path d="M30 72c-9 1-16 7-16 15 0 4 2 7 6 7 6 0 10-7 14-8" fill="url(#octo-body)" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M90 72c9 1 16 7 16 15 0 4-2 7-6 7-6 0-10-7-14-8" fill="url(#octo-body)" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M40 72c-7 6-12 14-12 22 0 5 3 8 7 8 5 0 8-5 11-9" fill="url(#octo-body)" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M80 72c7 6 12 14 12 22 0 5-3 8-7 8-5 0-8-5-11-9" fill="url(#octo-body)" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M51 73c-6 8-9 16-9 25 0 6 3 10 8 10 4 0 7-4 10-10" fill="url(#octo-body)" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M69 73c6 8 9 16 9 25 0 6-3 10-8 10-4 0-7-4-10-10" fill="url(#octo-body)" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="45" cy="26" r="5" fill="#ffc2a4" />
+              <circle cx="37" cy="34" r="3.5" fill="#ffc2a4" />
+              <circle cx="80" cy="28" r="3.5" fill="#db2d22" />
+              <circle cx="86" cy="36" r="3.5" fill="#db2d22" />
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow">Haoclaw Desktop Downloads</div>
+            <h1>一个页面<br />选择系统版本</h1>
+            <p class="subtitle">这里直接提供 macOS 和 Windows 安装包，不需要再进仓库翻 release。</p>
+          </div>
+        </div>
+
+        <div class="tip">
+          如果你是 mac 用户，优先下载 <strong>PKG</strong>。如果你是 Windows 用户，直接下载 <strong>EXE 安装程序</strong>。
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card" id="card-macos">
+          <div class="eyebrow">macOS</div>
+          <h2>章鱼图标桌面版</h2>
+          <p>支持桌面安装。优先使用 PKG，一键安装后会进入应用程序，并创建桌面快捷入口。</p>
+          <div class="actions">
+            <a class="button" id="mac-pkg" href="https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.pkg">下载 PKG</a>
+            <a class="button secondary" id="mac-dmg" href="https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.dmg">下载 DMG</a>
+          </div>
+          <div class="meta" id="mac-meta">正在检查最新 macOS 安装包…</div>
+        </article>
+
+        <article class="card" id="card-windows">
+          <div class="eyebrow">Windows</div>
+          <h2>桌面安装程序</h2>
+          <p>直接下载 `setup.exe`，安装后会创建桌面快捷方式和开始菜单入口。</p>
+          <div class="actions">
+            <a class="button" id="win-exe" href="https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.21/Haoclaw-2026.3.9-setup.exe">下载 EXE</a>
+            <a class="button secondary" href="https://github.com/yunhao012113/haoclaw/releases/latest">查看全部版本</a>
+          </div>
+          <div class="meta" id="win-meta">正在检查最新 Windows 安装包…</div>
+        </article>
+      </section>
+
+      <div class="status" id="status">正在从 GitHub Release 同步最新安装包信息…</div>
+
+      <div class="footer">
+        <a href="https://github.com/yunhao012113/haoclaw/releases/latest">查看 GitHub Releases</a>
+        <a href="https://github.com/yunhao012113/haoclaw">查看仓库</a>
+      </div>
+    </main>
+
+    <script>
+      const repoApi = "https://api.github.com/repos/yunhao012113/haoclaw/releases?per_page=12";
+
+      const macPkg = document.getElementById("mac-pkg");
+      const macDmg = document.getElementById("mac-dmg");
+      const winExe = document.getElementById("win-exe");
+      const macMeta = document.getElementById("mac-meta");
+      const winMeta = document.getElementById("win-meta");
+      const status = document.getElementById("status");
+
+      function preferCard() {
+        const platform = navigator.platform.toLowerCase();
+        if (platform.includes("mac")) {
+          document.getElementById("card-macos")?.classList.add("active");
+        } else if (platform.includes("win")) {
+          document.getElementById("card-windows")?.classList.add("active");
+        }
+      }
+
+      function findAsset(releases, predicate) {
+        for (const release of releases) {
+          const asset = (release.assets || []).find(predicate);
+          if (asset) {
+            return { asset, release };
+          }
+        }
+        return null;
+      }
+
+      async function loadDownloads() {
+        preferCard();
+        try {
+          const response = await fetch(repoApi, {
+            headers: { Accept: "application/vnd.github+json" },
+          });
+          if (!response.ok) {
+            throw new Error(`GitHub API ${response.status}`);
+          }
+          const releases = await response.json();
+
+          const macPkgAsset = findAsset(releases, (asset) => asset.name.endsWith(".pkg"));
+          const macDmgAsset = findAsset(releases, (asset) => asset.name.endsWith(".dmg"));
+          const winExeAsset = findAsset(releases, (asset) => asset.name.endsWith("-setup.exe"));
+
+          if (macPkgAsset) {
+            macPkg.href = macPkgAsset.asset.browser_download_url;
+            macMeta.textContent = `最新 PKG：${macPkgAsset.asset.name} · ${macPkgAsset.release.tag_name}`;
+          } else {
+            macMeta.textContent = "暂时没有找到 macOS PKG 安装包。";
+          }
+
+          if (macDmgAsset) {
+            macDmg.href = macDmgAsset.asset.browser_download_url;
+            if (!macPkgAsset) {
+              macMeta.textContent = `最新 DMG：${macDmgAsset.asset.name} · ${macDmgAsset.release.tag_name}`;
+            }
+          }
+
+          if (winExeAsset) {
+            winExe.href = winExeAsset.asset.browser_download_url;
+            winMeta.textContent = `最新 EXE：${winExeAsset.asset.name} · ${winExeAsset.release.tag_name}`;
+          } else {
+            winMeta.textContent = "暂时没有找到 Windows 安装包。";
+          }
+
+          status.textContent = "已同步最新安装包信息。";
+        } catch (error) {
+          console.error(error);
+          status.textContent = "获取最新版本失败，已保留默认下载链接。";
+          macMeta.textContent = "当前显示的是保底 macOS 链接。";
+          winMeta.textContent = "当前显示的是保底 Windows 链接。";
+        }
+      }
+
+      void loadDownloads();
+    </script>
+  </body>
+</html>
