@@ -89,6 +89,12 @@ struct HaoclawApp: App {
             self.updateStatusHighlight()
             self.updateHoverHUDSuppression()
         }
+
+        Window("Haoclaw", id: "desktop-client") {
+            DesktopClientRootView(state: self.state)
+        }
+        .defaultSize(width: 1420, height: 900)
+        .windowResizability(.contentSize)
     }
 
     private func applyStatusItemAppearance(paused: Bool, sleeping: Bool) {

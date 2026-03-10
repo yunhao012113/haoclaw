@@ -17,6 +17,7 @@ struct MenuContent: View {
     @Bindable private var pairingPrompter = NodePairingApprovalPrompter.shared
     @Bindable private var devicePairingPrompter = DevicePairingApprovalPrompter.shared
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
     @State private var availableMics: [AudioInputDevice] = []
     @State private var loadingMics = false
     @State private var micObserver = AudioInputDeviceObserver()
@@ -112,6 +113,11 @@ struct MenuContent: View {
                 }
             } label: {
                 Label("Open Dashboard", systemImage: "gauge")
+            }
+            Button {
+                self.openWindow(id: "desktop-client")
+            } label: {
+                Label("Open Desktop Client", systemImage: "macwindow")
             }
             Button {
                 Task { @MainActor in
