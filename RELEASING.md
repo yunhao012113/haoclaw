@@ -6,7 +6,7 @@ This fork can be published from a normal GitHub repository without custom CI run
 
 - CI runs on pushes to `main` and pull requests
 - Docker release workflow publishes images to `ghcr.io/<owner>/<repo>`
-- macOS desktop release workflow publishes `dmg` and `zip` assets on `v*` tags
+- macOS desktop release workflow publishes `pkg`, `dmg`, and `zip` assets on `v*` tags
 - package metadata is already branded as `haoclaw`
 
 ## Before your first public release
@@ -36,6 +36,7 @@ What happens next:
 
 1. `.github/workflows/macos-release.yml` builds the macOS desktop client on GitHub-hosted macOS runners.
 2. The workflow uploads:
+   - `Haoclaw-<version>.pkg`
    - `Haoclaw-<version>.dmg`
    - `Haoclaw-<version>.zip`
 3. The same workflow attaches those assets to the GitHub Release for that tag.
@@ -48,7 +49,7 @@ Set `release_tag` if you want the manual run to upload assets to an existing Git
 
 The macOS release workflow works in two modes:
 
-- without Apple secrets: builds unsigned `dmg` and `zip`
+- without Apple secrets: builds unsigned `pkg`, `dmg`, and `zip`
 - with Apple secrets: signs and notarizes the desktop app before upload
 
 Optional repository secrets:

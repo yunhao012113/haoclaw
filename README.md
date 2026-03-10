@@ -54,22 +54,31 @@ Haoclaw 的目标就是把这些路径压平：
 
 ## 快速开始
 
-### 桌面客户端下载
+### 直接下载安装
 
-如果你想直接下载桌面客户端，而不是从源码运行，推荐用 GitHub Releases：
+先选系统，不要点仓库右上角的 `Code -> Download ZIP`。那个是源码包，不是桌面应用。
 
-- 打开仓库的 `Releases`
-- 下载最新的 `Haoclaw-*.dmg`
-- 如果你更习惯手动解压，也可以下载 `Haoclaw-*.zip`
+| 平台         | 方式           | 入口                                                                                                      |
+| ------------ | -------------- | --------------------------------------------------------------------------------------------------------- |
+| macOS        | `PKG` 一键安装 | [直接下载 PKG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.16/Haoclaw-2026.3.9.pkg) |
+| macOS        | `DMG` 拖拽安装 | [直接下载 DMG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.16/Haoclaw-2026.3.9.dmg) |
+| Windows      | 桌面版开发中   | [查看 Windows 状态](./docs/platforms/windows.md)                                                          |
+| Linux / WSL2 | 命令行部署     | [查看部署方式](#github-一键安装部署)                                                                      |
 
-仓库已经支持 `v*` 标签自动打包 macOS 桌面客户端并上传到 Release 资产。
-如果你要在官网放下载按钮，直接链接到 GitHub Release 页面或具体的 `dmg` 资产就可以。
+完整下载说明见 [DOWNLOADS.md](./DOWNLOADS.md)。
 
-```bash
-cd /Users/yunhao/Desktop/haoclaw-src
-git tag v2026.3.10
-git push origin v2026.3.10
-```
+### 发布页下载
+
+如果你想看所有版本，直接打开：
+
+- [Latest Release](https://github.com/yunhao012113/haoclaw/releases/latest)
+- [All Releases](https://github.com/yunhao012113/haoclaw/releases)
+
+当前桌面版重点是：
+
+- macOS 直接下载并安装
+- Windows 先走 WSL2，原生桌面版继续补
+- Linux 走一键命令部署
 
 ### 环境要求
 
