@@ -4,7 +4,7 @@ import HaoclawProtocol
 import Observation
 import SwiftUI
 
-private enum DesktopSidebarSection: String, CaseIterable, Identifiable {
+enum DesktopSidebarSection: String, CaseIterable, Identifiable {
     case conversations
     case channels
     case cron
@@ -20,7 +20,7 @@ private enum DesktopSidebarSection: String, CaseIterable, Identifiable {
     }
 }
 
-private enum DesktopProviderPreset: String, CaseIterable, Identifiable {
+enum DesktopProviderPreset: String, CaseIterable, Identifiable {
     case openai
     case openrouter
     case anthropic
@@ -125,10 +125,7 @@ private enum DesktopProviderPreset: String, CaseIterable, Identifiable {
     }
 }
 
-extension AppState.ConnectionMode: CaseIterable {}
-extension AppState.RemoteTransport: CaseIterable {}
-
-private struct DesktopModelSettingsDraft: Equatable {
+struct DesktopModelSettingsDraft: Equatable {
     var connectionMode: AppState.ConnectionMode = .local
     var remoteTransport: AppState.RemoteTransport = .direct
     var remoteURL = ""
@@ -415,7 +412,13 @@ final class DesktopClientModel {
                 method: .modelsList,
                 params: nil,
                 timeoutMs: 6000)
-            self.models = result.models
+            self.models = result.models.map {
+                ModelChoice(
+                    id: $0.id,
+                    name: $0.name,
+                    provider: $0.provider,
+                    contextWindow: $0.contextwindow)
+            }
         } catch {
             do {
                 self.models = try await ModelCatalogLoader.load(from: ModelCatalogLoader.defaultPath)

@@ -19,13 +19,13 @@ final class AppState {
         action()
     }
 
-    enum ConnectionMode: String {
+    enum ConnectionMode: String, CaseIterable {
         case unconfigured
         case local
         case remote
     }
 
-    enum RemoteTransport: String {
+    enum RemoteTransport: String, CaseIterable {
         case ssh
         case direct
     }
