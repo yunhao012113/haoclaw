@@ -20,7 +20,15 @@ if [[ ! -d "$A2UI_RENDERER_DIR" || ! -d "$A2UI_APP_DIR" ]]; then
     echo "A2UI sources missing; keeping prebuilt bundle."
     exit 0
   fi
+  if [[ "${HAOCLAW_A2UI_ALLOW_STUB:-0}" == "1" ]]; then
+    echo "A2UI sources missing; creating stub bundle."
+    mkdir -p "$(dirname "$OUTPUT_FILE")"
+    echo "/* A2UI bundle unavailable in this build */" > "$OUTPUT_FILE"
+    echo "stub" > "$HASH_FILE"
+    exit 0
+  fi
   echo "A2UI sources missing and no prebuilt bundle found at: $OUTPUT_FILE" >&2
+  echo "Set HAOCLAW_A2UI_ALLOW_STUB=1 to allow a stub bundle for packaging-only builds." >&2
   exit 1
 fi
 

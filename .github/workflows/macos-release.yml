@@ -72,6 +72,7 @@ jobs:
       - name: Package macOS desktop client
         env:
           BUILD_CONFIG: release
+          HAOCLAW_A2UI_ALLOW_STUB: "1"
           SKIP_NOTARIZE: ${{ env.SKIP_NOTARIZE }}
           SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
           NOTARYTOOL_PROFILE: ${{ secrets.NOTARYTOOL_PROFILE }}
