@@ -1,0 +1,12 @@
+{
+  "name": "@haoclaw/minimax-portal-auth",
+  "version": "2026.3.9",
+  "private": true,
+  "description": "Haoclaw MiniMax Portal OAuth provider plugin",
+  "type": "module",
+  "haoclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

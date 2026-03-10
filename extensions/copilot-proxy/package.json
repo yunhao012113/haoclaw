@@ -1,0 +1,12 @@
+{
+  "name": "@haoclaw/copilot-proxy",
+  "version": "2026.3.9",
+  "private": true,
+  "description": "Haoclaw Copilot Proxy provider plugin",
+  "type": "module",
+  "haoclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

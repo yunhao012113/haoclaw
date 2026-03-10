@@ -1,0 +1,12 @@
+{
+  "name": "@haoclaw/signal",
+  "version": "2026.3.9",
+  "private": true,
+  "description": "Haoclaw Signal channel plugin",
+  "type": "module",
+  "haoclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+// Default signing values for shared/repo builds.
+// Auto-selected local team overrides live in .local-signing.xcconfig (git-ignored).
+// Manual local overrides can go in LocalSigning.xcconfig (git-ignored).
+
+HAOCLAW_CODE_SIGN_STYLE = Manual
+HAOCLAW_DEVELOPMENT_TEAM = Y5PE65HELJ
+
+HAOCLAW_APP_BUNDLE_ID = ai.haoclaw.client
+HAOCLAW_SHARE_BUNDLE_ID = ai.haoclaw.client.share
+HAOCLAW_WATCH_APP_BUNDLE_ID = ai.haoclaw.client.watchkitapp
+HAOCLAW_WATCH_EXTENSION_BUNDLE_ID = ai.haoclaw.client.watchkitapp.extension
+HAOCLAW_ACTIVITY_WIDGET_BUNDLE_ID = ai.haoclaw.client.activitywidget
+
+HAOCLAW_APP_PROFILE = ai.haoclaw.client Development
+HAOCLAW_SHARE_PROFILE = ai.haoclaw.client.share Development
+
+// Keep local includes after defaults: xcconfig is evaluated top-to-bottom,
+// so later assignments in local files override the defaults above.
+#include? ".local-signing.xcconfig"
+#include? "LocalSigning.xcconfig"
