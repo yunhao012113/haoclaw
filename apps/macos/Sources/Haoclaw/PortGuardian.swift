@@ -362,7 +362,7 @@ actor PortGuardian {
             return false
         case .local:
             // The gateway daemon may listen as `haoclaw` or as its runtime (`node`, `bun`, etc).
-            if full.contains("gateway-daemon") { return true }
+            if full.contains("gateway run") || full.contains("haoclaw-gateway") { return true }
             // If args are unavailable, treat a CLI listener as expected.
             if cmd.contains("haoclaw"), full == cmd { return true }
             return false
