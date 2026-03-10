@@ -76,6 +76,7 @@ jobs:
 
       - name: Package macOS desktop client
         env:
+          ALLOW_ADHOC_SIGNING: "1"
           BUILD_CONFIG: release
           BUILD_ARCHS: arm64
           HAOCLAW_A2UI_ALLOW_STUB: "1"
