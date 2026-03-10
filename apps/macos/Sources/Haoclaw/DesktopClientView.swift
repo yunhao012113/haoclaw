@@ -158,6 +158,8 @@ final class DesktopClientModel {
     var isGatewayReady = false
     var stateDirectory = "未发现"
     var configPath = "未发现"
+    var connectionHint: String?
+    var isRepairingConnection = false
     var settingsDraft = DesktopModelSettingsDraft()
 
     @ObservationIgnored private var endpointTask: Task<Void, Never>?
@@ -178,10 +180,61 @@ final class DesktopClientModel {
         self.isRefreshing = true
         defer { self.isRefreshing = false }
 
-        await self.loadModelCatalog()
         await self.loadCurrentConfig()
+        let environment = await self.refreshConnectionHint()
+        await self.ensureLocalGatewayIfPossible(environment)
+        await self.loadModelCatalog()
         await self.refreshEndpoint()
         self.chatViewModel.refreshSessions(limit: 50)
+    }
+
+    func repairConnection() async {
+        guard !self.isRepairingConnection else { return }
+        self.isRepairingConnection = true
+        defer { self.isRepairingConnection = false }
+
+        self.statusMessage = "正在修复本地连接…"
+        self.ensureLocalStateLayout()
+
+        let environment = await Task.detached(priority: .utility) {
+            GatewayEnvironment.check()
+        }.value
+
+        switch environment.kind {
+        case .missingNode, .missingGateway, .incompatible:
+            let installed = await CLIInstaller.install { message in
+                self.statusMessage = message
+            }
+            guard installed else {
+                await self.refreshSupportData()
+                return
+            }
+        case .ok, .checking, .error:
+            break
+        }
+
+        if !FileManager.default.fileExists(atPath: HaoclawPaths.configURL.path) {
+            HaoclawConfigFile.saveDict(HaoclawConfigFile.loadDict())
+        }
+
+        if self.appState.connectionMode != .local {
+            self.appState.connectionMode = .local
+        }
+
+        GatewayProcessManager.shared.refreshEnvironmentStatus(force: true)
+        GatewayProcessManager.shared.setActive(true)
+        let ready = await GatewayProcessManager.shared.waitForGatewayReady(timeout: 10)
+        await self.refreshSupportData()
+
+        if ready {
+            if self.currentModelRef == "未配置" {
+                self.statusMessage = "网关已启动。下一步在“模型与 API”里填入 Base URL、API Key 和模型 ID。"
+            } else {
+                self.statusMessage = "本地连接已恢复。"
+            }
+        } else {
+            self.statusMessage = "本地运行时已安装，但网关还没有启动成功。请再点一次“重新连接”。"
+        }
     }
 
     func createConversation() {
@@ -336,7 +389,7 @@ final class DesktopClientModel {
             self.isGatewayReady = (try? await GatewayConnection.shared.healthOK(timeoutMs: 4000)) ?? false
             self.gatewayStatus = self.isGatewayReady ? "已连接" : "网关未就绪"
         } catch {
-            self.gatewayStatus = error.localizedDescription
+            self.gatewayStatus = self.connectionHint ?? "无法连接本地网关"
             self.isGatewayReady = false
         }
     }
@@ -370,10 +423,13 @@ final class DesktopClientModel {
         }
 
         self.refreshSettingsDraftFromState()
+        self.ensureLocalStateLayout()
+        self.stateDirectory = HaoclawPaths.stateDirURL.path
+        self.configPath = HaoclawPaths.configURL.path
 
         let paths = await GatewayConnection.shared.snapshotPaths()
-        self.stateDirectory = paths.stateDir ?? "未发现"
-        self.configPath = paths.configPath ?? "未发现"
+        self.stateDirectory = paths.stateDir ?? self.stateDirectory
+        self.configPath = paths.configPath ?? self.configPath
     }
 
     func applyProviderPreset() {
@@ -428,6 +484,30 @@ final class DesktopClientModel {
         }
     }
 
+    private func refreshConnectionHint() async -> GatewayEnvironmentStatus {
+        let status = await Task.detached(priority: .utility) {
+            GatewayEnvironment.check()
+        }.value
+        self.connectionHint = Self.connectionHint(for: status, mode: self.appState.connectionMode)
+        return status
+    }
+
+    private func ensureLocalGatewayIfPossible(_ environment: GatewayEnvironmentStatus) async {
+        guard self.appState.connectionMode == .local else { return }
+        guard case .ok = environment.kind else { return }
+        GatewayProcessManager.shared.setActive(true)
+        _ = await GatewayProcessManager.shared.waitForGatewayReady(timeout: 6)
+    }
+
+    private func ensureLocalStateLayout() {
+        try? FileManager.default.createDirectory(
+            at: HaoclawPaths.stateDirURL,
+            withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(
+            at: HaoclawPaths.workspaceURL,
+            withIntermediateDirectories: true)
+    }
+
     private static func extractPrimaryModelRef(from root: [String: Any]) -> String? {
         if let agents = root["agents"] as? [String: Any],
            let defaults = agents["defaults"] as? [String: Any],
@@ -445,6 +525,27 @@ final class DesktopClientModel {
         }
 
         return nil
+    }
+
+    private static func connectionHint(
+        for status: GatewayEnvironmentStatus,
+        mode: AppState.ConnectionMode) -> String?
+    {
+        guard mode == .local else { return nil }
+        switch status.kind {
+        case .checking:
+            return "正在检查本地运行环境…"
+        case .ok:
+            return nil
+        case .missingNode:
+            return "缺少本地运行时。点“一键修复”会自动安装 Node.js 22 和 Haoclaw CLI。"
+        case .missingGateway:
+            return "缺少 Haoclaw CLI。点“一键修复”后，桌面端会自动把本地 Gateway 拉起来。"
+        case let .incompatible(found, required):
+            return "本地 CLI 版本过旧：当前 \(found)，需要 \(required)。点“一键修复”即可更新。"
+        case let .error(message):
+            return "本地连接检查失败：\(message)"
+        }
     }
 }
 
@@ -601,9 +702,17 @@ private struct DesktopConversationCenter: View {
                             action: { self.model.openModelSettings() })
 
                         DesktopActionCard(
-                            title: "刷新连接",
-                            description: "重新检查 Gateway 状态、模型列表和当前配置。",
-                            action: { Task { await self.model.refreshSupportData() } })
+                            title: self.model.connectionHint == nil ? "刷新连接" : "一键修复",
+                            description: self.model.connectionHint ?? "重新检查 Gateway 状态、模型列表和当前配置。",
+                            action: {
+                                Task {
+                                    if self.model.connectionHint == nil {
+                                        await self.model.refreshSupportData()
+                                    } else {
+                                        await self.model.repairConnection()
+                                    }
+                                }
+                            })
                     }
                 }
                 .padding(.top, 36)
@@ -682,12 +791,30 @@ private struct DesktopAgentInspector: View {
                     Button("模型与 API") {
                         self.model.openModelSettings()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
+
+                    if self.model.appState.connectionMode == .local {
+                        Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
+                            Task { await self.model.repairConnection() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(self.model.isRepairingConnection)
+                    }
 
                     Button("重新连接") {
                         Task { await self.model.refreshSupportData() }
                     }
                     .buttonStyle(.bordered)
+                }
+
+                if let hint = self.model.connectionHint, !hint.isEmpty {
+                    Text(hint)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.orange.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
 
                 if let status = self.model.statusMessage, !status.isEmpty {

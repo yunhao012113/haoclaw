@@ -59,7 +59,7 @@ extension OnboardingView {
         guard !self.installingCLI else { return }
         self.installingCLI = true
         defer { installingCLI = false }
-        await CLIInstaller.install { message in
+        _ = await CLIInstaller.install { message in
             self.cliStatus = message
         }
         self.refreshCLIStatus()

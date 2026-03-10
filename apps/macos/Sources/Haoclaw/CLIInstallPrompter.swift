@@ -15,11 +15,11 @@ final class CLIInstallPrompter {
         UserDefaults.standard.set(version, forKey: cliInstallPromptedVersionKey)
 
         let alert = NSAlert()
-        alert.messageText = "Install Haoclaw CLI?"
-        alert.informativeText = "Local mode needs the CLI so launchd can run the gateway."
-        alert.addButton(withTitle: "Install CLI")
-        alert.addButton(withTitle: "Not now")
-        alert.addButton(withTitle: "Open Settings")
+        alert.messageText = "安装本地运行时？"
+        alert.informativeText = "本地模式需要安装 Haoclaw CLI，桌面端才能自动拉起 Gateway。"
+        alert.addButton(withTitle: "立即安装")
+        alert.addButton(withTitle: "稍后再说")
+        alert.addButton(withTitle: "打开设置")
         let response = alert.runModal()
 
         switch response {
@@ -47,12 +47,16 @@ final class CLIInstallPrompter {
 
     private func installCLI() async {
         let status = StatusBox()
-        await CLIInstaller.install { message in
+        let success = await CLIInstaller.install { message in
             await status.set(message)
+        }
+        if success {
+            GatewayProcessManager.shared.refreshEnvironmentStatus(force: true)
+            GatewayProcessManager.shared.setActive(true)
         }
         if let message = await status.get() {
             let alert = NSAlert()
-            alert.messageText = "CLI install finished"
+            alert.messageText = success ? "安装完成" : "安装失败"
             alert.informativeText = message
             alert.runModal()
         }
