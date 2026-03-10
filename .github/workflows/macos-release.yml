@@ -77,7 +77,9 @@ jobs:
       - name: Package macOS desktop client
         env:
           BUILD_CONFIG: release
+          BUILD_ARCHS: arm64
           HAOCLAW_A2UI_ALLOW_STUB: "1"
+          SKIP_DMG_STYLE: "1"
           SKIP_NOTARIZE: ${{ env.SKIP_NOTARIZE }}
           SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.MAC_INSTALLER_SIGN_IDENTITY }}
