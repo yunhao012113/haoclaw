@@ -20,7 +20,6 @@ struct HaoclawApp: App {
     @State private var isMenuPresented = false
     @State private var isPanelVisible = false
     @State private var tailscaleService = TailscaleService.shared
-    @Environment(\.openWindow) private var openWindow
 
     @MainActor
     private func updateStatusHighlight() {
@@ -91,14 +90,11 @@ struct HaoclawApp: App {
             self.updateHoverHUDSuppression()
         }
 
-        WindowGroup("Haoclaw", id: "desktop-client") {
+        Window("Haoclaw", id: "desktop-client") {
             DesktopClientRootView(state: self.state)
         }
         .defaultSize(width: 1420, height: 900)
         .windowResizability(.contentSize)
-        .onAppear {
-            DesktopWindowOpener.shared.register(openWindow: self.openWindow)
-        }
     }
 
     private func applyStatusItemAppearance(paused: Bool, sleeping: Bool) {
@@ -290,7 +286,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             CLIInstallPrompter.shared.checkAndPromptIfNeeded(reason: "launch")
         }
-        self.presentDesktopClientOnLaunch()
 
         // Developer/testing helper: auto-open chat when launched with --chat (or legacy --webchat).
         if CommandLine.arguments.contains("--chat") || CommandLine.arguments.contains("--webchat") {
@@ -325,30 +320,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard shouldShow else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             OnboardingController.shared.show()
-        }
-    }
-
-    private func presentDesktopClientOnLaunch() {
-        let delays: [TimeInterval] = [0.15, 0.6, 1.2]
-        for delay in delays {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                self.openDesktopWindowAndActivate()
-            }
-        }
-    }
-
-    @MainActor
-    private func openDesktopWindowAndActivate() {
-        DockIconManager.shared.temporarilyShowDock()
-        DesktopWindowOpener.shared.openDesktopClient()
-        NSApp.activate(ignoringOtherApps: true)
-        if let candidate = NSApp.windows.first(where: { window in
-            !window.isKind(of: NSPanel.self) &&
-                "\(type(of: window))" != "NSPopupMenuWindow" &&
-                window.contentViewController != nil
-        }) {
-            candidate.makeKeyAndOrderFront(nil)
-            candidate.orderFrontRegardless()
         }
     }
 
