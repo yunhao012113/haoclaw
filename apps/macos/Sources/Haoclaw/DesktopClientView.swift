@@ -20,9 +20,124 @@ private enum DesktopSidebarSection: String, CaseIterable, Identifiable {
     }
 }
 
+private enum DesktopProviderPreset: String, CaseIterable, Identifiable {
+    case openai
+    case openrouter
+    case anthropic
+    case gemini
+    case openAICompatible
+    case anthropicCompatible
+
+    var id: String { self.rawValue }
+
+    var title: String {
+        switch self {
+        case .openai: "OpenAI"
+        case .openrouter: "OpenRouter"
+        case .anthropic: "Anthropic"
+        case .gemini: "Gemini"
+        case .openAICompatible: "OpenAI 兼容"
+        case .anthropicCompatible: "Anthropic 兼容"
+        }
+    }
+
+    var defaultProviderID: String {
+        switch self {
+        case .openai: "openai"
+        case .openrouter: "openrouter"
+        case .anthropic: "anthropic"
+        case .gemini: "google"
+        case .openAICompatible: "custom-openai"
+        case .anthropicCompatible: "custom-anthropic"
+        }
+    }
+
+    var defaultBaseURL: String {
+        switch self {
+        case .openai: "https://api.openai.com/v1"
+        case .openrouter: "https://openrouter.ai/api/v1"
+        case .anthropic: "https://api.anthropic.com"
+        case .gemini: "https://generativelanguage.googleapis.com"
+        case .openAICompatible, .anthropicCompatible: ""
+        }
+    }
+
+    var defaultModelID: String {
+        switch self {
+        case .openai: "gpt-5"
+        case .openrouter: "anthropic/claude-sonnet-4-5"
+        case .anthropic: "claude-sonnet-4-5"
+        case .gemini: "gemini-2.5-pro"
+        case .openAICompatible: "qwen2.5-coder"
+        case .anthropicCompatible: "claude-sonnet-4-5"
+        }
+    }
+
+    var apiAdapter: String {
+        switch self {
+        case .anthropic, .anthropicCompatible: "anthropic-messages"
+        case .gemini: "google-generative-ai"
+        case .openai: "openai-responses"
+        case .openrouter, .openAICompatible: "openai-completions"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .openai:
+            "官方 OpenAI 接口，默认使用 Responses API。"
+        case .openrouter:
+            "适合直接接 OpenRouter，多模型聚合。"
+        case .anthropic:
+            "官方 Anthropic Messages 接口。"
+        case .gemini:
+            "官方 Gemini 接口。"
+        case .openAICompatible:
+            "适合 Ollama、vLLM、LiteLLM、自建代理等 OpenAI 兼容接口。"
+        case .anthropicCompatible:
+            "适合兼容 Anthropic Messages 协议的代理或网关。"
+        }
+    }
+
+    static func infer(providerID: String, baseURL: String, apiAdapter: String) -> DesktopProviderPreset {
+        let normalizedProvider = providerID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedAdapter = apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if normalizedProvider == "openrouter" || normalizedBaseURL.contains("openrouter.ai") {
+            return .openrouter
+        }
+        if normalizedProvider == "anthropic" || normalizedBaseURL.contains("api.anthropic.com") {
+            return .anthropic
+        }
+        if normalizedProvider == "google" || normalizedProvider == "gemini" ||
+            normalizedBaseURL.contains("generativelanguage.googleapis.com")
+        {
+            return .gemini
+        }
+        if normalizedProvider == "openai" || normalizedBaseURL.contains("api.openai.com") {
+            return .openai
+        }
+        if normalizedAdapter == "anthropic-messages" {
+            return .anthropicCompatible
+        }
+        return .openAICompatible
+    }
+}
+
+extension AppState.ConnectionMode: CaseIterable {}
+extension AppState.RemoteTransport: CaseIterable {}
+
 private struct DesktopModelSettingsDraft: Equatable {
+    var connectionMode: AppState.ConnectionMode = .local
+    var remoteTransport: AppState.RemoteTransport = .direct
+    var remoteURL = ""
+    var remoteToken = ""
+    var remoteTarget = ""
+    var remoteIdentity = ""
+    var providerPreset: DesktopProviderPreset = .openAICompatible
     var providerId = "haoclaw-desktop"
-    var gatewayURL = ""
+    var apiAdapter = "openai-completions"
     var baseURL = ""
     var apiKey = ""
     var modelID = ""
@@ -31,6 +146,7 @@ private struct DesktopModelSettingsDraft: Equatable {
 @MainActor
 @Observable
 final class DesktopClientModel {
+    let appState: AppState
     let chatViewModel: HaoclawChatViewModel
 
     var sidebarSection: DesktopSidebarSection = .conversations
@@ -49,7 +165,8 @@ final class DesktopClientModel {
 
     @ObservationIgnored private var endpointTask: Task<Void, Never>?
 
-    init(chatViewModel: HaoclawChatViewModel) {
+    init(appState: AppState, chatViewModel: HaoclawChatViewModel) {
+        self.appState = appState
         self.chatViewModel = chatViewModel
     }
 
@@ -80,22 +197,32 @@ final class DesktopClientModel {
     }
 
     func openModelSettings() {
-        self.settingsDraft.providerId = "haoclaw-desktop"
-        self.settingsDraft.gatewayURL = self.gatewayURL
-
-        let parts = self.currentModelRef.split(separator: "/", maxSplits: 1).map(String.init)
-        if parts.count == 2 {
-            self.settingsDraft.modelID = parts[1]
-        }
-
+        self.refreshSettingsDraftFromState()
         self.isShowingModelSettings = true
     }
 
     func saveModelSettings() async {
+        let selectedPreset = self.settingsDraft.providerPreset
+        let connectionMode = self.settingsDraft.connectionMode
+        let remoteTransport = self.settingsDraft.remoteTransport
+        let trimmedRemoteURL = self.settingsDraft.remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRemoteToken = self.settingsDraft.remoteToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRemoteTarget = self.settingsDraft.remoteTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRemoteIdentity = self.settingsDraft.remoteIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedBaseURL = self.settingsDraft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedApiKey = self.settingsDraft.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedModelID = self.settingsDraft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedProviderID = self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedApiAdapter = self.settingsDraft.apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if connectionMode == .remote, remoteTransport == .direct, trimmedRemoteURL.isEmpty {
+            self.statusMessage = "远程直连模式需要填写 Gateway URL。"
+            return
+        }
+        if connectionMode == .remote, remoteTransport == .ssh, trimmedRemoteTarget.isEmpty {
+            self.statusMessage = "SSH 模式需要填写 SSH Target。"
+            return
+        }
 
         guard !trimmedBaseURL.isEmpty, !trimmedModelID.isEmpty else {
             self.statusMessage = "请先填写 Base URL 和模型 ID。"
@@ -105,17 +232,17 @@ final class DesktopClientModel {
         self.isSavingModelSettings = true
         defer { self.isSavingModelSettings = false }
 
-        var root = await ConfigStore.load()
+        var root = HaoclawConfigFile.loadDict()
         var modelsRoot = root["models"] as? [String: Any] ?? [:]
         var providers = modelsRoot["providers"] as? [String: Any] ?? [:]
 
         var providerEntry: [String: Any] = [
             "baseUrl": trimmedBaseURL,
-            "api": "openai-completions",
+            "api": trimmedApiAdapter,
             "models": [[
                 "id": trimmedModelID,
                 "name": trimmedModelID,
-                "api": "openai-completions",
+                "api": trimmedApiAdapter,
             ]],
         ]
         if !trimmedApiKey.isEmpty {
@@ -139,13 +266,19 @@ final class DesktopClientModel {
         }
 
         do {
-            try await ConfigStore.save(root)
+            HaoclawConfigFile.saveDict(root)
+            self.appState.connectionMode = connectionMode
+            self.appState.remoteTransport = remoteTransport
+            self.appState.remoteUrl = trimmedRemoteURL
+            self.appState.remoteToken = trimmedRemoteToken
+            self.appState.remoteTarget = trimmedRemoteTarget
+            self.appState.remoteIdentity = trimmedRemoteIdentity
             self.currentModelRef = primaryRef
-            self.statusMessage = "模型与 API 已保存。"
+            self.statusMessage = selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
+                ? "连接与模型配置已保存。"
+                : "\(selectedPreset.title) 连接已保存。"
             self.isShowingModelSettings = false
             await self.refreshSupportData()
-        } catch {
-            self.statusMessage = error.localizedDescription
         }
     }
 
@@ -212,16 +345,26 @@ final class DesktopClientModel {
     }
 
     private func loadCurrentConfig() async {
-        let root = await ConfigStore.load()
+        let root = HaoclawConfigFile.loadDict()
         let modelRef = Self.extractPrimaryModelRef(from: root)
         if let modelRef, !modelRef.isEmpty {
             self.currentModelRef = modelRef
             let parts = modelRef.split(separator: "/", maxSplits: 1).map(String.init)
             let providerID = parts.first ?? "haoclaw-desktop"
             let providerEntry = ((root["models"] as? [String: Any])?["providers"] as? [String: Any])?[providerID] as? [String: Any]
+            let baseURL = providerEntry?["baseUrl"] as? String ?? ""
+            let apiKey = providerEntry?["apiKey"] as? String ?? ""
+            let apiAdapter = providerEntry?["api"] as? String ?? "openai-completions"
+            let preset = DesktopProviderPreset.infer(
+                providerID: providerID,
+                baseURL: baseURL,
+                apiAdapter: apiAdapter)
+
+            self.settingsDraft.providerPreset = preset
             self.settingsDraft.providerId = providerID
-            self.settingsDraft.baseURL = providerEntry?["baseUrl"] as? String ?? ""
-            self.settingsDraft.apiKey = providerEntry?["apiKey"] as? String ?? ""
+            self.settingsDraft.apiAdapter = apiAdapter
+            self.settingsDraft.baseURL = baseURL
+            self.settingsDraft.apiKey = apiKey
             if parts.count == 2 {
                 self.settingsDraft.modelID = parts[1]
             }
@@ -229,9 +372,41 @@ final class DesktopClientModel {
             self.currentModelRef = "未配置"
         }
 
+        self.refreshSettingsDraftFromState()
+
         let paths = await GatewayConnection.shared.snapshotPaths()
         self.stateDirectory = paths.stateDir ?? "未发现"
         self.configPath = paths.configPath ?? "未发现"
+    }
+
+    func applyProviderPreset() {
+        let preset = self.settingsDraft.providerPreset
+        self.settingsDraft.providerId = preset.defaultProviderID
+        self.settingsDraft.apiAdapter = preset.apiAdapter
+        self.settingsDraft.baseURL = preset.defaultBaseURL
+        self.settingsDraft.modelID = preset.defaultModelID
+    }
+
+    private func refreshSettingsDraftFromState() {
+        self.settingsDraft.connectionMode = self.appState.connectionMode
+        self.settingsDraft.remoteTransport = self.appState.remoteTransport
+        self.settingsDraft.remoteURL = self.appState.remoteUrl
+        self.settingsDraft.remoteToken = self.appState.remoteToken
+        self.settingsDraft.remoteTarget = self.appState.remoteTarget
+        self.settingsDraft.remoteIdentity = self.appState.remoteIdentity
+
+        if self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            self.settingsDraft.providerId = self.settingsDraft.providerPreset.defaultProviderID
+        }
+        if self.settingsDraft.apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            self.settingsDraft.apiAdapter = self.settingsDraft.providerPreset.apiAdapter
+        }
+
+        let inferredPreset = DesktopProviderPreset.infer(
+            providerID: self.settingsDraft.providerId,
+            baseURL: self.settingsDraft.baseURL,
+            apiAdapter: self.settingsDraft.apiAdapter)
+        self.settingsDraft.providerPreset = inferredPreset
     }
 
     private func loadModelCatalog() async {
@@ -280,7 +455,7 @@ struct DesktopClientRootView: View {
         self._state = Bindable(wrappedValue: state)
         let chatViewModel = HaoclawChatViewModel(sessionKey: sessionKey, transport: MacGatewayChatTransport())
         self._chatViewModel = State(initialValue: chatViewModel)
-        self._model = State(initialValue: DesktopClientModel(chatViewModel: chatViewModel))
+        self._model = State(initialValue: DesktopClientModel(appState: state, chatViewModel: chatViewModel))
     }
 
     var body: some View {
@@ -418,8 +593,8 @@ private struct DesktopConversationCenter: View {
 
                     HStack(spacing: 14) {
                         DesktopActionCard(
-                            title: "快速配置",
-                            description: "填写 Base URL、API Key、模型 ID，保存后即可开始聊天。",
+                            title: "可视化配置",
+                            description: "直接在桌面端设置连接方式、Gateway、API Key 和模型，无需手改配置文件。",
                             action: { self.model.openModelSettings() })
 
                         DesktopActionCard(
@@ -545,7 +720,7 @@ private struct DesktopModelSettingsSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("模型与 API")
                         .font(.title2.weight(.semibold))
-                    Text("第一版只保留最常用的自定义模型接入。")
+                    Text("这一页会直接保存连接方式、Gateway 和模型接入信息。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -563,8 +738,60 @@ private struct DesktopModelSettingsSheet: View {
                 ])
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("自定义模型")
+                Text("连接方式")
                     .font(.headline)
+
+                Picker("Connection Mode", selection: self.$model.settingsDraft.connectionMode) {
+                    ForEach(AppState.ConnectionMode.allCases, id: \.rawValue) { mode in
+                        Text(self.connectionModeTitle(mode)).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if self.model.settingsDraft.connectionMode == .remote {
+                    Picker("Remote Transport", selection: self.$model.settingsDraft.remoteTransport) {
+                        ForEach(AppState.RemoteTransport.allCases, id: \.rawValue) { transport in
+                            Text(self.remoteTransportTitle(transport)).tag(transport)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if self.model.settingsDraft.remoteTransport == .direct {
+                        TextField("Gateway URL", text: self.$model.settingsDraft.remoteURL)
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        TextField("SSH Target", text: self.$model.settingsDraft.remoteTarget)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("SSH Identity", text: self.$model.settingsDraft.remoteIdentity)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("Gateway URL", text: self.$model.settingsDraft.remoteURL)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    SecureField("Gateway Token", text: self.$model.settingsDraft.remoteToken)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("模型与 API")
+                    .font(.headline)
+
+                Picker("Provider Preset", selection: self.$model.settingsDraft.providerPreset) {
+                    ForEach(DesktopProviderPreset.allCases) { preset in
+                        Text(preset.title).tag(preset)
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: self.model.settingsDraft.providerPreset) { _, _ in
+                    self.model.applyProviderPreset()
+                }
+
+                Text(self.model.settingsDraft.providerPreset.helpText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
 
                 TextField("Provider ID", text: self.$model.settingsDraft.providerId)
                     .textFieldStyle(.roundedBorder)
@@ -576,6 +803,9 @@ private struct DesktopModelSettingsSheet: View {
                     .textFieldStyle(.roundedBorder)
 
                 TextField("Model ID", text: self.$model.settingsDraft.modelID)
+                    .textFieldStyle(.roundedBorder)
+
+                TextField("Adapter", text: self.$model.settingsDraft.apiAdapter)
                     .textFieldStyle(.roundedBorder)
 
                 if !self.model.models.isEmpty {
@@ -610,6 +840,23 @@ private struct DesktopModelSettingsSheet: View {
         }
         .padding(24)
         .frame(width: 680)
+    }
+}
+
+private extension DesktopModelSettingsSheet {
+    func connectionModeTitle(_ mode: AppState.ConnectionMode) -> String {
+        switch mode {
+        case .local: "本地"
+        case .remote: "远程"
+        case .unconfigured: "未配置"
+        }
+    }
+
+    func remoteTransportTitle(_ transport: AppState.RemoteTransport) -> String {
+        switch transport {
+        case .direct: "直连"
+        case .ssh: "SSH"
+        }
     }
 }
 
