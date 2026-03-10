@@ -85,8 +85,14 @@ if [[ "$NOTARIZE" == "1" ]]; then
 fi
 
 if [[ "$SKIP_DSYM" != "1" ]]; then
-  DSYM_ARM64="$(find "$BUILD_ROOT/arm64" -type d -path "*/$BUILD_CONFIG/$PRODUCT.dSYM" -print -quit)"
-  DSYM_X86="$(find "$BUILD_ROOT/x86_64" -type d -path "*/$BUILD_CONFIG/$PRODUCT.dSYM" -print -quit)"
+  DSYM_ARM64=""
+  DSYM_X86=""
+  if [[ -d "$BUILD_ROOT/arm64" ]]; then
+    DSYM_ARM64="$(find "$BUILD_ROOT/arm64" -type d -path "*/$BUILD_CONFIG/$PRODUCT.dSYM" -print -quit)"
+  fi
+  if [[ -d "$BUILD_ROOT/x86_64" ]]; then
+    DSYM_X86="$(find "$BUILD_ROOT/x86_64" -type d -path "*/$BUILD_CONFIG/$PRODUCT.dSYM" -print -quit)"
+  fi
   if [[ -n "$DSYM_ARM64" || -n "$DSYM_X86" ]]; then
     TMP_DSYM="$ROOT_DIR/dist/$PRODUCT.dSYM"
     rm -rf "$TMP_DSYM"
