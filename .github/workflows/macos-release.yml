@@ -1,0 +1,115 @@
+name: macOS Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing tag to publish to GitHub Releases. Leave empty to only build artifacts.
+        required: false
+        type: string
+      draft:
+        description: Create the GitHub Release as a draft.
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: macos-release-${{ github.workflow }}-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  package-macos:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node-env
+        with:
+          install-bun: "false"
+          use-sticky-disk: "false"
+
+      - name: Show toolchain versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve signing and notarization mode
+        shell: bash
+        env:
+          MAC_SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
+          NOTARYTOOL_PROFILE: ${{ secrets.NOTARYTOOL_PROFILE }}
+          NOTARYTOOL_KEY: ${{ secrets.NOTARYTOOL_KEY }}
+          NOTARYTOOL_KEY_ID: ${{ secrets.NOTARYTOOL_KEY_ID }}
+          NOTARYTOOL_ISSUER: ${{ secrets.NOTARYTOOL_ISSUER }}
+        run: |
+          set -euo pipefail
+          skip_notarize=1
+          notarize_reason="Building unsigned release assets."
+
+          if [[ -n "${NOTARYTOOL_PROFILE}" ]] || [[ -n "${NOTARYTOOL_KEY}" && -n "${NOTARYTOOL_KEY_ID}" && -n "${NOTARYTOOL_ISSUER}" ]]; then
+            skip_notarize=0
+            notarize_reason="Apple notarization enabled."
+          fi
+
+          {
+            echo "SKIP_NOTARIZE=${skip_notarize}"
+            echo "NOTARIZE_SUMMARY=${notarize_reason}"
+          } >> "$GITHUB_ENV"
+
+      - name: Package macOS desktop client
+        env:
+          BUILD_CONFIG: release
+          SKIP_NOTARIZE: ${{ env.SKIP_NOTARIZE }}
+          SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
+          NOTARYTOOL_PROFILE: ${{ secrets.NOTARYTOOL_PROFILE }}
+          NOTARYTOOL_KEY: ${{ secrets.NOTARYTOOL_KEY }}
+          NOTARYTOOL_KEY_ID: ${{ secrets.NOTARYTOOL_KEY_ID }}
+          NOTARYTOOL_ISSUER: ${{ secrets.NOTARYTOOL_ISSUER }}
+        run: scripts/package-mac-dist.sh
+
+      - name: Summarize packaged assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## macOS package"
+            echo ""
+            echo "- ${NOTARIZE_SUMMARY}"
+            echo "- Assets:"
+            find dist -maxdepth 1 \( -name 'Haoclaw-*.zip' -o -name 'Haoclaw-*.dmg' -o -name 'Haoclaw-*.dSYM.zip' \) -print | sed 's#^#  - #'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload macOS build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: haoclaw-macos-${{ github.ref_name || github.run_id }}
+          path: |
+            dist/Haoclaw-*.zip
+            dist/Haoclaw-*.dmg
+            dist/Haoclaw-*.dSYM.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          generate_release_notes: true
+          files: |
+            dist/Haoclaw-*.zip
+            dist/Haoclaw-*.dmg

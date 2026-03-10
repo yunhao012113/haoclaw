@@ -6,6 +6,7 @@ This fork can be published from a normal GitHub repository without custom CI run
 
 - CI runs on pushes to `main` and pull requests
 - Docker release workflow publishes images to `ghcr.io/<owner>/<repo>`
+- macOS desktop release workflow publishes `dmg` and `zip` assets on `v*` tags
 - package metadata is already branded as `haoclaw`
 
 ## Before your first public release
@@ -31,12 +32,37 @@ git tag v2026.3.9
 git push origin v2026.3.9
 ```
 
-Recommended follow-up:
+What happens next:
 
-1. Open GitHub Releases.
-2. Draft a release for the new tag.
-3. Copy the relevant changelog notes.
-4. Attach any packaged artifacts you want users to download directly.
+1. `.github/workflows/macos-release.yml` builds the macOS desktop client on GitHub-hosted macOS runners.
+2. The workflow uploads:
+   - `Haoclaw-<version>.dmg`
+   - `Haoclaw-<version>.zip`
+3. The same workflow attaches those assets to the GitHub Release for that tag.
+4. Users can download the desktop client directly from the release page.
+
+If you want to rerun packaging manually, open `Actions` and run `macOS Desktop Release`.
+Set `release_tag` if you want the manual run to upload assets to an existing GitHub Release.
+
+## macOS signing and notarization
+
+The macOS release workflow works in two modes:
+
+- without Apple secrets: builds unsigned `dmg` and `zip`
+- with Apple secrets: signs and notarizes the desktop app before upload
+
+Optional repository secrets:
+
+- `MAC_SIGN_IDENTITY`
+- `NOTARYTOOL_PROFILE`
+
+Or, if you prefer App Store Connect API key auth:
+
+- `NOTARYTOOL_KEY`
+- `NOTARYTOOL_KEY_ID`
+- `NOTARYTOOL_ISSUER`
+
+If these secrets are not configured, the workflow still publishes downloadable artifacts, but macOS may show the usual unsigned-app warning on first launch.
 
 ## Container images
 

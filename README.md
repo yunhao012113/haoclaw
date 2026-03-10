@@ -54,6 +54,23 @@ Haoclaw 的目标就是把这些路径压平：
 
 ## 快速开始
 
+### 桌面客户端下载
+
+如果你想直接下载桌面客户端，而不是从源码运行，推荐用 GitHub Releases：
+
+- 打开仓库的 `Releases`
+- 下载最新的 `Haoclaw-*.dmg`
+- 如果你更习惯手动解压，也可以下载 `Haoclaw-*.zip`
+
+仓库已经支持 `v*` 标签自动打包 macOS 桌面客户端并上传到 Release 资产。
+如果你要在官网放下载按钮，直接链接到 GitHub Release 页面或具体的 `dmg` 资产就可以。
+
+```bash
+cd /Users/yunhao/Desktop/haoclaw-src
+git tag v2026.3.10
+git push origin v2026.3.10
+```
+
 ### 环境要求
 
 - Node.js `>= 22.12.0`
