@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(here, "..");
 const windowsAppDir = path.join(rootDir, "apps", "windows");
+const uiDir = path.join(rootDir, "ui");
 
 function run(cmd, args, cwd = rootDir) {
   const result = spawnSync(cmd, args, {
@@ -24,6 +25,7 @@ if (process.platform !== "win32") {
   process.exit(1);
 }
 
-run(process.execPath, ["scripts/ui.js", "build"]);
-run("pnpm", ["install", "--no-frozen-lockfile"], windowsAppDir);
+run("pnpm", ["install", "--ignore-workspace", "--no-frozen-lockfile"], uiDir);
+run("pnpm", ["run", "build"], uiDir);
+run("pnpm", ["install", "--ignore-workspace", "--no-frozen-lockfile"], windowsAppDir);
 run("pnpm", ["run", "dist"], windowsAppDir);

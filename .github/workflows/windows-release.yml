@@ -39,6 +39,7 @@ jobs:
           install-bun: "false"
           use-sticky-disk: "false"
           frozen-lockfile: "false"
+          install-deps: "false"
 
       - name: Package Windows desktop client
         shell: bash
