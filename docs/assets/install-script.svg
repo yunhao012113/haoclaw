@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-label="Haoclaw install command preview">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fff5ed" />
+      <stop offset="100%" stop-color="#ffe4d6" />
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="520" rx="28" fill="url(#bg)" />
+  <rect x="56" y="48" width="1168" height="424" rx="24" fill="#0f172a" />
+  <circle cx="96" cy="88" r="10" fill="#fb7185" />
+  <circle cx="126" cy="88" r="10" fill="#fbbf24" />
+  <circle cx="156" cy="88" r="10" fill="#34d399" />
+  <text x="196" y="96" fill="#f8fafc" font-family="Menlo, Monaco, Consolas, monospace" font-size="26">Haoclaw Installer</text>
+  <text x="96" y="168" fill="#f8fafc" font-family="Menlo, Monaco, Consolas, monospace" font-size="28">$ curl -fsSL https://haoclaw.ai/install.sh | bash</text>
+  <text x="96" y="222" fill="#fdba74" font-family="Menlo, Monaco, Consolas, monospace" font-size="24">1. Install dependencies</text>
+  <text x="96" y="262" fill="#fdba74" font-family="Menlo, Monaco, Consolas, monospace" font-size="24">2. Configure API access</text>
+  <text x="96" y="302" fill="#fdba74" font-family="Menlo, Monaco, Consolas, monospace" font-size="24">3. Start gateway and verify health</text>
+  <text x="96" y="372" fill="#86efac" font-family="Menlo, Monaco, Consolas, monospace" font-size="24">Ready: run haoclaw setup --provider openai --api-key YOUR_KEY</text>
+  <text x="96" y="416" fill="#94a3b8" font-family="Menlo, Monaco, Consolas, monospace" font-size="22">Simple install. Local runtime. API-first setup.</text>
+</svg>

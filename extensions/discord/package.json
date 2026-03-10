@@ -1,0 +1,11 @@
+{
+  "name": "@haoclaw/discord",
+  "version": "2026.3.9",
+  "description": "Haoclaw Discord channel plugin",
+  "type": "module",
+  "haoclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

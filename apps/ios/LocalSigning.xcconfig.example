@@ -1,0 +1,15 @@
+// Copy to LocalSigning.xcconfig for personal local signing overrides.
+// This file is only an example and should stay committed.
+
+HAOCLAW_CODE_SIGN_STYLE = Automatic
+HAOCLAW_DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+HAOCLAW_APP_BUNDLE_ID = ai.haoclaw.client
+HAOCLAW_SHARE_BUNDLE_ID = ai.haoclaw.client.share
+HAOCLAW_ACTIVITY_WIDGET_BUNDLE_ID = ai.haoclaw.client.activitywidget
+HAOCLAW_WATCH_APP_BUNDLE_ID = ai.haoclaw.client.watchkitapp
+HAOCLAW_WATCH_EXTENSION_BUNDLE_ID = ai.haoclaw.client.watchkitapp.extension
+
+// Leave empty with automatic signing.
+HAOCLAW_APP_PROFILE =
+HAOCLAW_SHARE_PROFILE =

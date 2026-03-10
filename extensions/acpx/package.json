@@ -1,0 +1,14 @@
+{
+  "name": "@haoclaw/acpx",
+  "version": "2026.3.9",
+  "description": "Haoclaw ACP runtime backend via acpx",
+  "type": "module",
+  "dependencies": {
+    "acpx": "0.1.15"
+  },
+  "haoclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
