@@ -90,7 +90,7 @@ runs:
         pnpm -v
         case "$FROZEN_LOCKFILE" in
           true) LOCKFILE_FLAG="--frozen-lockfile" ;;
-          false) LOCKFILE_FLAG="" ;;
+          false) LOCKFILE_FLAG="--no-frozen-lockfile" ;;
           *)
             echo "::error::Invalid frozen-lockfile input: '$FROZEN_LOCKFILE' (expected true or false)"
             exit 2
