@@ -39,6 +39,12 @@ struct HaoclawApp: App {
     }
 
     var body: some Scene {
+        Window("Haoclaw", id: "desktop-client") {
+            DesktopClientRootView(state: self.state)
+        }
+        .defaultSize(width: 1420, height: 900)
+        .windowResizability(.contentSize)
+
         MenuBarExtra { MenuContent(state: self.state, updater: self.delegate.updaterController) } label: {
             CritterStatusLabel(
                 isPaused: self.state.isPaused,
@@ -89,12 +95,6 @@ struct HaoclawApp: App {
             self.updateStatusHighlight()
             self.updateHoverHUDSuppression()
         }
-
-        Window("Haoclaw", id: "desktop-client") {
-            DesktopClientRootView(state: self.state)
-        }
-        .defaultSize(width: 1420, height: 900)
-        .windowResizability(.contentSize)
     }
 
     private func applyStatusItemAppearance(paused: Bool, sleeping: Bool) {
