@@ -90,7 +90,7 @@ struct HaoclawApp: App {
             self.updateHoverHUDSuppression()
         }
 
-        Window("Haoclaw", id: "desktop-client") {
+        WindowGroup("Haoclaw", id: "desktop-client") {
             DesktopClientRootView(state: self.state)
         }
         .defaultSize(width: 1420, height: 900)

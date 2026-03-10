@@ -267,7 +267,12 @@ final class AppState {
             self.iconAnimationsEnabled = true
             UserDefaults.standard.set(true, forKey: iconAnimationsEnabledKey)
         }
-        self.showDockIcon = UserDefaults.standard.bool(forKey: showDockIconKey)
+        if let storedShowDockIcon = UserDefaults.standard.object(forKey: showDockIconKey) as? Bool {
+            self.showDockIcon = storedShowDockIcon
+        } else {
+            self.showDockIcon = true
+            UserDefaults.standard.set(true, forKey: showDockIconKey)
+        }
         self.voiceWakeMicID = UserDefaults.standard.string(forKey: voiceWakeMicKey) ?? ""
         self.voiceWakeMicName = UserDefaults.standard.string(forKey: voiceWakeMicNameKey) ?? ""
         self.voiceWakeLocaleID = UserDefaults.standard.string(forKey: voiceWakeLocaleKey) ?? Locale.current.identifier
