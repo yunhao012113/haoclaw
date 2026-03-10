@@ -10,7 +10,7 @@ struct AboutSettings: View {
         VStack(spacing: 8) {
             let appIcon = NSApplication.shared.applicationIconImage ?? CritterIconRenderer.makeIcon(blink: 0)
             Button {
-                if let url = URL(string: "https://github.com/haoclaw/haoclaw") {
+                if let url = URL(string: "https://github.com/yunhao012113/haoclaw") {
                     NSWorkspace.shared.open(url)
                 }
             } label: {
@@ -31,14 +31,14 @@ struct AboutSettings: View {
             VStack(spacing: 3) {
                 Text("Haoclaw")
                     .font(.title3.bold())
-                Text("Version \(self.versionString)")
+                Text("版本 \(self.versionString)")
                     .foregroundStyle(.secondary)
                 if let buildTimestamp {
-                    Text("Built \(buildTimestamp)\(self.buildSuffix)")
+                    Text("构建于 \(buildTimestamp)\(self.buildSuffix)")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                Text("Menu bar companion for notifications, screenshots, and privileged agent actions.")
+                Text("桌面端支持通知、聊天、模型接入和应用内更新。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -49,10 +49,9 @@ struct AboutSettings: View {
                 AboutLinkRow(
                     icon: "chevron.left.slash.chevron.right",
                     title: "GitHub",
-                    url: "https://github.com/haoclaw/haoclaw")
-                AboutLinkRow(icon: "globe", title: "Website", url: "https://haoclaw.ai")
-                AboutLinkRow(icon: "bird", title: "Twitter", url: "https://twitter.com/steipete")
-                AboutLinkRow(icon: "envelope", title: "Email", url: "mailto:peter@steipete.me")
+                    url: "https://github.com/yunhao012113/haoclaw")
+                AboutLinkRow(icon: "globe", title: "下载页", url: "https://yunhao012113.github.io/haoclaw/")
+                AboutLinkRow(icon: "shippingbox", title: "最新发布", url: "https://github.com/yunhao012113/haoclaw/releases/latest")
             }
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
@@ -64,20 +63,20 @@ struct AboutSettings: View {
 
                 if updater.isAvailable {
                     VStack(spacing: 10) {
-                        Toggle("Check for updates automatically", isOn: self.$autoCheckEnabled)
+                        Toggle("自动检查更新", isOn: self.$autoCheckEnabled)
                             .toggleStyle(.checkbox)
                             .frame(maxWidth: .infinity, alignment: .center)
 
-                        Button("Check for Updates…") { updater.checkForUpdates(nil) }
+                        Button("立即检查更新…") { updater.checkForUpdates(nil) }
                     }
                 } else {
-                    Text("Updates unavailable in this build.")
+                    Text("当前构建不支持应用内更新。")
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
                 }
             }
 
-            Text("© 2025 Peter Steinberger — MIT License.")
+            Text("© 2026 Yunhao · MIT License")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)

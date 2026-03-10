@@ -52,6 +52,17 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Resolve release version
+        id: release_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && -n "${{ inputs.release_tag }}" ]]; then
+            raw="${{ inputs.release_tag }}"
+          fi
+          echo "version=${raw#v}" >> "$GITHUB_OUTPUT"
+
       - name: Resolve signing and notarization mode
         shell: bash
         env:
@@ -78,11 +89,13 @@ jobs:
       - name: Package macOS desktop client
         env:
           ALLOW_ADHOC_SIGNING: "1"
+          APP_VERSION: ${{ steps.release_version.outputs.version }}
           BUILD_CONFIG: release
           BUILD_ARCHS: all
           HAOCLAW_A2UI_ALLOW_STUB: "1"
           SKIP_DMG_STYLE: "1"
           SKIP_NOTARIZE: ${{ env.SKIP_NOTARIZE }}
+          SPARKLE_FEED_URL: "https://raw.githubusercontent.com/yunhao012113/haoclaw/main/appcast.xml"
           SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.MAC_INSTALLER_SIGN_IDENTITY }}
           NOTARYTOOL_PROFILE: ${{ secrets.NOTARYTOOL_PROFILE }}

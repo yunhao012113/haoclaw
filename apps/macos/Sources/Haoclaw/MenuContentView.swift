@@ -158,7 +158,7 @@ struct MenuContent: View {
             self.debugMenu
             Button("关于 Haoclaw") { self.open(tab: .about) }
             if let updater, updater.isAvailable, self.updateStatus.isUpdateReady {
-                Button("更新已就绪，立即重启") { updater.checkForUpdates(nil) }
+                Button("发现新版本，立即更新") { updater.checkForUpdates(nil) }
             }
             Button("退出") { NSApplication.shared.terminate(nil) }
         }

@@ -476,19 +476,18 @@ private func isDeveloperIDSigned(bundleURL: URL) -> Bool {
 
 @MainActor
 private func makeUpdaterController() -> UpdaterProviding {
-    let bundleURL = Bundle.main.bundleURL
-    let isBundledApp = bundleURL.pathExtension == "app"
-    guard isBundledApp, isDeveloperIDSigned(bundleURL: bundleURL) else { return DisabledUpdaterController() }
-
     let defaults = UserDefaults.standard
     let autoUpdateKey = "autoUpdateEnabled"
     // Default to true; honor the user's last choice otherwise.
     let savedAutoUpdate = (defaults.object(forKey: autoUpdateKey) as? Bool) ?? true
-    return SparkleUpdaterController(savedAutoUpdate: savedAutoUpdate)
+    return GitHubReleaseUpdaterController(savedAutoUpdate: savedAutoUpdate)
 }
 #else
 @MainActor
 private func makeUpdaterController() -> UpdaterProviding {
-    DisabledUpdaterController()
+    let defaults = UserDefaults.standard
+    let autoUpdateKey = "autoUpdateEnabled"
+    let savedAutoUpdate = (defaults.object(forKey: autoUpdateKey) as? Bool) ?? true
+    return GitHubReleaseUpdaterController(savedAutoUpdate: savedAutoUpdate)
 }
 #endif

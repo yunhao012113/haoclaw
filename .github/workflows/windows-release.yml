@@ -41,8 +41,21 @@ jobs:
           frozen-lockfile: "false"
           install-deps: "false"
 
+      - name: Resolve release version
+        id: release_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && -n "${{ inputs.release_tag }}" ]]; then
+            raw="${{ inputs.release_tag }}"
+          fi
+          echo "version=${raw#v}" >> "$GITHUB_OUTPUT"
+
       - name: Package Windows desktop client
         shell: bash
+        env:
+          HAOCLAW_DESKTOP_VERSION: ${{ steps.release_version.outputs.version }}
         run: node scripts/package-windows-desktop.mjs
 
       - name: Summarize packaged assets
