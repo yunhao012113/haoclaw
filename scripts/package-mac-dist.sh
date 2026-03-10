@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build the mac app bundle, then create a zip (Sparkle) + styled DMG (humans).
+# Build the mac app bundle, then create a zip, styled DMG, and optional PKG installer.
 #
 # Output:
 # - dist/Haoclaw.app
 # - dist/Haoclaw-<version>.zip
 # - dist/Haoclaw-<version>.dmg
+# - dist/Haoclaw-<version>.pkg
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_ROOT="$ROOT_DIR/apps/macos/.build"
@@ -31,11 +32,13 @@ fi
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null || echo "0.0.0")
 ZIP="$ROOT_DIR/dist/Haoclaw-$VERSION.zip"
 DMG="$ROOT_DIR/dist/Haoclaw-$VERSION.dmg"
+PKG="$ROOT_DIR/dist/Haoclaw-$VERSION.pkg"
 NOTARY_ZIP="$ROOT_DIR/dist/Haoclaw-$VERSION.notary.zip"
 DSYM_ZIP="$ROOT_DIR/dist/Haoclaw-$VERSION.dSYM.zip"
 SKIP_NOTARIZE="${SKIP_NOTARIZE:-0}"
 NOTARIZE=1
 SKIP_DSYM="${SKIP_DSYM:-0}"
+INSTALLER_SIGN_IDENTITY="${INSTALLER_SIGN_IDENTITY:-}"
 
 if [[ "$SKIP_NOTARIZE" == "1" ]]; then
   NOTARIZE=0
@@ -56,12 +59,29 @@ ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 echo "💿 DMG: $DMG"
 "$ROOT_DIR/scripts/create-dmg.sh" "$APP" "$DMG"
 
+echo "📦 PKG: $PKG"
+rm -f "$PKG"
+pkg_args=(
+  --component "$APP"
+  --install-location /Applications
+  "$PKG"
+)
+if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
+  pkg_args=(--sign "$INSTALLER_SIGN_IDENTITY" "${pkg_args[@]}")
+fi
+pkgbuild "${pkg_args[@]}"
+
 if [[ "$NOTARIZE" == "1" ]]; then
   if [[ -n "${SIGN_IDENTITY:-}" ]]; then
     echo "🔏 Signing DMG: $DMG"
     /usr/bin/codesign --force --sign "$SIGN_IDENTITY" --timestamp "$DMG"
   fi
   "$ROOT_DIR/scripts/notarize-mac-artifact.sh" "$DMG"
+  if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
+    "$ROOT_DIR/scripts/notarize-mac-artifact.sh" "$PKG"
+  else
+    echo "WARN: INSTALLER_SIGN_IDENTITY missing; skipping PKG notarization" >&2
+  fi
 fi
 
 if [[ "$SKIP_DSYM" != "1" ]]; then
