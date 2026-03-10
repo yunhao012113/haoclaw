@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_PATH="/Applications/Haoclaw.app"
+
+console_user="$(stat -f '%Su' /dev/console 2>/dev/null || true)"
+if [[ -z "${console_user}" || "${console_user}" == "root" || "${console_user}" == "loginwindow" ]]; then
+  exit 0
+fi
+
+user_home="$(dscl . -read "/Users/${console_user}" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
+if [[ -z "${user_home}" || ! -d "${user_home}" ]]; then
+  exit 0
+fi
+
+desktop_dir="${user_home}/Desktop"
+if [[ ! -d "${desktop_dir}" || ! -d "${APP_PATH}" ]]; then
+  exit 0
+fi
+
+shortcut_path="${desktop_dir}/Haoclaw.app"
+rm -rf "${shortcut_path}"
+ln -s "${APP_PATH}" "${shortcut_path}"
+chown -h "${console_user}" "${shortcut_path}" 2>/dev/null || true
+
+exit 0

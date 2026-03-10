@@ -64,6 +64,7 @@ rm -f "$PKG"
 pkg_args=(
   --component "$APP"
   --install-location /Applications
+  --scripts "$ROOT_DIR/scripts/macos-installer"
   "$PKG"
 )
 if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
