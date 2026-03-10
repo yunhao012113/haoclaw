@@ -33,6 +33,11 @@ jobs:
           fetch-depth: 0
           submodules: false
 
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Setup Node environment
         uses: ./.github/actions/setup-node-env
         with:
