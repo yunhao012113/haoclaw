@@ -4,9 +4,18 @@
 
 不要点 GitHub 的 `Code -> Download ZIP`。那个下载下来是源码，不是桌面应用。
 
-如果你要一个统一的下载网站，优先用：
+如果你要一个统一的下载网站，启用 GitHub Pages 后用：
 
 - `https://yunhao012113.github.io/haoclaw/`
+
+启用方式：
+
+1. 打开 GitHub 仓库 `Settings`
+2. 进入 `Pages`
+3. 在 `Build and deployment` 里选择 `Deploy from a branch`
+4. Branch 选 `main`
+5. Folder 选 `/docs`
+6. 保存后等 1 到 3 分钟
 
 ## 直接选系统
 

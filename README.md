@@ -58,12 +58,16 @@ Haoclaw 的目标就是把这些路径压平：
 
 先选系统，不要点仓库右上角的 `Code -> Download ZIP`。那个是源码包，不是桌面应用。
 
-| 平台         | 方式                   | 入口                                                                                                      |
-| ------------ | ---------------------- | --------------------------------------------------------------------------------------------------------- |
-| macOS        | `PKG` 一键安装         | [直接下载 PKG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.16/Haoclaw-2026.3.9.pkg) |
-| macOS        | `DMG` 拖拽安装         | [直接下载 DMG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.16/Haoclaw-2026.3.9.dmg) |
-| Windows      | `EXE` 安装包构建已接入 | [查看 Windows 状态](./docs/platforms/windows.md)                                                          |
-| Linux / WSL2 | 命令行部署             | [查看部署方式](#github-一键安装部署)                                                                      |
+统一下载页启用后，直接打开：
+
+- `https://yunhao012113.github.io/haoclaw/`
+
+| 平台         | 方式           | 入口                                                                                                            |
+| ------------ | -------------- | --------------------------------------------------------------------------------------------------------------- |
+| macOS        | `PKG` 一键安装 | [直接下载 PKG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.pkg)       |
+| macOS        | `DMG` 拖拽安装 | [直接下载 DMG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.dmg)       |
+| Windows      | `EXE` 一键安装 | [直接下载 EXE](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.21/Haoclaw-2026.3.9-setup.exe) |
+| Linux / WSL2 | 命令行部署     | [查看部署方式](#github-一键安装部署)                                                                            |
 
 完整下载说明见 [DOWNLOADS.md](./DOWNLOADS.md)。
 
@@ -77,7 +81,7 @@ Haoclaw 的目标就是把这些路径压平：
 当前桌面版重点是：
 
 - macOS 直接下载并安装
-- Windows 安装包流程已接入，最新可用包看 Releases
+- Windows 直接下载 `setup.exe`
 - Linux 走一键命令部署
 
 ### 环境要求
