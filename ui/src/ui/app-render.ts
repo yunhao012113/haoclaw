@@ -255,7 +255,7 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="brand-text">
               <div class="brand-title">HAOCLAW</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-sub">Desktop Run Center</div>
             </div>
           </div>
         </div>
