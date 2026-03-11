@@ -303,7 +303,24 @@ export function syncTabWithLocation(host: SettingsHost, replace: boolean) {
   if (typeof window === "undefined") {
     return;
   }
-  const resolved = tabFromPath(window.location.pathname, host.basePath) ?? "chat";
+  const desktopDefaultTab = window.haoclawDesktop?.defaultTab;
+  const fallbackTab =
+    desktopDefaultTab === "overview" ||
+    desktopDefaultTab === "channels" ||
+    desktopDefaultTab === "instances" ||
+    desktopDefaultTab === "sessions" ||
+    desktopDefaultTab === "usage" ||
+    desktopDefaultTab === "cron" ||
+    desktopDefaultTab === "skills" ||
+    desktopDefaultTab === "nodes" ||
+    desktopDefaultTab === "agents" ||
+    desktopDefaultTab === "config" ||
+    desktopDefaultTab === "debug" ||
+    desktopDefaultTab === "logs" ||
+    desktopDefaultTab === "chat"
+      ? desktopDefaultTab
+      : "chat";
+  const resolved = tabFromPath(window.location.pathname, host.basePath) ?? fallbackTab;
   setTabFromRoute(host, resolved);
   syncUrlWithTab(host, resolved, replace);
 }

@@ -89,6 +89,13 @@ import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.
 declare global {
   interface Window {
     __HAOCLAW_CONTROL_UI_BASE_PATH__?: string;
+    haoclawDesktop?: {
+      platform?: string;
+      mode?: string;
+      defaultLocale?: string;
+      defaultTab?: string;
+      defaultGatewayUrl?: string;
+    };
   }
 }
 
@@ -115,12 +122,15 @@ export class HaoclawApp extends LitElement {
   @state() settings: UiSettings = loadSettings();
   constructor() {
     super();
+    if (!this.settings.locale && isSupportedLocale(window.haoclawDesktop?.defaultLocale)) {
+      this.settings = { ...this.settings, locale: window.haoclawDesktop.defaultLocale };
+    }
     if (isSupportedLocale(this.settings.locale)) {
       void i18n.setLocale(this.settings.locale);
     }
   }
   @state() password = "";
-  @state() tab: Tab = "chat";
+  @state() tab: Tab = (window.haoclawDesktop?.defaultTab as Tab | undefined) ?? "chat";
   @state() onboarding = resolveOnboardingMode();
   @state() connected = false;
   @state() theme: ThemeMode = this.settings.theme ?? "system";
