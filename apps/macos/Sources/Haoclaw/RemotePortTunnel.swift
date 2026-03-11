@@ -49,7 +49,7 @@ final class RemotePortTunnel {
             throw NSError(
                 domain: "RemotePortTunnel",
                 code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Remote mode is not configured"])
+                userInfo: [NSLocalizedDescriptionKey: "远程模式尚未配置"])
         }
 
         let localPort = try await Self.findPort(

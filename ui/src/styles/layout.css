@@ -22,6 +22,17 @@
   overflow: hidden;
 }
 
+.shell--desktop {
+  --shell-pad: 18px;
+  --shell-gap: 18px;
+  --shell-nav-width: 246px;
+  --shell-topbar-height: 64px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 161, 94, 0.14), transparent 26%),
+    radial-gradient(circle at top right, rgba(255, 102, 140, 0.12), transparent 24%),
+    linear-gradient(180deg, #f5efe7 0%, #efe7dc 100%);
+}
+
 @supports (height: 100dvh) {
   .shell {
     height: 100dvh;
@@ -85,6 +96,13 @@
   height: var(--shell-topbar-height);
   border-bottom: 1px solid var(--border);
   background: var(--bg);
+}
+
+.shell--desktop .topbar {
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(34, 28, 24, 0.08);
+  background: rgba(252, 248, 243, 0.86);
+  backdrop-filter: blur(18px);
 }
 
 .topbar-left {
@@ -151,6 +169,22 @@
   line-height: 1;
 }
 
+.shell--desktop .brand-logo {
+  width: 34px;
+  height: 34px;
+}
+
+.shell--desktop .brand-title {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.shell--desktop .brand-sub {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
 /* Topbar status */
 .topbar-status {
   display: flex;
@@ -208,6 +242,12 @@
   min-height: 0;
 }
 
+.shell--desktop .nav {
+  padding: 18px 14px;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.92), rgba(246, 238, 230, 0.88));
+  border-right: 1px solid rgba(34, 28, 24, 0.06);
+}
+
 .nav::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
 }
@@ -229,6 +269,39 @@
   border: none;
   opacity: 0;
   pointer-events: none;
+}
+
+.shell--desktop .nav-group {
+  margin-bottom: 14px;
+}
+
+.shell--desktop .nav-label {
+  margin-bottom: 8px;
+  padding: 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(71, 58, 49, 0.72);
+}
+
+.shell--desktop .nav-group__items {
+  padding: 8px;
+  border: 1px solid rgba(34, 28, 24, 0.06);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 18px 40px rgba(84, 54, 30, 0.06);
+}
+
+.shell--desktop .nav-item {
+  border-radius: 14px;
+}
+
+.shell--desktop .nav-item.active {
+  background: linear-gradient(135deg, rgba(255, 140, 92, 0.20), rgba(255, 81, 110, 0.12));
+  color: var(--text-strong);
+}
+
+.shell--desktop .nav-item:hover {
+  background: rgba(255, 145, 96, 0.10);
 }
 
 /* Nav collapse toggle */

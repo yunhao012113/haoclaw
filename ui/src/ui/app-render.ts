@@ -147,6 +147,8 @@ function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
 }
 
 export function renderApp(state: AppViewState) {
+  const desktopPlatform = window.haoclawDesktop?.platform ?? "";
+  const isDesktopMode = window.haoclawDesktop?.mode === "desktop";
   const openClawVersion =
     (typeof state.hello?.server?.version === "string" && state.hello.server.version.trim()) ||
     state.updateAvailable?.currentVersion ||
@@ -234,7 +236,9 @@ export function renderApp(state: AppViewState) {
       : rawDeliveryToSuggestions;
 
   return html`
-    <div class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
+    <div
+      class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""} ${isDesktopMode ? "shell--desktop" : ""} ${desktopPlatform ? `shell--desktop-${desktopPlatform}` : ""}"
+    >
       <header class="topbar">
         <div class="topbar-left">
           <button

@@ -452,7 +452,7 @@ actor GatewayEndpointStore {
             if self.remoteEnsure?.token == ensure.token {
                 self.remoteEnsure = nil
             }
-            let msg = "Remote control tunnel failed (\(error.localizedDescription))"
+            let msg = "远程控制隧道连接失败（\(error.localizedDescription)）"
             self.setState(.unavailable(mode: .remote, reason: msg))
             self.logger.error("remote control tunnel ensure failed \(msg, privacy: .public)")
             throw NSError(domain: "GatewayEndpoint", code: 1, userInfo: [NSLocalizedDescriptionKey: msg])
@@ -464,7 +464,7 @@ actor GatewayEndpointStore {
             throw NSError(
                 domain: "RemoteTunnel",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Remote mode is not enabled"])
+                userInfo: [NSLocalizedDescriptionKey: "当前未启用远程模式"])
         }
     }
 
@@ -475,7 +475,7 @@ actor GatewayEndpointStore {
             throw NSError(
                 domain: "GatewayEndpoint",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "gateway.remote.url missing or invalid"])
+                userInfo: [NSLocalizedDescriptionKey: "远程网关地址缺失或无效"])
         }
         return url
     }
