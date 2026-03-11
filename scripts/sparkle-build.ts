@@ -29,7 +29,7 @@ export function sparkleBuildFloorsFromShortVersion(
     month < 1 ||
     month > 12 ||
     day < 1 ||
-    day > 31
+    day > 99
   ) {
     return null;
   }
