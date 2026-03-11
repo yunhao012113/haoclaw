@@ -364,8 +364,8 @@ private struct DesktopControlSkillsPane: View {
                         title: "当前状态",
                         rows: [
                             ("已发现", "\(self.model.skills.count) 项"),
-                            ("就绪", "\(self.filteredSkills.filter { !$0.disabled && $0.eligible }.count) 项"),
-                            ("待配置", "\(self.filteredSkills.filter { !$0.disabled && !$0.eligible }.count) 项"),
+                            ("就绪", "\(self.model.skills.filter { !$0.disabled && $0.eligible }.count) 项"),
+                            ("待配置", "\(self.model.skills.filter { !$0.disabled && !$0.eligible }.count) 项"),
                         ])
 
                     HStack(spacing: 10) {
