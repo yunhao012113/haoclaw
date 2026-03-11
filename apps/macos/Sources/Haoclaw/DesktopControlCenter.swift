@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Observation
 import SwiftUI
 
 struct DesktopControlCenterSheet: View {
@@ -248,7 +249,7 @@ private struct DesktopControlModelsPane: View {
 }
 
 private struct DesktopControlToolsPane: View {
-    @State var store: DesktopToolDeckStore
+    @Bindable var store: DesktopToolDeckStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -556,13 +557,14 @@ private struct DesktopToolConnector: Identifiable, Codable, Hashable {
 }
 
 @MainActor
-private struct DesktopToolDeckStore {
+@Observable
+private final class DesktopToolDeckStore {
     private static let storageKey = "desktop.toolDeck.connectors"
 
     var connectors: [DesktopToolConnector] = []
     var editingConnector: DesktopToolConnector?
 
-    mutating func load() {
+    func load() {
         guard let data = UserDefaults.standard.data(forKey: Self.storageKey),
               let decoded = try? JSONDecoder().decode([DesktopToolConnector].self, from: data)
         else {
@@ -571,11 +573,11 @@ private struct DesktopToolDeckStore {
         self.connectors = decoded
     }
 
-    mutating func startAdding(type: DesktopToolConnectorType) {
+    func startAdding(type: DesktopToolConnectorType) {
         self.editingConnector = DesktopToolConnector(name: "", type: type, target: "")
     }
 
-    mutating func addTemplate(_ template: DesktopToolTemplate) {
+    func addTemplate(_ template: DesktopToolTemplate) {
         let connector: DesktopToolConnector
         switch template {
         case .filesystem:
@@ -604,7 +606,7 @@ private struct DesktopToolDeckStore {
         self.persist()
     }
 
-    mutating func finishEditing(_ connector: DesktopToolConnector?) {
+    func finishEditing(_ connector: DesktopToolConnector?) {
         guard let connector else {
             self.editingConnector = nil
             return
@@ -618,13 +620,13 @@ private struct DesktopToolDeckStore {
         self.persist()
     }
 
-    mutating func update(_ connector: DesktopToolConnector) {
+    func update(_ connector: DesktopToolConnector) {
         guard let index = self.connectors.firstIndex(where: { $0.id == connector.id }) else { return }
         self.connectors[index] = connector
         self.persist()
     }
 
-    mutating func remove(_ id: UUID) {
+    func remove(_ id: UUID) {
         self.connectors.removeAll { $0.id == id }
         self.persist()
     }
