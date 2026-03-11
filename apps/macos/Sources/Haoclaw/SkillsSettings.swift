@@ -160,7 +160,7 @@ private enum SkillsFilter: String, CaseIterable, Identifiable {
     }
 }
 
-private enum InstallTarget: String, CaseIterable {
+enum SkillsInstallTarget: String, CaseIterable {
     case gateway
     case local
 }
@@ -170,7 +170,7 @@ private struct SkillRow: View {
     let isBusy: Bool
     let connectionMode: AppState.ConnectionMode
     let onToggleEnabled: (Bool) -> Void
-    let onInstall: (SkillInstallOption, InstallTarget) -> Void
+    let onInstall: (SkillInstallOption, SkillsInstallTarget) -> Void
     let onSetEnv: (String, Bool) -> Void
 
     private var missingBins: [String] {
@@ -499,7 +499,7 @@ final class SkillsSettingsModel {
         self.isLoading = false
     }
 
-    fileprivate func install(skill: SkillStatus, option: SkillInstallOption, target: InstallTarget) async {
+    fileprivate func install(skill: SkillStatus, option: SkillInstallOption, target: SkillsInstallTarget) async {
         await self.withBusy(skill.skillKey) {
             do {
                 if target == .local, AppStateStore.shared.connectionMode != .local {
