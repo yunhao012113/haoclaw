@@ -18,12 +18,38 @@ struct DesktopControlCenterSheet: View {
 
     var body: some View {
         NavigationSplitView {
-            List(DesktopControlSection.allCases, selection: self.$model.controlSection) { section in
-                Label(section.title, systemImage: section.symbol)
-                    .tag(section)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(DesktopControlSection.allCases) { section in
+                        Button {
+                            self.model.controlSection = section
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: section.symbol)
+                                    .frame(width: 18)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(section.title)
+                                        .font(.body.weight(.semibold))
+                                    Text(section.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
+                                Spacer()
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(self.model.controlSection == section ? Color.accentColor.opacity(0.12) : Color.clear))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(14)
             }
             .navigationTitle("Haoclaw 运行台")
-            .listStyle(.sidebar)
+            .frame(minWidth: 280, idealWidth: 320)
         } detail: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
