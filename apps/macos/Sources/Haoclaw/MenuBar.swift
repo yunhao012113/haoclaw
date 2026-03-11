@@ -40,7 +40,7 @@ struct HaoclawApp: App {
 
     var body: some Scene {
         Window("Haoclaw", id: "desktop-client") {
-            DesktopClientRootView(state: self.state)
+            DesktopClientRootView(state: self.state, updater: self.delegate.updaterController)
         }
         .defaultSize(width: 1420, height: 900)
         .windowResizability(.contentSize)

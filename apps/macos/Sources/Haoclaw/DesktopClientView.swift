@@ -21,6 +21,7 @@ enum DesktopSidebarSection: String, CaseIterable, Identifiable {
 }
 
 enum DesktopProviderPreset: String, CaseIterable, Identifiable {
+    case custom
     case openai
     case openrouter
     case anthropic
@@ -41,6 +42,7 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .custom: "自定义接口"
         case .openai: "OpenAI"
         case .openrouter: "OpenRouter"
         case .anthropic: "Anthropic"
@@ -61,6 +63,7 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
     var defaultProviderID: String {
         switch self {
+        case .custom: "custom"
         case .openai: "openai"
         case .openrouter: "openrouter"
         case .anthropic: "anthropic"
@@ -81,6 +84,7 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
     var defaultBaseURL: String {
         switch self {
+        case .custom: ""
         case .openai: "https://api.openai.com/v1"
         case .openrouter: "https://openrouter.ai/api/v1"
         case .anthropic: "https://api.anthropic.com"
@@ -100,6 +104,7 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
     var defaultModelID: String {
         switch self {
+        case .custom: ""
         case .openai: "gpt-5"
         case .openrouter: "anthropic/claude-sonnet-4-5"
         case .anthropic: "claude-sonnet-4-5"
@@ -120,6 +125,7 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
     var apiAdapter: String {
         switch self {
+        case .custom: "openai-completions"
         case .anthropic, .anthropicCompatible: "anthropic-messages"
         case .gemini: "google-generative-ai"
         case .openai: "openai-responses"
@@ -131,6 +137,8 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
     var helpText: String {
         switch self {
+        case .custom:
+            "适合任何没有预设的自定义接口。你可以自己填写 Provider ID、Base URL、API Key 和模型 ID。"
         case .openai:
             "官方 OpenAI 接口，默认使用 Responses API。"
         case .openrouter:
@@ -261,6 +269,36 @@ final class DesktopClientModel {
 
     var availableModels: [ModelChoice] {
         Self.mergeModelChoices(self.configuredModels, self.runtimeModels, currentModelRef: self.selectedSessionModelRef)
+    }
+
+    var preferredProviderID: String {
+        let sessionProvider = Self.providerID(from: self.selectedSessionModelRef)
+        if !sessionProvider.isEmpty {
+            return sessionProvider
+        }
+        let currentProvider = Self.providerID(from: self.currentModelRef)
+        if !currentProvider.isEmpty {
+            return currentProvider
+        }
+        let configured = self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !configured.isEmpty {
+            return configured
+        }
+        return self.settingsDraft.providerPreset.defaultProviderID
+    }
+
+    var pickerModels: [ModelChoice] {
+        let providerID = self.preferredProviderID.lowercased()
+        guard !providerID.isEmpty else { return self.availableModels }
+        let filtered = self.availableModels.filter { $0.provider.lowercased() == providerID }
+        return filtered.isEmpty ? self.availableModels : filtered
+    }
+
+    var settingsSuggestedModels: [ModelChoice] {
+        let providerID = self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !providerID.isEmpty else { return self.availableModels }
+        let filtered = self.availableModels.filter { $0.provider.lowercased() == providerID }
+        return filtered.isEmpty ? self.availableModels : filtered
     }
 
     init(appState: AppState, chatViewModel: HaoclawChatViewModel) {
@@ -758,12 +796,14 @@ final class DesktopClientModel {
 
 struct DesktopClientRootView: View {
     @Bindable var state: AppState
+    let updater: UpdaterProviding?
     @State private var chatViewModel: HaoclawChatViewModel
     @State private var model: DesktopClientModel
     @State private var visibility: NavigationSplitViewVisibility = .all
 
-    init(state: AppState, sessionKey: String = "main") {
+    init(state: AppState, updater: UpdaterProviding? = nil, sessionKey: String = "main") {
         self._state = Bindable(wrappedValue: state)
+        self.updater = updater
         let chatViewModel = HaoclawChatViewModel(sessionKey: sessionKey, transport: MacGatewayChatTransport())
         self._chatViewModel = State(initialValue: chatViewModel)
         self._model = State(initialValue: DesktopClientModel(appState: state, chatViewModel: chatViewModel))
@@ -777,7 +817,7 @@ struct DesktopClientRootView: View {
             DesktopConversationCenter(model: self.model, chatViewModel: self.chatViewModel)
                 .navigationSplitViewColumnWidth(min: 700, ideal: 840)
         } detail: {
-            DesktopAgentInspector(model: self.model, chatViewModel: self.chatViewModel)
+            DesktopAgentInspector(model: self.model, chatViewModel: self.chatViewModel, updater: self.updater)
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
         }
         .frame(minWidth: 1280, minHeight: 820)
@@ -944,9 +984,18 @@ private struct DesktopConversationCenter: View {
 private struct DesktopAgentInspector: View {
     @Bindable var model: DesktopClientModel
     @Bindable var chatViewModel: HaoclawChatViewModel
+    let updater: UpdaterProviding?
+    @Bindable private var updateStatus: UpdateStatus
 
     private var currentSession: HaoclawChatSessionEntry? {
         self.chatViewModel.sessionChoices.first { $0.key == self.chatViewModel.sessionKey }
+    }
+
+    init(model: DesktopClientModel, chatViewModel: HaoclawChatViewModel, updater: UpdaterProviding?) {
+        self._model = Bindable(wrappedValue: model)
+        self._chatViewModel = Bindable(wrappedValue: chatViewModel)
+        self.updater = updater
+        self._updateStatus = Bindable(wrappedValue: updater?.updateStatus ?? UpdateStatus.disabled)
     }
 
     var body: some View {
@@ -975,6 +1024,7 @@ private struct DesktopAgentInspector: View {
                         ("连接", self.model.gatewayStatus),
                         ("模型", self.model.selectedSessionModelRef),
                         ("会话", self.chatViewModel.sessionKey),
+                        ("更新", self.updateLabel),
                     ])
 
                 DesktopInfoSection(
@@ -1000,6 +1050,13 @@ private struct DesktopAgentInspector: View {
                         self.model.openModelSettings()
                     }
                     .buttonStyle(.bordered)
+
+                    if let updater, updater.isAvailable {
+                        Button(self.updateStatus.isUpdateReady ? "一键升级" : "检查更新") {
+                            updater.checkForUpdates(nil)
+                        }
+                        .buttonStyle(self.updateStatus.isUpdateReady ? .borderedProminent : .bordered)
+                    }
 
                     if self.model.appState.connectionMode == .local {
                         Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
@@ -1046,6 +1103,11 @@ private struct DesktopAgentInspector: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd HH:mm"
         return formatter.string(from: date)
+    }
+
+    private var updateLabel: String {
+        guard let updater, updater.isAvailable else { return "当前版本" }
+        return self.updateStatus.isUpdateReady ? "发现新版本" : "当前版本"
     }
 }
 
@@ -1146,10 +1208,10 @@ private struct DesktopModelSettingsSheet: View {
                 TextField("适配器", text: self.$model.settingsDraft.apiAdapter)
                     .textFieldStyle(.roundedBorder)
 
-                if !self.model.availableModels.isEmpty {
+                if !self.model.settingsSuggestedModels.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(self.model.availableModels, id: \.providerAndID) { choice in
+                            ForEach(self.model.settingsSuggestedModels, id: \.providerAndID) { choice in
                                 Button("\(choice.provider)/\(choice.id)") {
                                     self.model.settingsDraft.providerId = choice.provider
                                     self.model.settingsDraft.modelID = choice.id
@@ -1204,32 +1266,58 @@ private struct DesktopComposerModelPicker: View {
 
     var body: some View {
         Group {
-            if self.model.availableModels.isEmpty {
-                Button("添加模型") {
-                    self.model.openModelSettings()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            } else {
-                Picker(
-                    "",
-                    selection: Binding(
-                        get: { self.model.selectedSessionModelRef },
-                        set: { next in
-                            Task { await self.model.selectSessionModel(next) }
-                        }))
-                {
-                    ForEach(self.model.availableModels, id: \.providerAndID) { choice in
-                        Text(choice.providerAndID).tag(choice.providerAndID)
+            if self.model.pickerModels.isEmpty {
+                HStack(spacing: 6) {
+                    Button("添加模型") {
+                        self.model.openModelSettings()
                     }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button("自定义") {
+                        self.model.openModelSettings()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(maxWidth: 260, alignment: .leading)
-                .help("切换当前会话使用的模型")
+            } else {
+                HStack(spacing: 6) {
+                    Picker(
+                        "",
+                        selection: Binding(
+                            get: { self.model.selectedSessionModelRef },
+                            set: { next in
+                                Task { await self.model.selectSessionModel(next) }
+                            }))
+                    {
+                        ForEach(self.model.pickerModels, id: \.providerAndID) { choice in
+                            Text(choice.id).tag(choice.providerAndID)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .frame(maxWidth: 220, alignment: .leading)
+                    .help("切换当前会话使用的模型")
+
+                    Button("自定义") {
+                        self.model.openModelSettings()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
             }
         }
+    }
+}
+
+private extension DesktopClientModel {
+    static func providerID(from modelRef: String) -> String {
+        let trimmed = modelRef.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != "未配置" else { return "" }
+        let parts = trimmed.split(separator: "/", maxSplits: 1).map(String.init)
+        guard let provider = parts.first else { return "" }
+        return provider
     }
 }
 
