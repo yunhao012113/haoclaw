@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const { pipeline } = require("node:stream/promises");
 const { Readable } = require("node:stream");
+const { spawn } = require("node:child_process");
 const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
 
 const PRODUCT_NAME = "Haoclaw";
@@ -83,6 +84,37 @@ async function downloadInstaller(asset) {
   return destination;
 }
 
+function launchSilentInstaller(installerPath) {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "haoclaw-update-"));
+  const scriptPath = path.join(tempDir, "upgrade.cmd");
+  const pid = process.pid;
+  const installedExe = path.join(process.env.LOCALAPPDATA || "", "Programs", PRODUCT_NAME, `${PRODUCT_NAME}.exe`);
+
+  const script = [
+    "@echo off",
+    "setlocal",
+    `set PID=${pid}`,
+    `set INSTALLER=${JSON.stringify(installerPath)}`,
+    `set APP_EXE=${JSON.stringify(installedExe)}`,
+    ":waitloop",
+    'tasklist /FI "PID eq %PID%" | find "%PID%" >nul',
+    "if %ERRORLEVEL%==0 (",
+    "  timeout /t 1 /nobreak >nul",
+    "  goto waitloop",
+    ")",
+    'start /wait "" %INSTALLER% /S',
+    "if exist %APP_EXE% start \"\" %APP_EXE%",
+    "del \"%~f0\"",
+  ].join("\r\n");
+
+  fs.writeFileSync(scriptPath, script, "utf8");
+  spawn("cmd.exe", ["/c", scriptPath], {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  }).unref();
+}
+
 async function checkForUpdates({ manual = false } = {}) {
   if (updateCheckRunning) {
     return;
@@ -117,12 +149,8 @@ async function checkForUpdates({ manual = false } = {}) {
 
     if (result.response === 0) {
       const installerPath = await downloadInstaller(installer);
-      await dialog.showMessageBox({
-        type: "info",
-        title: "安装包已打开",
-        message: "请按安装向导完成更新。",
-        detail: installerPath,
-      });
+      launchSilentInstaller(installerPath);
+      app.quit();
     }
   } catch (error) {
     if (manual) {

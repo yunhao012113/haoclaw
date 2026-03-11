@@ -56,6 +56,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
     private let autoUpdateKey = "autoUpdateEnabled"
     private var cachedUpdate: AvailableUpdate?
     private var isChecking = false
+    private var isInstalling = false
 
     init(savedAutoUpdate: Bool) {
         self.automaticallyChecksForUpdates = savedAutoUpdate
@@ -133,9 +134,9 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
     private func promptAndInstall(update: AvailableUpdate) async {
         let alert = NSAlert()
         alert.messageText = "发现新版本 \(update.version)"
-        alert.informativeText = "是否立即下载并打开安装包？"
+        alert.informativeText = "是否立即一键升级？桌面端会自动下载安装并重新打开。"
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "立即更新")
+        alert.addButton(withTitle: "立即升级")
         alert.addButton(withTitle: "稍后")
 
         NSApp.activate(ignoringOtherApps: true)
@@ -144,7 +145,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
 
         do {
             if let asset = update.asset {
-                try await self.downloadAndOpen(asset: asset)
+                try await self.downloadAndInstall(asset: asset)
             } else {
                 NSWorkspace.shared.open(update.releaseURL)
             }
@@ -156,7 +157,11 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
     }
 
-    private func downloadAndOpen(asset: ReleaseAsset) async throws {
+    private func downloadAndInstall(asset: ReleaseAsset) async throws {
+        guard !self.isInstalling else { return }
+        self.isInstalling = true
+        defer { self.isInstalling = false }
+
         let downloadsDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first ??
             FileManager.default.temporaryDirectory
         let destination = downloadsDir.appendingPathComponent(asset.name)
@@ -176,6 +181,17 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.moveItem(at: tempDestination, to: destination)
 
+        let fileName = asset.name.lowercased()
+        if fileName.hasSuffix(".pkg") {
+            try self.installPackage(at: destination)
+            self.presentMessage(
+                title: "升级完成",
+                text: "Haoclaw 已完成升级，正在重新打开应用。",
+                style: .informational)
+            self.relaunchInstalledApp()
+            return
+        }
+
         guard NSWorkspace.shared.open(destination) else {
             throw NSError(
                 domain: "HaoclawUpdater",
@@ -185,8 +201,40 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
 
         self.presentMessage(
             title: "安装包已打开",
-            text: "请按安装向导完成更新。安装包位置：\(destination.path)",
+            text: "当前版本不支持静默安装此格式，请按向导完成更新。安装包位置：\(destination.path)",
             style: .informational)
+    }
+
+    private func installPackage(at packageURL: URL) throws {
+        let installer = "/usr/sbin/installer"
+        let packagePath = packageURL.path.replacingOccurrences(of: "\"", with: "\\\"")
+        let reopenPath = "/Applications/Haoclaw.app".replacingOccurrences(of: "\"", with: "\\\"")
+        let command =
+            "\(installer) -pkg \"\(packagePath)\" -target / && open \"\(reopenPath)\""
+
+        let appleScript = """
+        do shell script "\(command)" with administrator privileges
+        """
+
+        var executionError: NSDictionary?
+        let script = NSAppleScript(source: appleScript)
+        script?.executeAndReturnError(&executionError)
+        if let executionError {
+            let message = executionError[NSAppleScript.errorMessage] as? String ?? "安装器执行失败。"
+            throw NSError(
+                domain: "HaoclawUpdater",
+                code: 4,
+                userInfo: [NSLocalizedDescriptionKey: message])
+        }
+    }
+
+    private func relaunchInstalledApp() {
+        let appURL = URL(fileURLWithPath: "/Applications/Haoclaw.app")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in
+                NSApp.terminate(nil)
+            }
+        }
     }
 
     private func presentMessage(title: String, text: String, style: NSAlert.Style) {

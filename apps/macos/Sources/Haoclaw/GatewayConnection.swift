@@ -76,6 +76,7 @@ actor GatewayConnection {
         case modelsList = "models.list"
         case chatHistory = "chat.history"
         case sessionsPreview = "sessions.preview"
+        case sessionsPatch = "sessions.patch"
         case chatSend = "chat.send"
         case chatAbort = "chat.abort"
         case skillsStatus = "skills.status"
@@ -607,6 +608,17 @@ extension GatewayConnection {
             method: .sessionsPreview,
             params: params,
             timeoutMs: timeout)
+    }
+
+    func patchSessionModel(sessionKey: String, modelRef: String) async throws {
+        let resolvedKey = self.canonicalizeSessionKey(sessionKey)
+        try await self.requestVoid(
+            method: .sessionsPatch,
+            params: [
+                "key": AnyCodable(resolvedKey),
+                "model": AnyCodable(modelRef),
+            ],
+            timeoutMs: 8000)
     }
 
     // MARK: - Chat

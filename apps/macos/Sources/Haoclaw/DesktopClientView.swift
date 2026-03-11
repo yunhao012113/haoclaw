@@ -25,6 +25,15 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
     case openrouter
     case anthropic
     case gemini
+    case zhipu
+    case deepseek
+    case moonshot
+    case siliconFlow
+    case groq
+    case together
+    case cerebras
+    case xai
+    case ollama
     case openAICompatible
     case anthropicCompatible
 
@@ -36,6 +45,15 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "OpenRouter"
         case .anthropic: "Anthropic"
         case .gemini: "Gemini"
+        case .zhipu: "智谱 GLM"
+        case .deepseek: "DeepSeek"
+        case .moonshot: "Moonshot"
+        case .siliconFlow: "SiliconFlow"
+        case .groq: "Groq"
+        case .together: "Together AI"
+        case .cerebras: "Cerebras"
+        case .xai: "xAI"
+        case .ollama: "Ollama"
         case .openAICompatible: "OpenAI 兼容"
         case .anthropicCompatible: "Anthropic 兼容"
         }
@@ -47,6 +65,15 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "openrouter"
         case .anthropic: "anthropic"
         case .gemini: "google"
+        case .zhipu: "zhipu"
+        case .deepseek: "deepseek"
+        case .moonshot: "moonshot"
+        case .siliconFlow: "siliconflow"
+        case .groq: "groq"
+        case .together: "together"
+        case .cerebras: "cerebras"
+        case .xai: "xai"
+        case .ollama: "ollama"
         case .openAICompatible: "custom-openai"
         case .anthropicCompatible: "custom-anthropic"
         }
@@ -58,6 +85,15 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "https://openrouter.ai/api/v1"
         case .anthropic: "https://api.anthropic.com"
         case .gemini: "https://generativelanguage.googleapis.com"
+        case .zhipu: "https://open.bigmodel.cn/api/paas/v4"
+        case .deepseek: "https://api.deepseek.com/v1"
+        case .moonshot: "https://api.moonshot.cn/v1"
+        case .siliconFlow: "https://api.siliconflow.cn/v1"
+        case .groq: "https://api.groq.com/openai/v1"
+        case .together: "https://api.together.xyz/v1"
+        case .cerebras: "https://api.cerebras.ai/v1"
+        case .xai: "https://api.x.ai/v1"
+        case .ollama: "http://127.0.0.1:11434/v1"
         case .openAICompatible, .anthropicCompatible: ""
         }
     }
@@ -68,6 +104,15 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "anthropic/claude-sonnet-4-5"
         case .anthropic: "claude-sonnet-4-5"
         case .gemini: "gemini-2.5-pro"
+        case .zhipu: "glm-4.5"
+        case .deepseek: "deepseek-chat"
+        case .moonshot: "kimi-k2-0905-preview"
+        case .siliconFlow: "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+        case .groq: "llama-3.3-70b-versatile"
+        case .together: "deepseek-ai/DeepSeek-V3"
+        case .cerebras: "llama-4-scout-17b-16e-instruct"
+        case .xai: "grok-3-beta"
+        case .ollama: "qwen2.5-coder"
         case .openAICompatible: "qwen2.5-coder"
         case .anthropicCompatible: "claude-sonnet-4-5"
         }
@@ -78,7 +123,9 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .anthropic, .anthropicCompatible: "anthropic-messages"
         case .gemini: "google-generative-ai"
         case .openai: "openai-responses"
-        case .openrouter, .openAICompatible: "openai-completions"
+        case .openrouter, .zhipu, .deepseek, .moonshot, .siliconFlow, .groq, .together, .cerebras, .xai,
+             .ollama, .openAICompatible:
+            "openai-completions"
         }
     }
 
@@ -92,6 +139,24 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
             "官方 Anthropic Messages 接口。"
         case .gemini:
             "官方 Gemini 接口。"
+        case .zhipu:
+            "智谱 GLM 接口，适合直接填智谱 API Key。"
+        case .deepseek:
+            "DeepSeek 官方接口。"
+        case .moonshot:
+            "Moonshot Kimi 官方接口。"
+        case .siliconFlow:
+            "SiliconFlow 聚合接口。"
+        case .groq:
+            "Groq 低延迟 OpenAI 兼容接口。"
+        case .together:
+            "Together AI OpenAI 兼容接口。"
+        case .cerebras:
+            "Cerebras OpenAI 兼容接口。"
+        case .xai:
+            "xAI Grok OpenAI 兼容接口。"
+        case .ollama:
+            "本地 Ollama，默认地址是 127.0.0.1:11434。"
         case .openAICompatible:
             "适合 Ollama、vLLM、LiteLLM、自建代理等 OpenAI 兼容接口。"
         case .anthropicCompatible:
@@ -106,6 +171,35 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
         if normalizedProvider == "openrouter" || normalizedBaseURL.contains("openrouter.ai") {
             return .openrouter
+        }
+        if normalizedProvider == "zhipu" || normalizedBaseURL.contains("bigmodel.cn") {
+            return .zhipu
+        }
+        if normalizedProvider == "deepseek" || normalizedBaseURL.contains("api.deepseek.com") {
+            return .deepseek
+        }
+        if normalizedProvider == "moonshot" || normalizedBaseURL.contains("api.moonshot.cn") {
+            return .moonshot
+        }
+        if normalizedProvider == "siliconflow" || normalizedBaseURL.contains("siliconflow.cn") {
+            return .siliconFlow
+        }
+        if normalizedProvider == "groq" || normalizedBaseURL.contains("api.groq.com") {
+            return .groq
+        }
+        if normalizedProvider == "together" || normalizedBaseURL.contains("api.together.xyz") {
+            return .together
+        }
+        if normalizedProvider == "cerebras" || normalizedBaseURL.contains("api.cerebras.ai") {
+            return .cerebras
+        }
+        if normalizedProvider == "xai" || normalizedBaseURL.contains("api.x.ai") {
+            return .xai
+        }
+        if normalizedProvider == "ollama" || normalizedBaseURL.contains("127.0.0.1:11434") ||
+            normalizedBaseURL.contains("localhost:11434")
+        {
+            return .ollama
         }
         if normalizedProvider == "anthropic" || normalizedBaseURL.contains("api.anthropic.com") {
             return .anthropic
@@ -151,7 +245,8 @@ final class DesktopClientModel {
     var isSavingModelSettings = false
     var isRefreshing = false
     var statusMessage: String?
-    var models: [ModelChoice] = []
+    var runtimeModels: [ModelChoice] = []
+    var configuredModels: [ModelChoice] = []
     var currentModelRef = "未配置"
     var gatewayURL = "未连接"
     var gatewayStatus = "连接中"
@@ -163,6 +258,10 @@ final class DesktopClientModel {
     var settingsDraft = DesktopModelSettingsDraft()
 
     @ObservationIgnored private var endpointTask: Task<Void, Never>?
+
+    var availableModels: [ModelChoice] {
+        Self.mergeModelChoices(self.configuredModels, self.runtimeModels, currentModelRef: self.selectedSessionModelRef)
+    }
 
     init(appState: AppState, chatViewModel: HaoclawChatViewModel) {
         self.appState = appState
@@ -251,6 +350,24 @@ final class DesktopClientModel {
         self.isShowingModelSettings = true
     }
 
+    func selectSessionModel(_ modelRef: String) async {
+        let trimmedModelRef = modelRef.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedModelRef.isEmpty else { return }
+        guard trimmedModelRef != self.selectedSessionModelRef else { return }
+
+        do {
+            try await GatewayConnection.shared.patchSessionModel(
+                sessionKey: self.chatViewModel.sessionKey,
+                modelRef: trimmedModelRef)
+            self.currentModelRef = trimmedModelRef
+            self.statusMessage = "当前会话已切换到 \(trimmedModelRef)。"
+            self.chatViewModel.refreshSessions(limit: 50)
+            self.chatViewModel.refresh()
+        } catch {
+            self.statusMessage = "切换模型失败：\(error.localizedDescription)"
+        }
+    }
+
     func saveModelSettings() async {
         let selectedPreset = self.settingsDraft.providerPreset
         let connectionMode = self.settingsDraft.connectionMode
@@ -286,18 +403,29 @@ final class DesktopClientModel {
         var modelsRoot = root["models"] as? [String: Any] ?? [:]
         var providers = modelsRoot["providers"] as? [String: Any] ?? [:]
 
-        var providerEntry: [String: Any] = [
-            "baseUrl": trimmedBaseURL,
-            "api": trimmedApiAdapter,
-            "models": [[
-                "id": trimmedModelID,
-                "name": trimmedModelID,
-                "api": trimmedApiAdapter,
-            ]],
-        ]
+        var providerEntry = providers[trimmedProviderID] as? [String: Any] ?? [:]
+        providerEntry["baseUrl"] = trimmedBaseURL
+        providerEntry["api"] = trimmedApiAdapter
         if !trimmedApiKey.isEmpty {
             providerEntry["apiKey"] = trimmedApiKey
+        } else {
+            providerEntry.removeValue(forKey: "apiKey")
         }
+
+        var providerModels = Self.extractProviderModels(from: providerEntry)
+        let nextModelEntry: [String: Any] = [
+            "id": trimmedModelID,
+            "name": trimmedModelID,
+            "api": trimmedApiAdapter,
+        ]
+        if let existingIndex = providerModels.firstIndex(where: {
+            (($0["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == trimmedModelID
+        }) {
+            providerModels[existingIndex] = nextModelEntry
+        } else {
+            providerModels.append(nextModelEntry)
+        }
+        providerEntry["models"] = providerModels
         providers[trimmedProviderID] = providerEntry
         modelsRoot["mode"] = "merge"
         modelsRoot["providers"] = providers
@@ -317,6 +445,7 @@ final class DesktopClientModel {
 
         do {
             HaoclawConfigFile.saveDict(root)
+            self.configuredModels = Self.extractConfiguredModels(from: root)
             self.appState.connectionMode = connectionMode
             self.appState.remoteTransport = remoteTransport
             self.appState.remoteUrl = trimmedRemoteURL
@@ -396,6 +525,7 @@ final class DesktopClientModel {
 
     private func loadCurrentConfig() async {
         let root = HaoclawConfigFile.loadDict()
+        self.configuredModels = Self.extractConfiguredModels(from: root)
         let modelRef = Self.extractPrimaryModelRef(from: root)
         if let modelRef, !modelRef.isEmpty {
             self.currentModelRef = modelRef
@@ -468,7 +598,7 @@ final class DesktopClientModel {
                 method: .modelsList,
                 params: nil,
                 timeoutMs: 6000)
-            self.models = result.models.map {
+            self.runtimeModels = result.models.map {
                 ModelChoice(
                     id: $0.id,
                     name: $0.name,
@@ -477,9 +607,9 @@ final class DesktopClientModel {
             }
         } catch {
             do {
-                self.models = try await ModelCatalogLoader.load(from: ModelCatalogLoader.defaultPath)
+                self.runtimeModels = try await ModelCatalogLoader.load(from: ModelCatalogLoader.defaultPath)
             } catch {
-                self.models = []
+                self.runtimeModels = []
             }
         }
     }
@@ -527,6 +657,72 @@ final class DesktopClientModel {
         return nil
     }
 
+    private static func extractConfiguredModels(from root: [String: Any]) -> [ModelChoice] {
+        guard let modelsRoot = root["models"] as? [String: Any],
+              let providers = modelsRoot["providers"] as? [String: Any]
+        else {
+            return []
+        }
+
+        var extracted: [ModelChoice] = []
+        for (providerID, rawEntry) in providers {
+            guard let providerEntry = rawEntry as? [String: Any] else { continue }
+            let providerModels = self.extractProviderModels(from: providerEntry)
+            for item in providerModels {
+                let modelID = ((item["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !modelID.isEmpty else { continue }
+                let displayName = ((item["name"] as? String) ?? modelID)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                extracted.append(
+                    ModelChoice(
+                        id: modelID,
+                        name: displayName.isEmpty ? modelID : displayName,
+                        provider: providerID,
+                        contextWindow: item["contextWindow"] as? Int))
+            }
+        }
+        return self.mergeModelChoices(extracted)
+    }
+
+    private static func extractProviderModels(from providerEntry: [String: Any]) -> [[String: Any]] {
+        guard let rawModels = providerEntry["models"] as? [Any] else { return [] }
+        return rawModels.compactMap { $0 as? [String: Any] }
+    }
+
+    private static func mergeModelChoices(
+        _ groups: [ModelChoice]...,
+        currentModelRef: String? = nil) -> [ModelChoice]
+    {
+        var ordered: [ModelChoice] = []
+        var seen = Set<String>()
+
+        for group in groups {
+            for choice in group {
+                let key = choice.providerAndID
+                guard !seen.contains(key) else { continue }
+                seen.insert(key)
+                ordered.append(choice)
+            }
+        }
+
+        let trimmedCurrent = currentModelRef?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmedCurrent.isEmpty, trimmedCurrent != "未配置" {
+            let parts = trimmedCurrent.split(separator: "/", maxSplits: 1).map(String.init)
+            if parts.count == 2 {
+                let provider = parts[0]
+                let model = parts[1]
+                let key = "\(provider)/\(model)"
+                if !seen.contains(key) {
+                    ordered.insert(
+                        ModelChoice(id: model, name: model, provider: provider, contextWindow: nil),
+                        at: 0)
+                }
+            }
+        }
+
+        return ordered
+    }
+
     private static func connectionHint(
         for status: GatewayEnvironmentStatus,
         mode: AppState.ConnectionMode) -> String?
@@ -546,6 +742,17 @@ final class DesktopClientModel {
         case let .error(message):
             return "本地连接检查失败：\(message)"
         }
+    }
+
+    var selectedSessionModelRef: String {
+        let sessionModel = self.chatViewModel.sessionChoices
+            .first(where: { $0.key == self.chatViewModel.sessionKey })?
+            .model?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !sessionModel.isEmpty {
+            return sessionModel
+        }
+        return self.currentModelRef
     }
 }
 
@@ -722,7 +929,8 @@ private struct DesktopConversationCenter: View {
                 viewModel: self.chatViewModel,
                 showsSessionSwitcher: false,
                 style: .standard,
-                userAccent: Color(nsColor: .controlAccentColor))
+                userAccent: Color(nsColor: .controlAccentColor),
+                composerAccessory: AnyView(DesktopComposerModelPicker(model: self.model)))
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -765,7 +973,7 @@ private struct DesktopAgentInspector: View {
                     title: "当前状态",
                     rows: [
                         ("连接", self.model.gatewayStatus),
-                        ("模型", self.model.currentModelRef),
+                        ("模型", self.model.selectedSessionModelRef),
                         ("会话", self.chatViewModel.sessionKey),
                     ])
 
@@ -938,11 +1146,12 @@ private struct DesktopModelSettingsSheet: View {
                 TextField("适配器", text: self.$model.settingsDraft.apiAdapter)
                     .textFieldStyle(.roundedBorder)
 
-                if !self.model.models.isEmpty {
+                if !self.model.availableModels.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(Array(self.model.models.prefix(10)), id: \.providerAndID) { choice in
+                            ForEach(self.model.availableModels, id: \.providerAndID) { choice in
                                 Button("\(choice.provider)/\(choice.id)") {
+                                    self.model.settingsDraft.providerId = choice.provider
                                     self.model.settingsDraft.modelID = choice.id
                                 }
                                 .buttonStyle(.bordered)
@@ -986,6 +1195,40 @@ private extension DesktopModelSettingsSheet {
         switch transport {
         case .direct: "直连"
         case .ssh: "SSH"
+        }
+    }
+}
+
+private struct DesktopComposerModelPicker: View {
+    @Bindable var model: DesktopClientModel
+
+    var body: some View {
+        Group {
+            if self.model.availableModels.isEmpty {
+                Button("添加模型") {
+                    self.model.openModelSettings()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { self.model.selectedSessionModelRef },
+                        set: { next in
+                            Task { await self.model.selectSessionModel(next) }
+                        }))
+                {
+                    ForEach(self.model.availableModels, id: \.providerAndID) { choice in
+                        Text(choice.providerAndID).tag(choice.providerAndID)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(maxWidth: 260, alignment: .leading)
+                .help("切换当前会话使用的模型")
+            }
         }
     }
 }

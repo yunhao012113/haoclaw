@@ -22,6 +22,7 @@ public struct HaoclawChatView: View {
     private let markdownVariant: ChatMarkdownVariant
     private let userAccent: Color?
     private let showsAssistantTrace: Bool
+    private let composerAccessory: AnyView?
 
     private enum Layout {
         #if os(macOS)
@@ -51,7 +52,8 @@ public struct HaoclawChatView: View {
         style: Style = .standard,
         markdownVariant: ChatMarkdownVariant = .standard,
         userAccent: Color? = nil,
-        showsAssistantTrace: Bool = false)
+        showsAssistantTrace: Bool = false,
+        composerAccessory: AnyView? = nil)
     {
         self._viewModel = State(initialValue: viewModel)
         self.showsSessionSwitcher = showsSessionSwitcher
@@ -59,6 +61,7 @@ public struct HaoclawChatView: View {
         self.markdownVariant = markdownVariant
         self.userAccent = userAccent
         self.showsAssistantTrace = showsAssistantTrace
+        self.composerAccessory = composerAccessory
     }
 
     public var body: some View {
@@ -74,7 +77,8 @@ public struct HaoclawChatView: View {
                 HaoclawChatComposer(
                     viewModel: self.viewModel,
                     style: self.style,
-                    showsSessionSwitcher: self.showsSessionSwitcher)
+                    showsSessionSwitcher: self.showsSessionSwitcher,
+                    accessory: self.composerAccessory)
                     .padding(.horizontal, Layout.composerPaddingHorizontal)
             }
             .padding(.vertical, Layout.outerPaddingVertical)

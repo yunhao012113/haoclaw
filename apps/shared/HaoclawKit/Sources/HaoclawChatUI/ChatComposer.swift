@@ -12,6 +12,7 @@ struct HaoclawChatComposer: View {
     @Bindable var viewModel: HaoclawChatViewModel
     let style: HaoclawChatView.Style
     let showsSessionSwitcher: Bool
+    let accessory: AnyView?
 
     #if !os(macOS)
     @State private var pickerItems: [PhotosPickerItem] = []
@@ -190,6 +191,9 @@ struct HaoclawChatComposer: View {
             HStack(alignment: .center, spacing: 8) {
                 if self.showsConnectionPill {
                     self.connectionPill
+                }
+                if let accessory = self.accessory {
+                    accessory
                 }
                 Spacer(minLength: 0)
                 self.sendButton
