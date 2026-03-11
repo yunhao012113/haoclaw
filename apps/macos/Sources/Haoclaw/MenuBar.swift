@@ -266,6 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        DesktopShortcutManager.ensureDesktopShortcutIfNeeded()
         self.state = AppStateStore.shared
         AppActivationPolicy.apply(showDockIcon: self.state?.showDockIcon ?? false)
         if let state {
