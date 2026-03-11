@@ -179,6 +179,37 @@ private struct DesktopControlGeneralPane: View {
     }
 }
 
+private struct DesktopInfoSection: View {
+    let title: String
+    let rows: [(String, String)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(self.title)
+                .font(.headline)
+            VStack(spacing: 0) {
+                ForEach(Array(self.rows.enumerated()), id: \.offset) { index, row in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text(row.0)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 88, alignment: .leading)
+                        Text(row.1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.vertical, 8)
+                    if index < self.rows.count - 1 {
+                        Divider()
+                    }
+                }
+            }
+            .padding(14)
+            .background(Color.secondary.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+}
+
 private struct DesktopControlModelsPane: View {
     @Bindable var model: DesktopClientModel
 
@@ -233,12 +264,12 @@ private struct DesktopControlModelsPane: View {
                             .foregroundStyle(.secondary)
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
-                            ForEach(self.model.availableModels, id: \.providerAndID) { choice in
+                            ForEach(self.model.availableModels, id: \.desktopModelRef) { choice in
                                 DesktopModelChoiceCard(
                                     choice: choice,
-                                    isCurrent: choice.providerAndID == self.model.selectedSessionModelRef,
+                                    isCurrent: choice.desktopModelRef == self.model.selectedSessionModelRef,
                                     action: {
-                                        Task { await self.model.selectSessionModel(choice.providerAndID) }
+                                        Task { await self.model.selectSessionModel(choice.desktopModelRef) }
                                     })
                             }
                         }
@@ -247,7 +278,7 @@ private struct DesktopControlModelsPane: View {
                     if !self.model.settingsSuggestedModels.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
-                                ForEach(self.model.settingsSuggestedModels, id: \.providerAndID) { choice in
+                                ForEach(self.model.settingsSuggestedModels, id: \.desktopModelRef) { choice in
                                     Button("\(choice.provider)/\(choice.id)") {
                                         self.model.settingsDraft.providerId = choice.provider
                                         self.model.settingsDraft.modelID = choice.id
@@ -547,16 +578,29 @@ private struct DesktopModelChoiceCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Button(self.isCurrent ? "当前会话正在使用" : "切到这个模型") {
-                self.action()
+            if self.isCurrent {
+                Button("当前会话正在使用") {
+                    self.action()
+                }
+                .buttonStyle(.bordered)
+                .disabled(true)
+            } else {
+                Button("切到这个模型") {
+                    self.action()
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(self.isCurrent ? .bordered : .borderedProminent)
-            .disabled(self.isCurrent)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(self.isCurrent ? Color.orange.opacity(0.10) : Color.secondary.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private extension ModelChoice {
+    var desktopModelRef: String {
+        "\(self.provider)/\(self.id)"
     }
 }
 
