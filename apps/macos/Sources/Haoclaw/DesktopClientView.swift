@@ -20,6 +20,58 @@ enum DesktopSidebarSection: String, CaseIterable, Identifiable {
     }
 }
 
+enum DesktopControlSection: String, CaseIterable, Identifiable {
+    case general
+    case models
+    case tools
+    case skills
+    case channels
+    case automation
+    case workspace
+    case updates
+
+    var id: String { self.rawValue }
+
+    var title: String {
+        switch self {
+        case .general: "运行台"
+        case .models: "模型中心"
+        case .tools: "工具接入"
+        case .skills: "技能库"
+        case .channels: "渠道接入"
+        case .automation: "自动任务"
+        case .workspace: "工作区"
+        case .updates: "更新中心"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "switch.2"
+        case .models: "cpu"
+        case .tools: "shippingbox"
+        case .skills: "sparkles"
+        case .channels: "message"
+        case .automation: "calendar.badge.clock"
+        case .workspace: "folder"
+        case .updates: "arrow.down.circle"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .general: "连接方式、显示策略和桌面行为"
+        case .models: "统一配置 Provider、模型和会话默认项"
+        case .tools: "接入命令型工具与 HTTP 工具"
+        case .skills: "查看技能状态并进行启停"
+        case .channels: "把 Haoclaw 接入外部消息渠道"
+        case .automation: "管理定时任务和自动流程"
+        case .workspace: "项目目录、监听和上下文保留"
+        case .updates: "检查版本、发布记录和一键升级"
+        }
+    }
+}
+
 enum DesktopProviderPreset: String, CaseIterable, Identifiable {
     case custom
     case openai
@@ -264,6 +316,8 @@ final class DesktopClientModel {
     var connectionHint: String?
     var isRepairingConnection = false
     var settingsDraft = DesktopModelSettingsDraft()
+    var isShowingControlCenter = false
+    var controlSection: DesktopControlSection = .general
 
     @ObservationIgnored private var endpointTask: Task<Void, Never>?
 
@@ -385,7 +439,16 @@ final class DesktopClientModel {
 
     func openModelSettings() {
         self.refreshSettingsDraftFromState()
-        self.isShowingModelSettings = true
+        self.controlSection = .models
+        self.isShowingControlCenter = true
+    }
+
+    func openControlCenter(_ section: DesktopControlSection = .general) {
+        if section == .models {
+            self.refreshSettingsDraftFromState()
+        }
+        self.controlSection = section
+        self.isShowingControlCenter = true
     }
 
     func selectSessionModel(_ modelRef: String) async {
@@ -821,8 +884,8 @@ struct DesktopClientRootView: View {
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
         }
         .frame(minWidth: 1280, minHeight: 820)
-        .sheet(isPresented: self.$model.isShowingModelSettings) {
-            DesktopModelSettingsSheet(model: self.model)
+        .sheet(isPresented: self.$model.isShowingControlCenter) {
+            DesktopControlCenterSheet(state: self.state, model: self.model, updater: self.updater)
         }
         .onAppear {
             self.model.start()
@@ -889,7 +952,7 @@ private struct DesktopConversationSidebar: View {
                 }
                 Spacer()
                 Button {
-                    self.model.openModelSettings()
+                    self.model.openControlCenter(.general)
                 } label: {
                     Image(systemName: "slider.horizontal.3")
                 }
@@ -1039,13 +1102,13 @@ private struct DesktopAgentInspector: View {
                     Text("快速操作")
                         .font(.headline)
                     Button("模型与 API") {
-                        self.model.openModelSettings()
+                        self.model.openControlCenter(.models)
                     }
                     .buttonStyle(.bordered)
 
                     if let updater, updater.isAvailable {
                         Button("检查更新 / 立即升级") {
-                            updater.checkForUpdates(nil)
+                            self.model.openControlCenter(.updates)
                         }
                         .buttonStyle(.borderedProminent)
                     }
@@ -1060,6 +1123,11 @@ private struct DesktopAgentInspector: View {
 
                     Button("重新连接") {
                         Task { await self.model.refreshSupportData() }
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("打开运行台") {
+                        self.model.openControlCenter(.general)
                     }
                     .buttonStyle(.bordered)
                 }
