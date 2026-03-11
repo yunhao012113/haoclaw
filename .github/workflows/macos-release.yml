@@ -102,7 +102,29 @@ jobs:
           NOTARYTOOL_KEY: ${{ secrets.NOTARYTOOL_KEY }}
           NOTARYTOOL_KEY_ID: ${{ secrets.NOTARYTOOL_KEY_ID }}
           NOTARYTOOL_ISSUER: ${{ secrets.NOTARYTOOL_ISSUER }}
-        run: scripts/package-mac-dist.sh
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/package-mac-dist.sh 2>&1 | tee package-macos.log
+
+      - name: Show macOS packaging log tail on failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package-macos.log ]]; then
+            echo "---- package-macos.log (tail -200) ----"
+            tail -n 200 package-macos.log
+          fi
+
+      - name: Upload macOS packaging log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: haoclaw-macos-log-${{ github.ref_name || github.run_id }}
+          path: package-macos.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Summarize packaged assets
         shell: bash
