@@ -206,14 +206,15 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
     }
 
     private func installPackage(at packageURL: URL) throws {
-        let installer = "/usr/sbin/installer"
-        let packagePath = packageURL.path.replacingOccurrences(of: "\"", with: "\\\"")
-        let reopenPath = "/Applications/Haoclaw.app".replacingOccurrences(of: "\"", with: "\\\"")
-        let command =
-            "\(installer) -pkg \"\(packagePath)\" -target / && open \"\(reopenPath)\""
+        let packagePath = packageURL.path.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let reopenPath = "/Applications/Haoclaw.app".replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
 
         let appleScript = """
-        do shell script "\(command)" with administrator privileges
+        set pkgPath to "\(packagePath)"
+        set appPath to "\(reopenPath)"
+        do shell script "/usr/sbin/installer -pkg " & quoted form of pkgPath & " -target / && open " & quoted form of appPath with administrator privileges
         """
 
         var executionError: NSDictionary?
