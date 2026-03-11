@@ -11,6 +11,19 @@ export const TAB_GROUPS = [
   { label: "settings", tabs: ["config", "debug", "logs"] },
 ] as const;
 
+export const DESKTOP_TAB_GROUPS = [
+  { label: "desktopConversations", tabs: ["chat"] },
+  {
+    label: "desktopWorkbench",
+    tabs: ["overview", "skills", "channels", "cron", "sessions"],
+  },
+  {
+    label: "desktopOperations",
+    tabs: ["usage", "instances", "nodes", "agents"],
+  },
+  { label: "desktopSystem", tabs: ["config", "debug", "logs"] },
+] as const;
+
 export type Tab =
   | "agents"
   | "overview"
@@ -162,4 +175,8 @@ export function titleForTab(tab: Tab) {
 
 export function subtitleForTab(tab: Tab) {
   return t(`subtitles.${tab}`);
+}
+
+export function navigationGroupsForShell(isDesktopMode: boolean) {
+  return isDesktopMode ? DESKTOP_TAB_GROUPS : TAB_GROUPS;
 }
