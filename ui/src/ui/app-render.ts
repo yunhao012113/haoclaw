@@ -310,7 +310,7 @@ export function renderApp(state: AppViewState) {
               href="https://docs.haoclaw.ai"
               target=${EXTERNAL_LINK_TARGET}
               rel=${buildExternalLinkRel()}
-              title="${t("common.docs")} (opens in new tab)"
+              title="${t("common.docs")}（新标签页打开）"
             >
               <span class="nav-item__icon" aria-hidden="true">${icons.book}</span>
               <span class="nav-item__text">${t("common.docs")}</span>

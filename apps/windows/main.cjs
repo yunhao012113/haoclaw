@@ -180,7 +180,7 @@ function resolveUiEntry() {
     }
   }
 
-  throw new Error(`Missing Control UI build. Looked in: ${candidates.join(", ")}`);
+  throw new Error(`未找到桌面界面构建产物，已检查路径：${candidates.join(", ")}`);
 }
 
 function createMainWindow() {
@@ -256,7 +256,7 @@ function buildApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-app.whenReady().then(() => {
+void app.whenReady().then(() => {
   buildApplicationMenu();
   createMainWindow();
   void checkForUpdates({ manual: false });

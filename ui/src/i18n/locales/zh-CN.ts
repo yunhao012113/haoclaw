@@ -85,7 +85,7 @@ export const zh_CN: TranslationMap = {
       title: "备注",
       subtitle: "远程控制设置的快速提醒。",
       tailscaleTitle: "Tailscale 内网转发",
-      tailscaleText: "优先使用 serve 模式，通过 tailnet 身份验证把网关保持在本机回环地址。",
+      tailscaleText: "优先使用 serve 模式，通过 tailnet 身份验证，把网关保持在本机回环地址。",
       sessionTitle: "会话清理",
       sessionText: "使用 /new 或 sessions.patch 重置上下文。",
       cronTitle: "定时任务提醒",
@@ -101,7 +101,7 @@ export const zh_CN: TranslationMap = {
         "在手机上？从桌面运行 haoclaw dashboard --no-open 复制完整 URL（包括 #token=...）。",
     },
     insecure: {
-      hint: "此页面为 HTTP，因此浏览器阻止设备标识。请使用 HTTPS (Tailscale Serve) 或在网关主机上打开 {url}。",
+      hint: "此页面为 HTTP，因此浏览器阻止设备标识。请使用 HTTPS（Tailscale Serve）或在网关主机上打开 {url}。",
       stayHttp: "如果您必须保持 HTTP，请设置 {config} (仅限令牌)。",
     },
   },
