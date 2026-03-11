@@ -985,17 +985,9 @@ private struct DesktopAgentInspector: View {
     @Bindable var model: DesktopClientModel
     @Bindable var chatViewModel: HaoclawChatViewModel
     let updater: UpdaterProviding?
-    @Bindable private var updateStatus: UpdateStatus
 
     private var currentSession: HaoclawChatSessionEntry? {
         self.chatViewModel.sessionChoices.first { $0.key == self.chatViewModel.sessionKey }
-    }
-
-    init(model: DesktopClientModel, chatViewModel: HaoclawChatViewModel, updater: UpdaterProviding?) {
-        self._model = Bindable(wrappedValue: model)
-        self._chatViewModel = Bindable(wrappedValue: chatViewModel)
-        self.updater = updater
-        self._updateStatus = Bindable(wrappedValue: updater?.updateStatus ?? UpdateStatus.disabled)
     }
 
     var body: some View {
@@ -1024,7 +1016,7 @@ private struct DesktopAgentInspector: View {
                         ("连接", self.model.gatewayStatus),
                         ("模型", self.model.selectedSessionModelRef),
                         ("会话", self.chatViewModel.sessionKey),
-                        ("更新", self.updateLabel),
+                        ("更新", self.updater == nil ? "当前版本" : "可检查更新"),
                     ])
 
                 DesktopInfoSection(
@@ -1052,10 +1044,10 @@ private struct DesktopAgentInspector: View {
                     .buttonStyle(.bordered)
 
                     if let updater, updater.isAvailable {
-                        Button(self.updateStatus.isUpdateReady ? "一键升级" : "检查更新") {
+                        Button("检查更新 / 立即升级") {
                             updater.checkForUpdates(nil)
                         }
-                        .buttonStyle(self.updateStatus.isUpdateReady ? .borderedProminent : .bordered)
+                        .buttonStyle(.borderedProminent)
                     }
 
                     if self.model.appState.connectionMode == .local {
@@ -1105,10 +1097,6 @@ private struct DesktopAgentInspector: View {
         return formatter.string(from: date)
     }
 
-    private var updateLabel: String {
-        guard let updater, updater.isAvailable else { return "当前版本" }
-        return self.updateStatus.isUpdateReady ? "发现新版本" : "当前版本"
-    }
 }
 
 private struct DesktopModelSettingsSheet: View {
