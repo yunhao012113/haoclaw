@@ -48,7 +48,7 @@ struct AboutSettings: View {
             VStack(alignment: .center, spacing: 6) {
                 AboutLinkRow(
                     icon: "chevron.left.slash.chevron.right",
-                    title: "GitHub",
+                    title: "项目仓库",
                     url: "https://github.com/yunhao012113/haoclaw")
                 AboutLinkRow(icon: "globe", title: "下载页", url: "https://yunhao012113.github.io/haoclaw/")
                 AboutLinkRow(icon: "shippingbox", title: "最新发布", url: "https://github.com/yunhao012113/haoclaw/releases/latest")
@@ -76,7 +76,7 @@ struct AboutSettings: View {
                 }
             }
 
-            Text("© 2026 Yunhao · MIT License")
+            Text("© 2026 Yunhao · MIT 许可证")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)

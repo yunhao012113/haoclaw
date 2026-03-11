@@ -221,7 +221,13 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         let script = NSAppleScript(source: appleScript)
         script?.executeAndReturnError(&executionError)
         if let executionError {
-            let message = executionError[NSAppleScript.errorMessage] as? String ?? "安装器执行失败。"
+            let rawMessage = executionError[NSAppleScript.errorMessage] as? String ?? "安装器执行失败。"
+            let message: String
+            if rawMessage.contains("A real number can't go after this real number") {
+                message = "升级器执行失败。请先安装最新安装包，再继续使用应用内升级。"
+            } else {
+                message = rawMessage
+            }
             throw NSError(
                 domain: "HaoclawUpdater",
                 code: 4,

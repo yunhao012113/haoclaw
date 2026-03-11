@@ -154,7 +154,7 @@ private struct DesktopControlGeneralPane: View {
                     DesktopInfoSection(
                         title: "当前链路",
                         rows: [
-                            ("Gateway", self.model.gatewayURL),
+                            ("网关地址", self.model.gatewayURL),
                             ("状态", self.model.gatewayStatus),
                             ("提示", self.model.connectionHint ?? "当前链路可用"),
                         ])
@@ -215,7 +215,7 @@ private struct DesktopControlModelsPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            DesktopControlCard(title: "Provider 与接入", subtitle: "这里是 Haoclaw 自己的模型中心，不按外部平台的表单版式照搬。") {
+            DesktopControlCard(title: "模型接入", subtitle: "这里是 Haoclaw 自己的模型中心，用统一方式管理服务商、接口和模型。") {
                 VStack(alignment: .leading, spacing: 12) {
                     Picker("服务商预设", selection: self.$model.settingsDraft.providerPreset) {
                         ForEach(DesktopProviderPreset.allCases) { preset in
@@ -235,7 +235,7 @@ private struct DesktopControlModelsPane: View {
                         .textFieldStyle(.roundedBorder)
                     TextField("接口地址", text: self.$model.settingsDraft.baseURL)
                         .textFieldStyle(.roundedBorder)
-                    SecureField("API Key", text: self.$model.settingsDraft.apiKey)
+                    SecureField("接口密钥", text: self.$model.settingsDraft.apiKey)
                         .textFieldStyle(.roundedBorder)
                     TextField("模型 ID", text: self.$model.settingsDraft.modelID)
                         .textFieldStyle(.roundedBorder)
@@ -257,10 +257,10 @@ private struct DesktopControlModelsPane: View {
                 }
             }
 
-            DesktopControlCard(title: "已接入模型", subtitle: "会话下拉会优先显示当前 Provider 下面的模型，这里列出你已经挂进来的项。") {
+            DesktopControlCard(title: "已接入模型", subtitle: "会话下拉会优先显示当前服务商下的模型，这里列出你已经接入的项目。") {
                 VStack(alignment: .leading, spacing: 12) {
                     if self.model.availableModels.isEmpty {
-                        Text("当前还没有可用模型。先填入接口和 API Key，再保存。")
+                        Text("当前还没有可用模型。先填入接口地址和密钥，再保存。")
                             .foregroundStyle(.secondary)
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
@@ -365,9 +365,9 @@ private struct DesktopControlSkillsPane: View {
                     DesktopInfoSection(
                         title: "当前状态",
                         rows: [
-                            ("已发现", "\(self.model.skills.count) 个"),
-                            ("就绪", "\(self.filteredSkills.filter { !$0.disabled && $0.eligible }.count) 个"),
-                            ("待配置", "\(self.filteredSkills.filter { !$0.disabled && !$0.eligible }.count) 个"),
+                            ("已发现", "\(self.model.skills.count) 项"),
+                            ("就绪", "\(self.filteredSkills.filter { !$0.disabled && $0.eligible }.count) 项"),
+                            ("待配置", "\(self.filteredSkills.filter { !$0.disabled && !$0.eligible }.count) 项"),
                         ])
 
                     HStack(spacing: 10) {

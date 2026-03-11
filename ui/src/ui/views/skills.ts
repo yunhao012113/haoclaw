@@ -113,7 +113,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
           missing.length > 0
             ? html`
               <div class="muted" style="margin-top: 6px;">
-                Missing: ${missing.join(", ")}
+                缺少项：${missing.join(", ")}
               </div>
             `
             : nothing
@@ -122,7 +122,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
           reasons.length > 0
             ? html`
               <div class="muted" style="margin-top: 6px;">
-                Reason: ${reasons.join(", ")}
+                原因：${reasons.join(", ")}
               </div>
             `
             : nothing
@@ -167,7 +167,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
           skill.primaryEnv
             ? html`
               <div class="field" style="margin-top: 10px;">
-                <span>API Key</span>
+                <span>接口密钥</span>
                 <input
                   type="password"
                   .value=${apiKey}

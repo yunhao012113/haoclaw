@@ -271,7 +271,7 @@ private struct SkillRow: View {
     private var missingSummary: some View {
         VStack(alignment: .leading, spacing: 4) {
             if self.shouldShowMissingBins {
-                Text("Missing binaries: \(self.missingBins.joined(separator: ", "))")
+                Text("缺少命令或可执行文件：\(self.missingBins.joined(separator: ", "))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
