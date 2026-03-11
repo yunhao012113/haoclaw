@@ -63,19 +63,9 @@ struct DesktopControlCenterSheet: View {
                     case .tools:
                         DesktopControlToolsPane(store: self.toolDeck)
                     case .skills:
-                        DesktopControlSectionShell(
-                            title: "技能库",
-                            description: "按运行状态查看技能，直接在桌面端启停、补环境变量和刷新能力目录。")
-                        {
-                            SkillsSettings(state: self.state)
-                        }
+                        DesktopControlSkillsPane()
                     case .channels:
-                        DesktopControlSectionShell(
-                            title: "渠道接入",
-                            description: "集中管理 IM 接入与消息渠道。这里保留 Haoclaw 自己的入口语义，不复刻外部产品的配置版式。")
-                        {
-                            ChannelsSettings()
-                        }
+                        DesktopControlChannelsPane()
                     case .automation:
                         DesktopControlSectionShell(
                             title: "自动任务",
@@ -326,6 +316,42 @@ private struct DesktopControlToolsPane: View {
         .sheet(item: self.$store.editingConnector) { connector in
             DesktopToolConnectorEditor(connector: connector) { result in
                 self.store.finishEditing(result)
+            }
+        }
+    }
+}
+
+private struct DesktopControlSkillsPane: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            DesktopControlCard(title: "技能库", subtitle: "技能状态、启停和依赖检查都保留在应用内，但先用更稳的入口卡片承接。") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("你可以在这里进入技能管理页，查看可用技能、缺失依赖和启停状态。")
+                        .foregroundStyle(.secondary)
+                    Button("打开技能管理") {
+                        SettingsTabRouter.request(.skills)
+                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+}
+
+private struct DesktopControlChannelsPane: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            DesktopControlCard(title: "渠道接入", subtitle: "消息渠道接入先通过独立管理页承接，后面再进一步并到统一运行台里。") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("这里可以管理飞书、Telegram、Slack 等外部渠道接入。")
+                        .foregroundStyle(.secondary)
+                    Button("打开渠道管理") {
+                        SettingsTabRouter.request(.channels)
+                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
         }
     }
