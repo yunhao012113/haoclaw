@@ -255,7 +255,7 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="brand-text">
               <div class="brand-title">HAOCLAW</div>
-              <div class="brand-sub">Desktop Run Center</div>
+              <div class="brand-sub">桌面运行台</div>
             </div>
           </div>
         </div>
@@ -322,13 +322,13 @@ export function renderApp(state: AppViewState) {
         ${
           availableUpdate
             ? html`<div class="update-banner callout danger" role="alert">
-              <strong>Update available:</strong> v${availableUpdate.latestVersion}
-              (running v${availableUpdate.currentVersion}).
+              <strong>发现新版本：</strong>v${availableUpdate.latestVersion}
+              （当前版本 v${availableUpdate.currentVersion}）。
               <button
                 class="btn btn--sm update-banner__btn"
                 ?disabled=${state.updateRunning || !state.connected}
                 @click=${() => runUpdate(state)}
-              >${state.updateRunning ? "Updating…" : "Update now"}</button>
+              >${state.updateRunning ? "升级中…" : "立即升级"}</button>
             </div>`
             : nothing
         }
