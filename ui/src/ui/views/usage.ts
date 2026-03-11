@@ -106,7 +106,7 @@ export function renderUsage(props: UsageProps) {
         <div class="row" style="justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
           <div style="flex: 1; min-width: 250px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 2px;">
-              <div class="card-title" style="margin: 0;">Token Usage</div>
+              <div class="card-title" style="margin: 0;">令牌用量</div>
               <span style="
                 display: inline-flex;
                 align-items: center;
@@ -125,14 +125,14 @@ export function renderUsage(props: UsageProps) {
                   border-radius: 50%;
                   animation: initial-spin 0.6s linear infinite;
                 "></span>
-                Loading
+                加载中
               </span>
             </div>
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
             <div style="display: flex; gap: 8px; align-items: center;">
               <input type="date" .value=${props.startDate} disabled style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; opacity: 0.6;" />
-              <span style="color: var(--muted);">to</span>
+              <span style="color: var(--muted);">至</span>
               <input type="date" .value=${props.endDate} disabled style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; opacity: 0.6;" />
             </div>
           </div>
@@ -334,7 +334,7 @@ export function renderUsage(props: UsageProps) {
           0
       : false);
   const datePresets = [
-    { label: "Today", days: 1 },
+    { label: "今天", days: 1 },
     { label: "7d", days: 7 },
     { label: "30d", days: 30 },
   ];
@@ -378,7 +378,7 @@ export function renderUsage(props: UsageProps) {
             selectedCount > 0
               ? html`<span class="usage-filter-badge">${selectedCount}</span>`
               : html`
-                  <span class="usage-filter-badge">All</span>
+                  <span class="usage-filter-badge">全部</span>
                 `
           }
         </summary>
@@ -393,7 +393,7 @@ export function renderUsage(props: UsageProps) {
               }}
               ?disabled=${allSelected}
             >
-              Select All
+              全选
             </button>
             <button
               class="btn btn-sm"
@@ -404,7 +404,7 @@ export function renderUsage(props: UsageProps) {
               }}
               ?disabled=${selectedCount === 0}
             >
-              Clear
+              清空
             </button>
           </div>
           <div class="usage-filter-options">
@@ -440,25 +440,25 @@ export function renderUsage(props: UsageProps) {
     <style>${usageStylesString}</style>
 
     <section class="usage-page-header">
-      <div class="usage-page-title">Usage</div>
-      <div class="usage-page-subtitle">See where tokens go, when sessions spike, and what drives cost.</div>
+      <div class="usage-page-title">用量分析</div>
+      <div class="usage-page-subtitle">查看令牌消耗流向、会话波峰以及成本来源。</div>
     </section>
 
     <section class="card usage-header ${props.headerPinned ? "pinned" : ""}">
       <div class="usage-header-row">
         <div class="usage-header-title">
-          <div class="card-title" style="margin: 0;">Filters</div>
+          <div class="card-title" style="margin: 0;">筛选条件</div>
           ${
             props.loading
               ? html`
-                  <span class="usage-refresh-indicator">Loading</span>
+                  <span class="usage-refresh-indicator">加载中</span>
                 `
               : nothing
           }
           ${
             isEmpty
               ? html`
-                  <span class="usage-query-hint">Select a date range and click Refresh to load usage.</span>
+                  <span class="usage-query-hint">选择日期范围后，点击刷新即可载入用量数据。</span>
                 `
               : nothing
           }
@@ -468,24 +468,24 @@ export function renderUsage(props: UsageProps) {
             displayTotals
               ? html`
                 <span class="usage-metric-badge">
-                  <strong>${formatTokens(displayTotals.totalTokens)}</strong> tokens
+                  <strong>${formatTokens(displayTotals.totalTokens)}</strong> 令牌
                 </span>
                 <span class="usage-metric-badge">
-                  <strong>${formatCost(displayTotals.totalCost)}</strong> cost
+                  <strong>${formatCost(displayTotals.totalCost)}</strong> 成本
                 </span>
                 <span class="usage-metric-badge">
                   <strong>${displaySessionCount}</strong>
-                  session${displaySessionCount !== 1 ? "s" : ""}
+                  个会话
                 </span>
               `
               : nothing
           }
           <button
             class="usage-pin-btn ${props.headerPinned ? "active" : ""}"
-            title=${props.headerPinned ? "Unpin filters" : "Pin filters"}
+            title=${props.headerPinned ? "取消固定筛选栏" : "固定筛选栏"}
             @click=${props.onToggleHeaderPinned}
           >
-            ${props.headerPinned ? "Pinned" : "Pin"}
+            ${props.headerPinned ? "已固定" : "固定"}
           </button>
           <details
             class="usage-export-menu"
@@ -504,7 +504,7 @@ export function renderUsage(props: UsageProps) {
               window.addEventListener("click", onClick, true);
             }}
           >
-            <summary class="usage-export-button">Export ▾</summary>
+            <summary class="usage-export-button">导出 ▾</summary>
             <div class="usage-export-popover">
               <div class="usage-export-list">
                 <button
@@ -517,7 +517,7 @@ export function renderUsage(props: UsageProps) {
                     )}
                   ?disabled=${filteredSessions.length === 0}
                 >
-                  Sessions CSV
+                  会话数据 CSV
                 </button>
                 <button
                   class="usage-export-item"
@@ -529,7 +529,7 @@ export function renderUsage(props: UsageProps) {
                     )}
                   ?disabled=${filteredDaily.length === 0}
                 >
-                  Daily CSV
+                  每日汇总 CSV
                 </button>
                 <button
                   class="usage-export-item"
@@ -581,23 +581,23 @@ export function renderUsage(props: UsageProps) {
           <input
             type="date"
             .value=${props.startDate}
-            title="Start Date"
+            title="开始日期"
             @change=${(e: Event) => props.onStartDateChange((e.target as HTMLInputElement).value)}
           />
-          <span style="color: var(--muted);">to</span>
+          <span style="color: var(--muted);">至</span>
           <input
             type="date"
             .value=${props.endDate}
-            title="End Date"
+            title="结束日期"
             @change=${(e: Event) => props.onEndDateChange((e.target as HTMLInputElement).value)}
           />
           <select
-            title="Time zone"
+            title="时区"
             .value=${props.timeZone}
             @change=${(e: Event) =>
               props.onTimeZoneChange((e.target as HTMLSelectElement).value as "local" | "utc")}
           >
-            <option value="local">Local</option>
+            <option value="local">本地时间</option>
             <option value="utc">UTC</option>
           </select>
           <div class="chart-toggle">
@@ -605,13 +605,13 @@ export function renderUsage(props: UsageProps) {
               class="toggle-btn ${isTokenMode ? "active" : ""}"
               @click=${() => props.onChartModeChange("tokens")}
             >
-              Tokens
+              令牌
             </button>
             <button
               class="toggle-btn ${!isTokenMode ? "active" : ""}"
               @click=${() => props.onChartModeChange("cost")}
             >
-              Cost
+              成本
             </button>
           </div>
           <button
@@ -619,7 +619,7 @@ export function renderUsage(props: UsageProps) {
             @click=${props.onRefresh}
             ?disabled=${props.loading}
           >
-            Refresh
+            刷新
           </button>
         </div>
         
@@ -631,7 +631,7 @@ export function renderUsage(props: UsageProps) {
             class="usage-query-input"
             type="text"
             .value=${props.queryDraft}
-            placeholder="Filter sessions (e.g. key:agent:main:cron* model:gpt-4o has:errors minTokens:2000)"
+            placeholder="筛选会话（例如 key:agent:main:cron* model:gpt-4o has:errors minTokens:2000）"
             @input=${(e: Event) => props.onQueryDraftChange((e.target as HTMLInputElement).value)}
             @keydown=${(e: KeyboardEvent) => {
               if (e.key === "Enter") {
@@ -646,30 +646,30 @@ export function renderUsage(props: UsageProps) {
               @click=${props.onApplyQuery}
               ?disabled=${props.loading || (!hasDraftQuery && !hasQuery)}
             >
-              Filter (client-side)
+              本地筛选
             </button>
             ${
               hasDraftQuery || hasQuery
-                ? html`<button class="btn btn-sm usage-action-btn usage-secondary-btn" @click=${props.onClearQuery}>Clear</button>`
+                ? html`<button class="btn btn-sm usage-action-btn usage-secondary-btn" @click=${props.onClearQuery}>清空</button>`
                 : nothing
             }
             <span class="usage-query-hint">
               ${
                 hasQuery
-                  ? `${filteredSessions.length} of ${totalSessions} sessions match`
-                  : `${totalSessions} sessions in range`
+                  ? `匹配 ${filteredSessions.length} / ${totalSessions} 个会话`
+                  : `当前范围内共 ${totalSessions} 个会话`
               }
             </span>
           </div>
         </div>
         <div class="usage-filter-row">
-          ${renderFilterSelect("agent", "Agent", agentOptions)}
-          ${renderFilterSelect("channel", "Channel", channelOptions)}
-          ${renderFilterSelect("provider", "Provider", providerOptions)}
-          ${renderFilterSelect("model", "Model", modelOptions)}
-          ${renderFilterSelect("tool", "Tool", toolOptions)}
+          ${renderFilterSelect("agent", "代理", agentOptions)}
+          ${renderFilterSelect("channel", "渠道", channelOptions)}
+          ${renderFilterSelect("provider", "服务商", providerOptions)}
+          ${renderFilterSelect("model", "模型", modelOptions)}
+          ${renderFilterSelect("tool", "工具", toolOptions)}
           <span class="usage-query-hint">
-            Tip: use filters or click bars to filter days.
+            提示：可以用筛选器，或直接点击图表柱子按天过滤。
           </span>
         </div>
         ${
@@ -682,7 +682,7 @@ export function renderUsage(props: UsageProps) {
                       <span class="usage-query-chip">
                         ${label}
                         <button
-                          title="Remove filter"
+                          title="移除此筛选"
                           @click=${() =>
                             props.onQueryDraftChange(removeQueryToken(props.queryDraft, label))}
                         >
@@ -737,7 +737,7 @@ export function renderUsage(props: UsageProps) {
         props.sessionsLimitReached
           ? html`
               <div class="callout warning" style="margin-top: 12px">
-                Showing first 1,000 sessions. Narrow date range for complete results.
+                当前仅显示前 1,000 个会话。缩小日期范围可查看完整结果。
               </div>
             `
           : nothing
