@@ -858,6 +858,7 @@ final class DesktopClientModel {
 }
 
 struct DesktopClientRootView: View {
+    @Environment(\.openWindow) private var openWindow
     @Bindable var state: AppState
     let updater: UpdaterProviding?
     @State private var chatViewModel: HaoclawChatViewModel
@@ -888,6 +889,7 @@ struct DesktopClientRootView: View {
             DesktopControlCenterSheet(state: self.state, model: self.model, updater: self.updater)
         }
         .onAppear {
+            DesktopWindowOpener.shared.register(openWindow: self.openWindow)
             self.model.start()
         }
     }
