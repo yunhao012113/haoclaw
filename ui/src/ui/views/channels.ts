@@ -70,10 +70,10 @@ export function renderChannels(props: ChannelsProps) {
     <section class="card" style="margin-top: 18px;">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Channel health</div>
-          <div class="card-sub">Channel status snapshots from the gateway.</div>
+          <div class="card-title">渠道状态快照</div>
+          <div class="card-sub">查看网关返回的渠道运行状态和配置结果。</div>
         </div>
-        <div class="muted">${props.lastSuccessAt ? formatRelativeTimestamp(props.lastSuccessAt) : "n/a"}</div>
+        <div class="muted">${props.lastSuccessAt ? formatRelativeTimestamp(props.lastSuccessAt) : "暂无"}</div>
       </div>
       ${
         props.lastError
@@ -83,7 +83,7 @@ export function renderChannels(props: ChannelsProps) {
           : nothing
       }
       <pre class="code-block" style="margin-top: 12px;">
-${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : "No snapshot yet."}
+${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : "当前还没有状态快照。"}
       </pre>
     </section>
   `;
@@ -96,7 +96,17 @@ function resolveChannelOrder(snapshot: ChannelsStatusSnapshot | null): ChannelKe
   if (snapshot?.channelOrder?.length) {
     return snapshot.channelOrder;
   }
-  return ["whatsapp", "telegram", "discord", "googlechat", "slack", "signal", "imessage", "nostr"];
+  return [
+    "feishu",
+    "telegram",
+    "whatsapp",
+    "slack",
+    "discord",
+    "signal",
+    "imessage",
+    "googlechat",
+    "nostr",
+  ];
 }
 
 function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChannelData) {
@@ -194,7 +204,7 @@ function renderGenericChannelCard(
   return html`
     <div class="card">
       <div class="card-title">${label}</div>
-      <div class="card-sub">Channel status and configuration.</div>
+      <div class="card-sub">查看渠道状态并直接填写接入配置。</div>
       ${accountCountLabel}
 
       ${
@@ -207,16 +217,16 @@ function renderGenericChannelCard(
           : html`
             <div class="status-list" style="margin-top: 16px;">
               <div>
-                <span class="label">Configured</span>
-                <span>${configured == null ? "n/a" : configured ? "Yes" : "No"}</span>
+                <span class="label">配置</span>
+                <span>${configured == null ? "待检测" : configured ? "已配置" : "未配置"}</span>
               </div>
               <div>
-                <span class="label">Running</span>
-                <span>${running == null ? "n/a" : running ? "Yes" : "No"}</span>
+                <span class="label">运行</span>
+                <span>${running == null ? "待检测" : running ? "运行中" : "未运行"}</span>
               </div>
               <div>
-                <span class="label">Connected</span>
-                <span>${connected == null ? "n/a" : connected ? "Yes" : "No"}</span>
+                <span class="label">连接</span>
+                <span>${connected == null ? "待检测" : connected ? "已连接" : "未连接"}</span>
               </div>
             </div>
           `
@@ -246,7 +256,34 @@ function resolveChannelMetaMap(
 
 function resolveChannelLabel(snapshot: ChannelsStatusSnapshot | null, key: string): string {
   const meta = resolveChannelMetaMap(snapshot)[key];
-  return meta?.label ?? snapshot?.channelLabels?.[key] ?? key;
+  if (meta?.label) {
+    return meta.label;
+  }
+  if (snapshot?.channelLabels?.[key]) {
+    return snapshot.channelLabels[key];
+  }
+  switch (key) {
+    case "feishu":
+      return "飞书";
+    case "telegram":
+      return "Telegram";
+    case "whatsapp":
+      return "WhatsApp";
+    case "slack":
+      return "Slack";
+    case "discord":
+      return "Discord";
+    case "signal":
+      return "Signal";
+    case "imessage":
+      return "iMessage";
+    case "googlechat":
+      return "Google Chat";
+    case "nostr":
+      return "Nostr";
+    default:
+      return key;
+  }
 }
 
 const RECENT_ACTIVITY_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
@@ -258,29 +295,31 @@ function hasRecentActivity(account: ChannelAccountSnapshot): boolean {
   return Date.now() - account.lastInboundAt < RECENT_ACTIVITY_THRESHOLD_MS;
 }
 
-function deriveRunningStatus(account: ChannelAccountSnapshot): "Yes" | "No" | "Active" {
+function deriveRunningStatus(account: ChannelAccountSnapshot): "运行中" | "未运行" | "活跃" {
   if (account.running) {
-    return "Yes";
+    return "运行中";
   }
   // If we have recent inbound activity, the channel is effectively running
   if (hasRecentActivity(account)) {
-    return "Active";
+    return "活跃";
   }
-  return "No";
+  return "未运行";
 }
 
-function deriveConnectedStatus(account: ChannelAccountSnapshot): "Yes" | "No" | "Active" | "n/a" {
+function deriveConnectedStatus(
+  account: ChannelAccountSnapshot,
+): "已连接" | "未连接" | "活跃" | "待检测" {
   if (account.connected === true) {
-    return "Yes";
+    return "已连接";
   }
   if (account.connected === false) {
-    return "No";
+    return "未连接";
   }
   // If connected is null/undefined but we have recent activity, show as active
   if (hasRecentActivity(account)) {
-    return "Active";
+    return "活跃";
   }
-  return "n/a";
+  return "待检测";
 }
 
 function renderGenericAccount(account: ChannelAccountSnapshot) {
@@ -295,20 +334,20 @@ function renderGenericAccount(account: ChannelAccountSnapshot) {
       </div>
       <div class="status-list account-card-status">
         <div>
-          <span class="label">Running</span>
+          <span class="label">运行</span>
           <span>${runningStatus}</span>
         </div>
         <div>
-          <span class="label">Configured</span>
-          <span>${account.configured ? "Yes" : "No"}</span>
+          <span class="label">配置</span>
+          <span>${account.configured ? "已配置" : "未配置"}</span>
         </div>
         <div>
-          <span class="label">Connected</span>
+          <span class="label">连接</span>
           <span>${connectedStatus}</span>
         </div>
         <div>
-          <span class="label">Last inbound</span>
-          <span>${account.lastInboundAt ? formatRelativeTimestamp(account.lastInboundAt) : "n/a"}</span>
+          <span class="label">最近消息</span>
+          <span>${account.lastInboundAt ? formatRelativeTimestamp(account.lastInboundAt) : "暂无"}</span>
         </div>
         ${
           account.lastError
