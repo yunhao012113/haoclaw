@@ -62,12 +62,12 @@ Haoclaw 的目标就是把这些路径压平：
 
 - `https://yunhao012113.github.io/haoclaw/`
 
-| 平台         | 方式           | 入口                                                                                                            |
-| ------------ | -------------- | --------------------------------------------------------------------------------------------------------------- |
-| macOS        | `PKG` 一键安装 | [直接下载 PKG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.pkg)       |
-| macOS        | `DMG` 拖拽安装 | [直接下载 DMG](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.dmg)       |
-| Windows      | `EXE` 一键安装 | [直接下载 EXE](https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.21/Haoclaw-2026.3.9-setup.exe) |
-| Linux / WSL2 | 命令行部署     | [查看部署方式](#github-一键安装部署)                                                                            |
+| 平台         | 方式           | 入口                                                    |
+| ------------ | -------------- | ------------------------------------------------------- |
+| macOS        | `PKG` 一键安装 | [官网下载安装](https://yunhao012113.github.io/haoclaw/) |
+| macOS        | `DMG` 拖拽安装 | [官网下载安装](https://yunhao012113.github.io/haoclaw/) |
+| Windows      | `EXE` 一键安装 | [官网下载安装](https://yunhao012113.github.io/haoclaw/) |
+| Linux / WSL2 | 命令行部署     | [查看部署方式](#github-一键安装部署)                    |
 
 完整下载说明见 [DOWNLOADS.md](./DOWNLOADS.md)。
 

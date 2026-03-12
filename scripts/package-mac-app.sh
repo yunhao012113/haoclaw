@@ -242,6 +242,10 @@ else
   echo "WARN: model catalog missing at $MODEL_CATALOG_SRC (continuing)" >&2
 fi
 
+echo "📦 Copying bundled skills"
+rm -rf "$APP_ROOT/Contents/Resources/skills"
+cp -R "$ROOT_DIR/skills" "$APP_ROOT/Contents/Resources/skills"
+
 echo "📦 Copying HaoclawKit resources"
 HAOCLAWKIT_BUNDLE="$(build_path_for_arch "$PRIMARY_ARCH")/$BUILD_CONFIG/HaoclawKit_HaoclawKit.bundle"
 if [ -d "$HAOCLAWKIT_BUNDLE" ]; then
@@ -270,12 +274,7 @@ if [ -n "$TEXTUAL_BUNDLE" ] && [ -d "$TEXTUAL_BUNDLE" ]; then
   rm -rf "$APP_ROOT/Contents/Resources/$(basename "$TEXTUAL_BUNDLE")"
   cp -R "$TEXTUAL_BUNDLE" "$APP_ROOT/Contents/Resources/"
 else
-  if [[ "${ALLOW_MISSING_TEXTUAL_BUNDLE:-0}" == "1" ]]; then
-    echo "WARN: Textual resource bundle not found (continuing due to ALLOW_MISSING_TEXTUAL_BUNDLE=1)" >&2
-  else
-    echo "ERROR: Textual resource bundle not found. Set ALLOW_MISSING_TEXTUAL_BUNDLE=1 to bypass." >&2
-    exit 1
-  fi
+  echo "INFO: Textual resource bundle not present; skipping copy" >&2
 fi
 
 echo "⏹  Stopping any running Haoclaw"

@@ -126,7 +126,7 @@ extension CronJobEditor {
             throw NSError(
                 domain: "Cron",
                 code: 0,
-                userInfo: [NSLocalizedDescriptionKey: "Name is required."])
+                userInfo: [NSLocalizedDescriptionKey: "任务名称不能为空。"])
         }
         return name
     }
@@ -140,7 +140,7 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid every duration (use 10m, 1h, 1d)."])
+                    userInfo: [NSLocalizedDescriptionKey: "间隔格式无效，请使用 10m、1h、1d 这类写法。"])
             }
             return ["kind": "every", "everyMs": ms]
         case .cron:
@@ -149,7 +149,7 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "Cron expression is required."])
+                    userInfo: [NSLocalizedDescriptionKey: "定时表达式不能为空。"])
             }
             let tz = self.trimmed(self.cronTz)
             if tz.isEmpty {
@@ -177,7 +177,7 @@ extension CronJobEditor {
                 code: 0,
                 userInfo: [
                     NSLocalizedDescriptionKey:
-                        "Main session jobs require systemEvent payloads (switch Session target to isolated).",
+                        "主会话任务只能使用系统事件内容。如需执行代理回合，请切换到独立会话。",
                 ])
         }
 
@@ -185,7 +185,7 @@ extension CronJobEditor {
             throw NSError(
                 domain: "Cron",
                 code: 0,
-                userInfo: [NSLocalizedDescriptionKey: "Isolated jobs require agentTurn payloads."])
+                userInfo: [NSLocalizedDescriptionKey: "独立会话任务必须使用代理回合内容。"])
         }
     }
 
@@ -195,7 +195,7 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "System event text is required."])
+                    userInfo: [NSLocalizedDescriptionKey: "系统事件内容不能为空。"])
             }
         }
         if payload["kind"] as? String == "agentTurn" {
@@ -203,7 +203,7 @@ extension CronJobEditor {
                 throw NSError(
                     domain: "Cron",
                     code: 0,
-                    userInfo: [NSLocalizedDescriptionKey: "Agent message is required."])
+                    userInfo: [NSLocalizedDescriptionKey: "代理任务内容不能为空。"])
             }
         }
     }

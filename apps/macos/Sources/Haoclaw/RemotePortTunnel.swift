@@ -8,7 +8,7 @@ import Darwin
 /// Port forwarding tunnel for remote mode.
 ///
 /// Uses `ssh -N -L` to forward the remote gateway ports to localhost.
-final class RemotePortTunnel {
+final class RemotePortTunnel: @unchecked Sendable {
     private static let logger = Logger(subsystem: "ai.haoclaw", category: "remote.tunnel")
 
     let process: Process
@@ -62,13 +62,11 @@ final class RemotePortTunnel {
             : nil
         let resolvedRemotePort = remotePortOverride ?? remotePort
         if let override = remotePortOverride {
-            Self.logger.info(
-                "ssh tunnel remote port override " +
-                    "host=\(sshHost, privacy: .public) port=\(override, privacy: .public)")
+            let message = "ssh tunnel remote port override host=\(sshHost) port=\(override)"
+            Self.logger.info("\(message, privacy: .public)")
         } else {
-            Self.logger.debug(
-                "ssh tunnel using default remote port " +
-                    "host=\(sshHost, privacy: .public) port=\(remotePort, privacy: .public)")
+            let message = "ssh tunnel using default remote port host=\(sshHost) port=\(remotePort)"
+            Self.logger.debug("\(message, privacy: .public)")
         }
         let options: [String] = [
             "-o", "BatchMode=yes",

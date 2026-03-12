@@ -476,11 +476,68 @@ private struct EnvEditorView: View {
 @MainActor
 @Observable
 final class SkillsSettingsModel {
+    private static let bundledSkillKeys = [
+        "1password",
+        "agent-browser",
+        "apple-notes",
+        "apple-reminders",
+        "bear-notes",
+        "blogwatcher",
+        "blucli",
+        "bluebubbles",
+        "camsnap",
+        "canvas",
+        "clawhub",
+        "coding-agent",
+        "discord",
+        "eightctl",
+        "gemini",
+        "gh-issues",
+        "gifgrep",
+        "github",
+        "gog",
+        "goplaces",
+        "healthcheck",
+        "himalaya",
+        "imsg",
+        "mcporter",
+        "model-usage",
+        "nano-banana-pro",
+        "nano-pdf",
+        "notion",
+        "obsidian",
+        "openai-image-gen",
+        "openai-whisper",
+        "openai-whisper-api",
+        "openhue",
+        "oracle",
+        "ordercli",
+        "peekaboo",
+        "sag",
+        "session-logs",
+        "sherpa-onnx-tts",
+        "skill-creator",
+        "slack",
+        "songsee",
+        "sonoscli",
+        "spotify-player",
+        "summarize",
+        "things-mac",
+        "tmux",
+        "trello",
+        "video-frames",
+        "voice-call",
+        "wacli",
+        "weather",
+        "xurl",
+    ]
+
     var skills: [SkillStatus] = []
     var isLoading = false
     var error: String?
     var statusMessage: String?
     private var busySkills: Set<String> = []
+    private var hasRetriedAfterEmpty = false
 
     func isBusy(skill: SkillStatus) -> Bool {
         self.busySkills.contains(skill.skillKey)
@@ -490,11 +547,43 @@ final class SkillsSettingsModel {
         guard !self.isLoading else { return }
         self.isLoading = true
         self.error = nil
+        self.seedManagedSkillsFromBundleIfNeeded()
         do {
             let report = try await GatewayConnection.shared.skillsStatus()
             self.skills = report.skills.sorted { $0.name < $1.name }
+            if self.skills.isEmpty {
+                let fallback = self.loadLocalFallbackSkills()
+                if !fallback.isEmpty {
+                    self.skills = fallback
+                    self.statusMessage = "网关尚未返回技能，已显示本地预装 \(fallback.count) 个技能。"
+                    self.hasRetriedAfterEmpty = false
+                    self.isLoading = false
+                    return
+                }
+            }
+            if self.skills.isEmpty, !self.hasRetriedAfterEmpty {
+                self.hasRetriedAfterEmpty = true
+                self.statusMessage = "正在初始化预装技能，请稍后刷新。"
+                self.isLoading = false
+                try? await Task.sleep(nanoseconds: 900_000_000)
+                await self.refresh()
+                return
+            }
+            self.hasRetriedAfterEmpty = false
+            if self.skills.isEmpty {
+                self.statusMessage = "还没有读取到技能，请先确认网关已经在本地模式启动。"
+            } else {
+                self.statusMessage = "已加载 \(self.skills.count) 个技能。"
+            }
         } catch {
-            self.error = error.localizedDescription
+            let fallback = self.loadLocalFallbackSkills()
+            if !fallback.isEmpty {
+                self.skills = fallback
+                self.error = nil
+                self.statusMessage = "网关未连接，已展示本地预装 \(fallback.count) 个技能。"
+            } else {
+                self.error = error.localizedDescription
+            }
         }
         self.isLoading = false
     }
@@ -557,6 +646,267 @@ final class SkillsSettingsModel {
         self.busySkills.insert(id)
         defer { self.busySkills.remove(id) }
         await work()
+    }
+
+    private func seedManagedSkillsFromBundleIfNeeded() {
+        let fileManager = FileManager.default
+        let managedDir = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent(".haoclaw/skills", isDirectory: true)
+        try? fileManager.createDirectory(at: managedDir, withIntermediateDirectories: true)
+
+        guard let bundledDir = self.resolveBundledSkillsDirectory() else { return }
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: bundledDir,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]) else
+        {
+            return
+        }
+
+        for source in entries {
+            let values = try? source.resourceValues(forKeys: [.isDirectoryKey])
+            guard values?.isDirectory == true else { continue }
+            let sourceSkill = source.appendingPathComponent("SKILL.md")
+            guard fileManager.fileExists(atPath: sourceSkill.path) else { continue }
+            let target = managedDir.appendingPathComponent(source.lastPathComponent, isDirectory: true)
+            let targetSkill = target.appendingPathComponent("SKILL.md")
+            guard !fileManager.fileExists(atPath: targetSkill.path) else { continue }
+            do {
+                try self.copyDirectory(from: source, to: target)
+            } catch {
+                continue
+            }
+        }
+    }
+
+    private func loadLocalFallbackSkills() -> [SkillStatus] {
+        var byKey: [String: SkillStatus] = [:]
+        for source in self.skillRoots() {
+            let entries = self.scanSkills(root: source.url, source: source.kind)
+            for item in entries where byKey[item.skillKey] == nil {
+                byKey[item.skillKey] = item
+            }
+        }
+        if byKey.isEmpty {
+            return self.builtInFallbackSkills()
+        }
+        return byKey.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private func builtInFallbackSkills() -> [SkillStatus] {
+        let managedDir = self.managedSkillsDirectory()
+        return Self.bundledSkillKeys.map { key in
+            let skillDir = managedDir.appendingPathComponent(key, isDirectory: true)
+            let skillFile = skillDir.appendingPathComponent("SKILL.md")
+            return SkillStatus(
+                name: key,
+                description: "Haoclaw 预装技能",
+                source: "haoclaw-bundled",
+                filePath: skillFile.path,
+                baseDir: managedDir.path,
+                skillKey: key,
+                primaryEnv: nil,
+                emoji: nil,
+                homepage: nil,
+                always: false,
+                disabled: false,
+                eligible: true,
+                requirements: SkillRequirements(bins: [], env: [], config: []),
+                missing: SkillMissing(bins: [], env: [], config: []),
+                configChecks: [],
+                install: [])
+        }
+    }
+
+    private func skillRoots() -> [(url: URL, kind: String)] {
+        let fileManager = FileManager.default
+        var roots: [(URL, String)] = []
+
+        let managed = self.managedSkillsDirectory()
+        roots.append((managed, "haoclaw-managed"))
+
+        if let bundled = self.resolveBundledSkillsDirectory() {
+            roots.append((bundled, "haoclaw-bundled"))
+        }
+
+        let execDir = URL(fileURLWithPath: Bundle.main.executablePath ?? "")
+            .deletingLastPathComponent()
+        let cwd = URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
+        let devCandidates = [
+            execDir.appendingPathComponent("skills", isDirectory: true),
+            execDir.appendingPathComponent("../skills", isDirectory: true).standardizedFileURL,
+            execDir.appendingPathComponent("../../skills", isDirectory: true).standardizedFileURL,
+            execDir.appendingPathComponent("../../../skills", isDirectory: true).standardizedFileURL,
+            cwd.appendingPathComponent("skills", isDirectory: true),
+        ]
+        for candidate in devCandidates where fileManager.fileExists(atPath: candidate.path) {
+            roots.append((candidate, "haoclaw-bundled"))
+        }
+
+        var unique: [(URL, String)] = []
+        var seen = Set<String>()
+        for root in roots {
+            let key = root.0.standardizedFileURL.path
+            if seen.contains(key) {
+                continue
+            }
+            seen.insert(key)
+            unique.append(root)
+        }
+        return unique
+    }
+
+    private func managedSkillsDirectory() -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".haoclaw/skills", isDirectory: true)
+    }
+
+    private func resolveBundledSkillsDirectory() -> URL? {
+        let fileManager = FileManager.default
+        if let resources = Bundle.main.resourceURL {
+            let candidate = resources.appendingPathComponent("skills", isDirectory: true)
+            if fileManager.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        let bundleResources = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Resources", isDirectory: true)
+            .standardizedFileURL
+        let bundledCandidate = bundleResources.appendingPathComponent("skills", isDirectory: true)
+        if fileManager.fileExists(atPath: bundledCandidate.path) {
+            return bundledCandidate
+        }
+
+        let execDir = URL(fileURLWithPath: Bundle.main.executablePath ?? "")
+            .deletingLastPathComponent()
+        let cwd = URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
+        let candidates = [
+            execDir.appendingPathComponent("skills", isDirectory: true),
+            execDir.appendingPathComponent("../Resources/skills", isDirectory: true).standardizedFileURL,
+            execDir.appendingPathComponent("../../Resources/skills", isDirectory: true).standardizedFileURL,
+            execDir.appendingPathComponent("../../../skills", isDirectory: true).standardizedFileURL,
+            cwd.appendingPathComponent("skills", isDirectory: true),
+        ]
+        for candidate in candidates where fileManager.fileExists(atPath: candidate.path) {
+            return candidate
+        }
+        return nil
+    }
+
+    private func copyDirectory(from source: URL, to target: URL) throws {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: target, withIntermediateDirectories: true)
+        let entries = try fileManager.contentsOfDirectory(
+            at: source,
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+            options: [.skipsHiddenFiles])
+        for entry in entries {
+            let destination = target.appendingPathComponent(entry.lastPathComponent, isDirectory: false)
+            let values = try entry.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            if values.isDirectory == true {
+                try self.copyDirectory(from: entry, to: destination)
+                continue
+            }
+            if values.isSymbolicLink == true {
+                let linkTarget = try fileManager.destinationOfSymbolicLink(atPath: entry.path)
+                if fileManager.fileExists(atPath: destination.path) {
+                    try? fileManager.removeItem(at: destination)
+                }
+                try fileManager.createSymbolicLink(atPath: destination.path, withDestinationPath: linkTarget)
+                continue
+            }
+            if fileManager.fileExists(atPath: destination.path) {
+                try? fileManager.removeItem(at: destination)
+            }
+            try fileManager.copyItem(at: entry, to: destination)
+        }
+    }
+
+    private func scanSkills(root: URL, source: String) -> [SkillStatus] {
+        let fileManager = FileManager.default
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]) else
+        {
+            return []
+        }
+
+        var result: [SkillStatus] = []
+        for entry in entries {
+            let values = try? entry.resourceValues(forKeys: [.isDirectoryKey])
+            guard values?.isDirectory == true else { continue }
+            let skillFile = entry.appendingPathComponent("SKILL.md")
+            guard fileManager.fileExists(atPath: skillFile.path) else { continue }
+            let key = entry.lastPathComponent
+            let description = self.skillDescription(from: skillFile) ?? "内置技能"
+            let emoji = self.skillEmoji(from: skillFile)
+            result.append(
+                SkillStatus(
+                    name: key,
+                    description: description,
+                    source: source,
+                    filePath: skillFile.path,
+                    baseDir: root.path,
+                    skillKey: key,
+                    primaryEnv: nil,
+                    emoji: emoji,
+                    homepage: nil,
+                    always: false,
+                    disabled: false,
+                    eligible: true,
+                    requirements: SkillRequirements(bins: [], env: [], config: []),
+                    missing: SkillMissing(bins: [], env: [], config: []),
+                    configChecks: [],
+                    install: []))
+        }
+        return result
+    }
+
+    private func skillDescription(from skillFile: URL) -> String? {
+        guard let text = try? String(contentsOf: skillFile, encoding: .utf8) else { return nil }
+        let lines = text.components(separatedBy: .newlines)
+        var insideFrontMatter = false
+        var frontMatterSeen = false
+        for raw in lines {
+            let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line == "---" {
+                if !frontMatterSeen {
+                    frontMatterSeen = true
+                    insideFrontMatter = true
+                    continue
+                }
+                if insideFrontMatter {
+                    insideFrontMatter = false
+                    continue
+                }
+            }
+            if insideFrontMatter || line.isEmpty || line.hasPrefix("#") || line.hasPrefix("-") {
+                continue
+            }
+            if line.lowercased().hasPrefix("description:") {
+                let value = line.dropFirst("description:".count).trimmingCharacters(in: .whitespaces)
+                if !value.isEmpty {
+                    return value
+                }
+                continue
+            }
+            return line
+        }
+        return nil
+    }
+
+    private func skillEmoji(from skillFile: URL) -> String? {
+        guard let text = try? String(contentsOf: skillFile, encoding: .utf8) else { return nil }
+        let lines = text.components(separatedBy: .newlines)
+        for raw in lines {
+            let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.lowercased().hasPrefix("emoji:") {
+                let value = line.dropFirst("emoji:".count).trimmingCharacters(in: .whitespaces)
+                return value.isEmpty ? nil : value
+            }
+        }
+        return nil
     }
 }
 

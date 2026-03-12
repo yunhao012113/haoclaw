@@ -4,12 +4,157 @@ const os = require("node:os");
 const { pipeline } = require("node:stream/promises");
 const { Readable } = require("node:stream");
 const { spawn } = require("node:child_process");
-const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, shell, ipcMain } = require("electron");
 
 const PRODUCT_NAME = "Haoclaw";
 const RELEASES_API = "https://api.github.com/repos/yunhao012113/haoclaw/releases/latest";
 const RELEASES_PAGE = "https://github.com/yunhao012113/haoclaw/releases/latest";
 let updateCheckRunning = false;
+const FALLBACK_SKILL_KEYS = [
+  "1password",
+  "agent-browser",
+  "apple-notes",
+  "apple-reminders",
+  "bear-notes",
+  "blogwatcher",
+  "blucli",
+  "bluebubbles",
+  "camsnap",
+  "canvas",
+  "clawhub",
+  "coding-agent",
+  "discord",
+  "eightctl",
+  "gemini",
+  "gh-issues",
+  "gifgrep",
+  "github",
+  "gog",
+  "goplaces",
+  "healthcheck",
+  "himalaya",
+  "imsg",
+  "mcporter",
+  "model-usage",
+  "nano-banana-pro",
+  "nano-pdf",
+  "notion",
+  "obsidian",
+  "openai-image-gen",
+  "openai-whisper",
+  "openai-whisper-api",
+  "openhue",
+  "oracle",
+  "ordercli",
+  "peekaboo",
+  "sag",
+  "session-logs",
+  "sherpa-onnx-tts",
+  "skill-creator",
+  "slack",
+  "songsee",
+  "sonoscli",
+  "spotify-player",
+  "summarize",
+  "things-mac",
+  "tmux",
+  "trello",
+  "video-frames",
+  "voice-call",
+  "wacli",
+  "weather",
+  "xurl",
+];
+
+function parseSkillDescription(skillMarkdown) {
+  const lines = String(skillMarkdown || "").split(/\r?\n/);
+  let inFrontMatter = false;
+  let frontMatterSeen = false;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line === "---") {
+      if (!frontMatterSeen) {
+        frontMatterSeen = true;
+        inFrontMatter = true;
+        continue;
+      }
+      if (inFrontMatter) {
+        inFrontMatter = false;
+        continue;
+      }
+    }
+    if (!line || line.startsWith("#") || line.startsWith("-")) {
+      continue;
+    }
+    if (line.toLowerCase().startsWith("description:")) {
+      const value = line.slice("description:".length).trim();
+      if (value) {
+        return value;
+      }
+      continue;
+    }
+    return line;
+  }
+  return "内置技能";
+}
+
+function resolveBundledSkillsDirs() {
+  const managedSkillsDir = path.join(os.homedir(), ".haoclaw", "skills");
+  const dirs = app.isPackaged
+    ? [managedSkillsDir, path.join(process.resourcesPath, "skills")]
+    : [
+        managedSkillsDir,
+        path.resolve(__dirname, "..", "..", "skills"),
+        path.join(process.resourcesPath, "skills"),
+      ];
+  return dirs.filter((dir, index) => dirs.indexOf(dir) === index && fs.existsSync(dir));
+}
+
+function listBundledSkills() {
+  const skills = [];
+  const seen = new Set();
+  for (const root of resolveBundledSkillsDirs()) {
+    const entries = fs.readdirSync(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) {
+        continue;
+      }
+      const key = entry.name.trim();
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      const skillFile = path.join(root, entry.name, "SKILL.md");
+      if (!fs.existsSync(skillFile)) {
+        continue;
+      }
+      const markdown = fs.readFileSync(skillFile, "utf8");
+      skills.push({
+        name: key,
+        skillKey: key,
+        description: parseSkillDescription(markdown),
+        source: "haoclaw-bundled",
+        filePath: skillFile,
+        baseDir: root,
+      });
+      seen.add(key);
+    }
+  }
+  if (skills.length === 0) {
+    const managedRoot = path.join(os.homedir(), ".haoclaw", "skills");
+    for (const key of FALLBACK_SKILL_KEYS) {
+      skills.push({
+        name: key,
+        skillKey: key,
+        description: "Haoclaw 预装技能",
+        source: "haoclaw-bundled",
+        filePath: path.join(managedRoot, key, "SKILL.md"),
+        baseDir: managedRoot,
+      });
+    }
+  }
+  skills.sort((a, b) => a.name.localeCompare(b.name));
+  return skills;
+}
 
 function normalizeVersion(raw) {
   return String(raw || "").replace(/^[vV]/, "").trim();
@@ -257,6 +402,7 @@ function buildApplicationMenu() {
 }
 
 void app.whenReady().then(() => {
+  ipcMain.handle("haoclaw:list-bundled-skills", () => listBundledSkills());
   buildApplicationMenu();
   createMainWindow();
   void checkForUpdates({ manual: false });

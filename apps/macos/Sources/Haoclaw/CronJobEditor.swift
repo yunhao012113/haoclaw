@@ -12,17 +12,17 @@ struct CronJobEditor: View {
 
     let labelColumnWidth: CGFloat = 160
     static let introText =
-        "Create a schedule that wakes Haoclaw via the Gateway. "
-            + "Use an isolated session for agent turns so your main chat stays clean."
+        "创建一个通过网关唤醒 Haoclaw 的自动任务。"
+            + "如果希望和主对话分开执行，建议使用独立会话。"
     static let sessionTargetNote =
-        "Main jobs post a system event into the current main session. "
-            + "Isolated jobs run Haoclaw in a dedicated session and can announce results to a channel."
+        "主会话任务会把系统事件写入当前主对话。"
+            + "独立会话任务会在单独会话中运行，并可把结果通知到指定渠道。"
     static let scheduleKindNote =
-        "“At” runs once, “Every” repeats with a duration, “Cron” uses a 5-field Unix expression."
+        "“单次”只运行一次，“间隔”按时长重复，“表达式”使用 5 位定时表达式。"
     static let isolatedPayloadNote =
-        "Isolated jobs always run an agent turn. Announce sends a short summary to a channel."
+        "独立会话任务始终执行一次代理回合。通知模式会把摘要发送到指定渠道。"
     static let mainPayloadNote =
-        "System events are injected into the current main session. Agent turns require an isolated session target."
+        "系统事件会注入当前主会话。若要执行代理回合，请切换到独立会话。"
 
     @State var name: String = ""
     @State var description: String = ""
@@ -69,14 +69,14 @@ struct CronJobEditor: View {
     }
 
     func channelLabel(for id: String) -> String {
-        if id == "last" { return "last" }
+        if id == "last" { return "最近一次渠道" }
         return self.channelsStore.resolveChannelLabel(id)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(self.job == nil ? "New cron job" : "Edit cron job")
+                Text(self.job == nil ? "新建自动任务" : "编辑自动任务")
                     .font(.title3.weight(.semibold))
                 Text(Self.introText)
                     .font(.callout)
@@ -86,47 +86,47 @@ struct CronJobEditor: View {
 
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 14) {
-                    GroupBox("Basics") {
+                    GroupBox("基础信息") {
                         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 10) {
                             GridRow {
-                                self.gridLabel("Name")
-                                TextField("Required (e.g. “Daily summary”)", text: self.$name)
+                                self.gridLabel("名称")
+                                TextField("必填，例如“每日总结”", text: self.$name)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: .infinity)
                             }
                             GridRow {
-                                self.gridLabel("Description")
-                                TextField("Optional notes", text: self.$description)
+                                self.gridLabel("说明")
+                                TextField("可选备注", text: self.$description)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: .infinity)
                             }
                             GridRow {
-                                self.gridLabel("Agent ID")
-                                TextField("Optional (default agent)", text: self.$agentId)
+                                self.gridLabel("助手 ID")
+                                TextField("可选，留空则使用默认助手", text: self.$agentId)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: .infinity)
                             }
                             GridRow {
-                                self.gridLabel("Enabled")
+                                self.gridLabel("启用")
                                 Toggle("", isOn: self.$enabled)
                                     .labelsHidden()
                                     .toggleStyle(.switch)
                             }
                             GridRow {
-                                self.gridLabel("Session target")
+                                self.gridLabel("执行会话")
                                 Picker("", selection: self.$sessionTarget) {
-                                    Text("main").tag(CronSessionTarget.main)
-                                    Text("isolated").tag(CronSessionTarget.isolated)
+                                    Text("主会话").tag(CronSessionTarget.main)
+                                    Text("独立会话").tag(CronSessionTarget.isolated)
                                 }
                                 .labelsHidden()
                                 .pickerStyle(.segmented)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             GridRow {
-                                self.gridLabel("Wake mode")
+                                self.gridLabel("唤醒方式")
                                 Picker("", selection: self.$wakeMode) {
-                                    Text("now").tag(CronWakeMode.now)
-                                    Text("next-heartbeat").tag(CronWakeMode.nextHeartbeat)
+                                    Text("立即").tag(CronWakeMode.now)
+                                    Text("下次心跳").tag(CronWakeMode.nextHeartbeat)
                                 }
                                 .labelsHidden()
                                 .pickerStyle(.segmented)
@@ -144,14 +144,14 @@ struct CronJobEditor: View {
                         }
                     }
 
-                    GroupBox("Schedule") {
+                    GroupBox("执行计划") {
                         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 10) {
                             GridRow {
-                                self.gridLabel("Kind")
+                                self.gridLabel("类型")
                                 Picker("", selection: self.$scheduleKind) {
-                                    Text("at").tag(ScheduleKind.at)
-                                    Text("every").tag(ScheduleKind.every)
-                                    Text("cron").tag(ScheduleKind.cron)
+                                    Text("单次").tag(ScheduleKind.at)
+                                    Text("间隔").tag(ScheduleKind.every)
+                                    Text("表达式").tag(ScheduleKind.cron)
                                 }
                                 .labelsHidden()
                                 .pickerStyle(.segmented)
@@ -170,7 +170,7 @@ struct CronJobEditor: View {
                             switch self.scheduleKind {
                             case .at:
                                 GridRow {
-                                    self.gridLabel("At")
+                                    self.gridLabel("执行时间")
                                     DatePicker(
                                         "",
                                         selection: self.$atDate,
@@ -179,27 +179,27 @@ struct CronJobEditor: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 GridRow {
-                                    self.gridLabel("Auto-delete")
-                                    Toggle("Delete after successful run", isOn: self.$deleteAfterRun)
+                                    self.gridLabel("自动删除")
+                                    Toggle("成功执行后删除", isOn: self.$deleteAfterRun)
                                         .toggleStyle(.switch)
                                 }
                             case .every:
                                 GridRow {
-                                    self.gridLabel("Every")
-                                    TextField("10m, 1h, 1d", text: self.$everyText)
+                                    self.gridLabel("间隔")
+                                    TextField("例如 10m、1h、1d", text: self.$everyText)
                                         .textFieldStyle(.roundedBorder)
                                         .frame(maxWidth: .infinity)
                                 }
                             case .cron:
                                 GridRow {
-                                    self.gridLabel("Expression")
-                                    TextField("e.g. 0 9 * * 3", text: self.$cronExpr)
+                                    self.gridLabel("表达式")
+                                    TextField("例如 0 9 * * 3", text: self.$cronExpr)
                                         .textFieldStyle(.roundedBorder)
                                         .frame(maxWidth: .infinity)
                                 }
                                 GridRow {
-                                    self.gridLabel("Timezone")
-                                    TextField("Optional (e.g. America/Los_Angeles)", text: self.$cronTz)
+                                    self.gridLabel("时区")
+                                    TextField("可选，例如 Asia/Shanghai", text: self.$cronTz)
                                         .textFieldStyle(.roundedBorder)
                                         .frame(maxWidth: .infinity)
                                 }
@@ -207,7 +207,7 @@ struct CronJobEditor: View {
                         }
                     }
 
-                    GroupBox("Payload") {
+                    GroupBox("执行内容") {
                         VStack(alignment: .leading, spacing: 10) {
                             if self.sessionTarget == .isolated {
                                 Text(Self.isolatedPayloadNote)
@@ -218,10 +218,10 @@ struct CronJobEditor: View {
                             } else {
                                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 10) {
                                     GridRow {
-                                        self.gridLabel("Kind")
+                                        self.gridLabel("内容类型")
                                         Picker("", selection: self.$payloadKind) {
-                                            Text("systemEvent").tag(PayloadKind.systemEvent)
-                                            Text("agentTurn").tag(PayloadKind.agentTurn)
+                                            Text("系统事件").tag(PayloadKind.systemEvent)
+                                            Text("代理回合").tag(PayloadKind.agentTurn)
                                         }
                                         .labelsHidden()
                                         .pickerStyle(.segmented)
@@ -240,7 +240,7 @@ struct CronJobEditor: View {
 
                                 switch self.payloadKind {
                                 case .systemEvent:
-                                    TextField("System event text", text: self.$systemEventText, axis: .vertical)
+                                    TextField("系统事件内容", text: self.$systemEventText, axis: .vertical)
                                         .textFieldStyle(.roundedBorder)
                                         .lineLimit(3...7)
                                         .frame(maxWidth: .infinity)
@@ -263,7 +263,7 @@ struct CronJobEditor: View {
             }
 
             HStack {
-                Button("Cancel") { self.onCancel() }
+                Button("取消") { self.onCancel() }
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(.bordered)
                 Spacer()
@@ -273,7 +273,7 @@ struct CronJobEditor: View {
                     if self.isSaving {
                         ProgressView().controlSize(.small)
                     } else {
-                        Text("Save")
+                        Text("保存")
                     }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -302,29 +302,29 @@ struct CronJobEditor: View {
         VStack(alignment: .leading, spacing: 10) {
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 10) {
                 GridRow {
-                    self.gridLabel("Message")
-                    TextField("What should Haoclaw do?", text: self.$agentMessage, axis: .vertical)
+                    self.gridLabel("任务内容")
+                    TextField("请输入要让 Haoclaw 执行的任务", text: self.$agentMessage, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(3...7)
                         .frame(maxWidth: .infinity)
                 }
                 GridRow {
-                    self.gridLabel("Thinking")
-                    TextField("Optional (e.g. low)", text: self.$thinking)
+                    self.gridLabel("思考强度")
+                    TextField("可选，例如 low", text: self.$thinking)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: .infinity)
                 }
                 GridRow {
-                    self.gridLabel("Timeout")
-                    TextField("Seconds (optional)", text: self.$timeoutSeconds)
+                    self.gridLabel("超时")
+                    TextField("秒数，可选", text: self.$timeoutSeconds)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 180, alignment: .leading)
                 }
                 GridRow {
-                    self.gridLabel("Delivery")
+                    self.gridLabel("结果投递")
                     Picker("", selection: self.$deliveryMode) {
-                        Text("Announce summary").tag(DeliveryChoice.announce)
-                        Text("None").tag(DeliveryChoice.none)
+                        Text("发送摘要").tag(DeliveryChoice.announce)
+                        Text("不发送").tag(DeliveryChoice.none)
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
@@ -334,7 +334,7 @@ struct CronJobEditor: View {
             if self.deliveryMode == .announce {
                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 10) {
                     GridRow {
-                        self.gridLabel("Channel")
+                        self.gridLabel("频道")
                         Picker("", selection: self.$channel) {
                             ForEach(self.channelOptions, id: \.self) { channel in
                                 Text(self.channelLabel(for: channel)).tag(channel)
@@ -345,14 +345,14 @@ struct CronJobEditor: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     GridRow {
-                        self.gridLabel("To")
-                        TextField("Optional override (phone number / chat id / Discord channel)", text: self.$to)
+                        self.gridLabel("收件人")
+                        TextField("可选覆盖，例如手机号、聊天 ID 或频道 ID", text: self.$to)
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: .infinity)
                     }
                     GridRow {
-                        self.gridLabel("Best-effort")
-                        Toggle("Do not fail the job if announce fails", isOn: self.$bestEffortDeliver)
+                        self.gridLabel("容错发送")
+                        Toggle("发送摘要失败时不让任务整体失败", isOn: self.$bestEffortDeliver)
                             .toggleStyle(.switch)
                     }
                 }

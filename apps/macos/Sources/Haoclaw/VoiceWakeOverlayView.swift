@@ -130,8 +130,8 @@ private struct OverlayBackground: View {
     }
 }
 
-extension OverlayBackground: @MainActor Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
+extension OverlayBackground: Equatable {
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
         true
     }
 }

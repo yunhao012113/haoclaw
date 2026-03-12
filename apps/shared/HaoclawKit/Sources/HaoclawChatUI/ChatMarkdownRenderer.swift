@@ -1,5 +1,5 @@
 import SwiftUI
-import Textual
+import Foundation
 
 public enum ChatMarkdownVariant: String, CaseIterable, Sendable {
     case standard
@@ -22,12 +22,10 @@ struct ChatMarkdownRenderer: View {
     var body: some View {
         let processed = ChatMarkdownPreprocessor.preprocess(markdown: self.text)
         VStack(alignment: .leading, spacing: 10) {
-            StructuredText(markdown: processed.cleaned)
-                .modifier(ChatMarkdownStyle(
-                    variant: self.variant,
-                    context: self.context,
-                    font: self.font,
-                    textColor: self.textColor))
+            MarkdownTextBlock(
+                markdown: processed.cleaned,
+                font: self.font,
+                textColor: self.textColor)
 
             if !processed.images.isEmpty {
                 InlineImageList(images: processed.images)
@@ -36,32 +34,35 @@ struct ChatMarkdownRenderer: View {
     }
 }
 
-private struct ChatMarkdownStyle: ViewModifier {
-    let variant: ChatMarkdownVariant
-    let context: ChatMarkdownRenderer.Context
+@MainActor
+private struct MarkdownTextBlock: View {
+    let markdown: String
     let font: Font
     let textColor: Color
 
-    func body(content: Content) -> some View {
-        Group {
-            if self.variant == .compact {
-                content.textual.structuredTextStyle(.default)
-            } else {
-                content.textual.structuredTextStyle(.gitHub)
-            }
+    var body: some View {
+        if let attributed = self.attributed {
+            Text(attributed)
+                .font(self.font)
+                .foregroundStyle(self.textColor)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Text(self.markdown)
+                .font(self.font)
+                .foregroundStyle(self.textColor)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(self.font)
-        .foregroundStyle(self.textColor)
-        .textual.inlineStyle(self.inlineStyle)
-        .textual.textSelection(.enabled)
     }
 
-    private var inlineStyle: InlineStyle {
-        let linkColor: Color = self.context == .user ? self.textColor : .accentColor
-        let codeScale: CGFloat = self.variant == .compact ? 0.85 : 0.9
-        return InlineStyle()
-            .code(.monospaced, .fontScale(codeScale))
-            .link(.foregroundColor(linkColor))
+    private var attributed: AttributedString? {
+        try? AttributedString(
+            markdown: self.markdown,
+            options: AttributedString.MarkdownParsingOptions(
+                allowsExtendedAttributes: true,
+                interpretedSyntax: .full,
+                failurePolicy: .returnPartiallyParsedIfPossible))
     }
 }
 

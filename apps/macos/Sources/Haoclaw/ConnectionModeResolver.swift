@@ -32,18 +32,17 @@ enum ConnectionModeResolver {
             break
         }
 
+        if let storedModeRaw = defaults.string(forKey: connectionModeKey) {
+            let storedMode = AppState.ConnectionMode(rawValue: storedModeRaw) ?? .local
+            return EffectiveConnectionMode(mode: storedMode, source: .userDefaults)
+        }
+
         let remoteURLRaw = ((gateway?["remote"] as? [String: Any])?["url"] as? String) ?? ""
         let remoteURL = remoteURLRaw.trimmingCharacters(in: .whitespacesAndNewlines)
         if !remoteURL.isEmpty {
             return EffectiveConnectionMode(mode: .remote, source: .configRemoteURL)
         }
 
-        if let storedModeRaw = defaults.string(forKey: connectionModeKey) {
-            let storedMode = AppState.ConnectionMode(rawValue: storedModeRaw) ?? .local
-            return EffectiveConnectionMode(mode: storedMode, source: .userDefaults)
-        }
-
-        let seen = defaults.bool(forKey: "haoclaw.onboardingSeen")
-        return EffectiveConnectionMode(mode: seen ? .local : .unconfigured, source: .onboarding)
+        return EffectiveConnectionMode(mode: .local, source: .onboarding)
     }
 }

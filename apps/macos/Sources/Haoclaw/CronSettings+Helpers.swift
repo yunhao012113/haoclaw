@@ -19,14 +19,14 @@ extension CronSettings {
         switch schedule {
         case let .at(at):
             if let date = CronSchedule.parseAtDate(at) {
-                return "at \(date.formatted(date: .abbreviated, time: .standard))"
+                return "单次：\(date.formatted(date: .abbreviated, time: .standard))"
             }
-            return "at \(at)"
+            return "单次：\(at)"
         case let .every(everyMs, _):
-            return "every \(self.formatDuration(ms: everyMs))"
+            return "间隔：\(self.formatDuration(ms: everyMs))"
         case let .cron(expr, tz):
-            if let tz, !tz.isEmpty { return "cron \(expr) (\(tz))" }
-            return "cron \(expr)"
+            if let tz, !tz.isEmpty { return "表达式：\(expr)（\(tz)）" }
+            return "表达式：\(expr)"
         }
     }
 
@@ -36,13 +36,13 @@ extension CronSettings {
 
     func nextRunLabel(_ date: Date, now: Date = .init()) -> String {
         let delta = date.timeIntervalSince(now)
-        if delta <= 0 { return "due" }
-        if delta < 60 { return "in <1m" }
+        if delta <= 0 { return "即将执行" }
+        if delta < 60 { return "1 分钟内" }
         let minutes = Int(round(delta / 60))
-        if minutes < 60 { return "in \(minutes)m" }
+        if minutes < 60 { return "\(minutes) 分钟后" }
         let hours = Int(round(Double(minutes) / 60))
-        if hours < 48 { return "in \(hours)h" }
+        if hours < 48 { return "\(hours) 小时后" }
         let days = Int(round(Double(hours) / 24))
-        return "in \(days)d"
+        return "\(days) 天后"
     }
 }

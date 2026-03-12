@@ -1,7 +1,7 @@
 import Foundation
 import HaoclawIPC
 import Security
-import UserNotifications
+@preconcurrency import UserNotifications
 
 @MainActor
 struct NotificationManager {

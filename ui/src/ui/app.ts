@@ -95,6 +95,16 @@ declare global {
       defaultLocale?: string;
       defaultTab?: string;
       defaultGatewayUrl?: string;
+      listBundledSkills?: () => Promise<
+        Array<{
+          name: string;
+          skillKey: string;
+          description: string;
+          source: string;
+          filePath: string;
+          baseDir: string;
+        }>
+      >;
     };
   }
 }

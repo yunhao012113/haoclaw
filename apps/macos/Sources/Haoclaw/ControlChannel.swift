@@ -102,9 +102,8 @@ final class ControlChannel {
             do {
                 _ = (target, identity)
                 let idSet = !identity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                self.logger.info(
-                    "control channel configure mode=remote " +
-                        "target=\(target, privacy: .public) identitySet=\(idSet, privacy: .public)")
+                let message = "control channel configure mode=remote target=\(target) identitySet=\(idSet)"
+                self.logger.info("\(message, privacy: .public)")
                 self.state = .connecting
                 _ = try await GatewayEndpointStore.shared.ensureRemoteControlTunnel()
                 await self.refreshEndpoint(reason: "configure")
@@ -269,10 +268,9 @@ final class ControlChannel {
 
             let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
             let reasonText = trimmedReason.isEmpty ? "unknown" : trimmedReason
-            self.logger.info(
-                "control channel recovery starting " +
-                    "mode=\(String(describing: mode), privacy: .public) " +
-                    "reason=\(reasonText, privacy: .public)")
+            let message =
+                "control channel recovery starting mode=\(String(describing: mode)) reason=\(reasonText)"
+            self.logger.info("\(message, privacy: .public)")
             if mode == .local {
                 GatewayProcessManager.shared.setActive(true)
             }

@@ -224,9 +224,9 @@ final class DevicePairingApprovalPrompter {
             self.resolvedByRequestId.insert(resolved.requestId)
             self.endActiveAlert()
             let decision = resolution.rawValue
-            self.logger.info(
-                "device pairing resolved while active requestId=\(resolved.requestId, privacy: .public) " +
-                    "decision=\(decision, privacy: .public)")
+            let message =
+                "device pairing resolved while active requestId=\(resolved.requestId) decision=\(decision)"
+            self.logger.info("\(message, privacy: .public)")
             return
         }
         self.queue.removeAll { $0.requestId == resolved.requestId }

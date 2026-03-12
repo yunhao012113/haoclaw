@@ -492,12 +492,6 @@ struct ChatTypingIndicatorBubble: View {
     }
 }
 
-extension ChatTypingIndicatorBubble: @MainActor Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.style == rhs.style
-    }
-}
-
 private extension View {
     func assistantBubbleContainerStyle() -> some View {
         self
@@ -564,12 +558,6 @@ struct ChatPendingToolsBubble: View {
         }
         .padding(12)
         .assistantBubbleContainerStyle()
-    }
-}
-
-extension ChatPendingToolsBubble: @MainActor Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.toolCalls == rhs.toolCalls
     }
 }
 

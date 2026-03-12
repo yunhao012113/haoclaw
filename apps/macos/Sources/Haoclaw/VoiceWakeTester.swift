@@ -289,11 +289,11 @@ final class VoiceWakeTester {
         let gaps = Self.debugCandidateGaps(triggers: triggers, segments: segments)
         let segmentSummary = Self.debugSegments(segments)
         let matchSummary = VoiceWakeRecognitionDebugSupport.matchSummary(match)
-
-        self.logger.debug(
-            "voicewake test transcript='\(transcript, privacy: .private)' textOnly=\(summary.textOnly) " +
-                "isFinal=\(isFinal) timing=\(summary.timingCount)/\(segments.count) " +
-                "\(matchSummary) gaps=[\(gaps, privacy: .private)] segments=[\(segmentSummary, privacy: .private)]")
+        let message =
+            "voicewake test transcript='\(transcript)' textOnly=\(summary.textOnly) " +
+            "isFinal=\(isFinal) timing=\(summary.timingCount)/\(segments.count) " +
+            "\(matchSummary) gaps=[\(gaps)] segments=[\(segmentSummary)]"
+        self.logger.debug("\(message, privacy: .private)")
     }
 
     private static func debugSegments(_ segments: [WakeWordSegment]) -> String {
@@ -423,9 +423,8 @@ final class VoiceWakeTester {
 
     private func logInputSelection(preferredMicID: String?) {
         let preferred = (preferredMicID?.isEmpty == false) ? preferredMicID! : "system-default"
-        self.logger.info(
-            "voicewake test input preferred=\(preferred, privacy: .public) " +
-                "\(AudioInputDeviceObserver.defaultInputDeviceSummary(), privacy: .public)")
+        let inputSummary = "voicewake test input preferred=\(preferred) \(AudioInputDeviceObserver.defaultInputDeviceSummary())"
+        self.logger.info("\(inputSummary, privacy: .public)")
     }
 
     private nonisolated static func ensurePermissions() async throws -> Bool {

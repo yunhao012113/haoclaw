@@ -13,10 +13,7 @@ let package = Package(
         .library(name: "HaoclawKit", targets: ["HaoclawKit"]),
         .library(name: "HaoclawChatUI", targets: ["HaoclawChatUI"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/steipete/ElevenLabsKit", exact: "0.1.0"),
-        .package(url: "https://github.com/gonzalezreal/textual", exact: "0.3.1"),
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "HaoclawProtocol",
@@ -28,7 +25,6 @@ let package = Package(
             name: "HaoclawKit",
             dependencies: [
                 "HaoclawProtocol",
-                .product(name: "ElevenLabsKit", package: "ElevenLabsKit"),
             ],
             path: "Sources/HaoclawKit",
             resources: [
@@ -41,10 +37,6 @@ let package = Package(
             name: "HaoclawChatUI",
             dependencies: [
                 "HaoclawKit",
-                .product(
-                    name: "Textual",
-                    package: "textual",
-                    condition: .when(platforms: [.macOS, .iOS])),
             ],
             path: "Sources/HaoclawChatUI",
             swiftSettings: [

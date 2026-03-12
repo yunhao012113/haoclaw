@@ -252,8 +252,8 @@
           <h2>章鱼图标桌面版</h2>
           <p>支持桌面安装。优先使用 PKG，一键安装后会进入应用程序，并创建桌面快捷入口。</p>
           <div class="actions">
-            <a class="button" id="mac-pkg" href="https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.pkg">下载 PKG</a>
-            <a class="button secondary" id="mac-dmg" href="https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.20/Haoclaw-2026.3.9.dmg">下载 DMG</a>
+            <a class="button" id="mac-pkg" href="https://github.com/yunhao012113/haoclaw/releases/latest">下载 PKG</a>
+            <a class="button secondary" id="mac-dmg" href="https://github.com/yunhao012113/haoclaw/releases/latest">下载 DMG</a>
           </div>
           <div class="meta" id="mac-meta">正在检查最新 macOS 安装包…</div>
         </article>
@@ -263,7 +263,7 @@
           <h2>桌面安装程序</h2>
           <p>直接下载 `setup.exe`，安装后会创建桌面快捷方式和开始菜单入口。</p>
           <div class="actions">
-            <a class="button" id="win-exe" href="https://github.com/yunhao012113/haoclaw/releases/download/v2026.3.21/Haoclaw-2026.3.9-setup.exe">下载 EXE</a>
+            <a class="button" id="win-exe" href="https://github.com/yunhao012113/haoclaw/releases/latest">下载 EXE</a>
             <a class="button secondary" href="https://github.com/yunhao012113/haoclaw/releases/latest">查看全部版本</a>
           </div>
           <div class="meta" id="win-meta">正在检查最新 Windows 安装包…</div>
@@ -346,9 +346,9 @@
           status.textContent = "已同步最新安装包信息。";
         } catch (error) {
           console.error(error);
-          status.textContent = "获取最新版本失败，已保留默认下载链接。";
-          macMeta.textContent = "当前显示的是保底 macOS 链接。";
-          winMeta.textContent = "当前显示的是保底 Windows 链接。";
+          status.textContent = "获取最新版本失败，已回退到 GitHub 最新发布页。";
+          macMeta.textContent = "当前显示的是 GitHub 最新发布页入口。";
+          winMeta.textContent = "当前显示的是 GitHub 最新发布页入口。";
         }
       }
 

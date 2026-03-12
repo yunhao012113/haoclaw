@@ -10,21 +10,21 @@ extension CronSettings {
                     .truncationMode(.middle)
                 Spacer()
                 if !job.enabled {
-                    StatusPill(text: "disabled", tint: .secondary)
+                    StatusPill(text: "已停用", tint: .secondary)
                 } else if let next = job.nextRunDate {
                     StatusPill(text: self.nextRunLabel(next), tint: .secondary)
                 } else {
-                    StatusPill(text: "no next run", tint: .secondary)
+                    StatusPill(text: "暂无下次执行", tint: .secondary)
                 }
             }
             HStack(spacing: 6) {
-                StatusPill(text: job.sessionTarget.rawValue, tint: .secondary)
-                StatusPill(text: job.wakeMode.rawValue, tint: .secondary)
+                StatusPill(text: job.sessionTarget == .main ? "主会话" : "独立会话", tint: .secondary)
+                StatusPill(text: job.wakeMode == .now ? "立即" : "下次心跳", tint: .secondary)
                 if let agentId = job.agentId, !agentId.isEmpty {
-                    StatusPill(text: "agent \(agentId)", tint: .secondary)
+                    StatusPill(text: "助手 \(agentId)", tint: .secondary)
                 }
                 if let status = job.state.lastStatus {
-                    StatusPill(text: status, tint: status == "ok" ? .green : .orange)
+                    StatusPill(text: self.localizedRunStatus(status), tint: status == "ok" ? .green : .orange)
                 }
             }
         }
@@ -33,23 +33,23 @@ extension CronSettings {
 
     @ViewBuilder
     func jobContextMenu(_ job: CronJob) -> some View {
-        Button("Run now") { Task { await self.store.runJob(id: job.id, force: true) } }
+        Button("立即执行") { Task { await self.store.runJob(id: job.id, force: true) } }
         if job.sessionTarget == .isolated {
-            Button("Open transcript") {
+            Button("打开记录") {
                 WebChatManager.shared.show(sessionKey: "cron:\(job.id)")
             }
         }
         Divider()
-        Button(job.enabled ? "Disable" : "Enable") {
+        Button(job.enabled ? "停用" : "启用") {
             Task { await self.store.setJobEnabled(id: job.id, enabled: !job.enabled) }
         }
-        Button("Edit…") {
+        Button("编辑…") {
             self.editingJob = job
             self.editorError = nil
             self.showEditor = true
         }
         Divider()
-        Button("Delete…", role: .destructive) {
+        Button("删除…", role: .destructive) {
             self.confirmDelete = job
         }
     }
@@ -68,20 +68,20 @@ extension CronSettings {
             }
             Spacer()
             HStack(spacing: 8) {
-                Toggle("Enabled", isOn: Binding(
+                Toggle("启用", isOn: Binding(
                     get: { job.enabled },
                     set: { enabled in Task { await self.store.setJobEnabled(id: job.id, enabled: enabled) } }))
                     .toggleStyle(.switch)
                     .labelsHidden()
-                Button("Run") { Task { await self.store.runJob(id: job.id, force: true) } }
+                Button("执行") { Task { await self.store.runJob(id: job.id, force: true) } }
                     .buttonStyle(.borderedProminent)
                 if job.sessionTarget == .isolated {
-                    Button("Transcript") {
+                    Button("记录") {
                         WebChatManager.shared.show(sessionKey: "cron:\(job.id)")
                     }
                     .buttonStyle(.bordered)
                 }
-                Button("Edit") {
+                Button("编辑") {
                     self.editingJob = job
                     self.editorError = nil
                     self.showEditor = true
@@ -93,26 +93,26 @@ extension CronSettings {
 
     func detailCard(_ job: CronJob) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            LabeledContent("Schedule") { Text(self.scheduleSummary(job.schedule)).font(.callout) }
+            LabeledContent("计划") { Text(self.scheduleSummary(job.schedule)).font(.callout) }
             if case .at = job.schedule, job.deleteAfterRun == true {
-                LabeledContent("Auto-delete") { Text("after success") }
+                LabeledContent("自动删除") { Text("成功后删除") }
             }
             if let desc = job.description, !desc.isEmpty {
-                LabeledContent("Description") { Text(desc).font(.callout) }
+                LabeledContent("说明") { Text(desc).font(.callout) }
             }
             if let agentId = job.agentId, !agentId.isEmpty {
-                LabeledContent("Agent") { Text(agentId) }
+                LabeledContent("助手") { Text(agentId) }
             }
-            LabeledContent("Session") { Text(job.sessionTarget.rawValue) }
-            LabeledContent("Wake") { Text(job.wakeMode.rawValue) }
-            LabeledContent("Next run") {
+            LabeledContent("会话") { Text(job.sessionTarget == .main ? "主会话" : "独立会话") }
+            LabeledContent("唤醒") { Text(job.wakeMode == .now ? "立即" : "下次心跳") }
+            LabeledContent("下次执行") {
                 if let date = job.nextRunDate {
                     Text(date.formatted(date: .abbreviated, time: .standard))
                 } else {
                     Text("—").foregroundStyle(.secondary)
                 }
             }
-            LabeledContent("Last run") {
+            LabeledContent("上次执行") {
                 if let date = job.lastRunDate {
                     Text("\(date.formatted(date: .abbreviated, time: .standard)) · \(relativeAge(from: date))")
                 } else {
@@ -120,7 +120,7 @@ extension CronSettings {
                 }
             }
             if let status = job.state.lastStatus {
-                LabeledContent("Last status") { Text(status) }
+                LabeledContent("上次状态") { Text(self.localizedRunStatus(status)) }
             }
             if let err = job.state.lastError, !err.isEmpty {
                 Text(err)
@@ -139,13 +139,13 @@ extension CronSettings {
     func runHistoryCard(_ job: CronJob) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Run history")
+                Text("运行记录")
                     .font(.headline)
                 Spacer()
                 Button {
                     Task { await self.store.refreshRuns(jobId: job.id) }
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label("刷新", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.bordered)
                 .disabled(self.store.isLoadingRuns)
@@ -156,7 +156,7 @@ extension CronSettings {
             }
 
             if self.store.runEntries.isEmpty {
-                Text("No run log entries yet.")
+                Text("还没有运行记录。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
@@ -176,7 +176,7 @@ extension CronSettings {
     func runRow(_ entry: CronRunLogEntry) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                StatusPill(text: entry.status ?? "unknown", tint: self.statusTint(entry.status))
+                StatusPill(text: self.localizedRunStatus(entry.status ?? "unknown"), tint: self.statusTint(entry.status))
                 Text(entry.date.formatted(date: .abbreviated, time: .standard))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -208,7 +208,7 @@ extension CronSettings {
     func payloadSummary(_ job: CronJob) -> some View {
         let payload = job.payload
         return VStack(alignment: .leading, spacing: 6) {
-            Text("Payload")
+            Text("执行内容")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             switch payload {
@@ -222,25 +222,46 @@ extension CronSettings {
                         .font(.callout)
                         .textSelection(.enabled)
                     HStack(spacing: 8) {
-                        if let thinking, !thinking.isEmpty { StatusPill(text: "think \(thinking)", tint: .secondary) }
+                        if let thinking, !thinking.isEmpty { StatusPill(text: "思考 \(thinking)", tint: .secondary) }
                         if let timeoutSeconds { StatusPill(text: "\(timeoutSeconds)s", tint: .secondary) }
                         if job.sessionTarget == .isolated {
                             let delivery = job.delivery
                             if let delivery {
                                 if delivery.mode == .announce {
-                                    StatusPill(text: "announce", tint: .secondary)
+                                    StatusPill(text: "发送摘要", tint: .secondary)
                                     if let channel = delivery.channel, !channel.isEmpty {
                                         StatusPill(text: channel, tint: .secondary)
                                     }
                                     if let to = delivery.to, !to.isEmpty { StatusPill(text: to, tint: .secondary) }
                                 } else {
-                                    StatusPill(text: "no delivery", tint: .secondary)
+                                    StatusPill(text: "不发送", tint: .secondary)
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    func localizedRunStatus(_ status: String) -> String {
+        switch status.lowercased() {
+        case "ok":
+            "成功"
+        case "error":
+            "失败"
+        case "running":
+            "运行中"
+        case "queued":
+            "排队中"
+        case "disabled":
+            "已停用"
+        case "skipped":
+            "已跳过"
+        case "unknown":
+            "未知"
+        default:
+            status
         }
     }
 }

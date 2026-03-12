@@ -349,10 +349,8 @@ actor TalkModeRuntime {
         }
         let runId = UUID().uuidString
         let startedAt = Date().timeIntervalSince1970
-        self.logger.info(
-            "talk send start runId=\(runId, privacy: .public) " +
-                "session=\(sessionKey, privacy: .public) " +
-                "chars=\(prompt.count, privacy: .public)")
+        let sendStartMessage = "talk send start runId=\(runId) session=\(sessionKey) chars=\(prompt.count)"
+        self.logger.info("\(sendStartMessage, privacy: .public)")
 
         do {
             let response = try await GatewayConnection.shared.chatSend(
@@ -362,9 +360,8 @@ actor TalkModeRuntime {
                 idempotencyKey: runId,
                 attachments: [])
             guard self.isCurrent(gen) else { return }
-            self.logger.info(
-                "talk chat.send ok runId=\(response.runId, privacy: .public) " +
-                    "session=\(sessionKey, privacy: .public)")
+            let sendOkMessage = "talk chat.send ok runId=\(response.runId) session=\(sessionKey)"
+            self.logger.info("\(sendOkMessage, privacy: .public)")
 
             guard let assistantText = await self.waitForAssistantText(
                 sessionKey: sessionKey,
@@ -458,10 +455,8 @@ actor TalkModeRuntime {
                 try await self.playSystemVoice(input: input)
             }
         } catch {
-            self.ttsLogger
-                .error(
-                    "talk TTS failed: \(error.localizedDescription, privacy: .public); " +
-                        "falling back to system voice")
+            let message = "talk TTS failed: \(error.localizedDescription); falling back to system voice"
+            self.ttsLogger.error("\(message, privacy: .public)")
             do {
                 try await self.playSystemVoice(input: input)
             } catch {
@@ -494,10 +489,8 @@ actor TalkModeRuntime {
         guard self.isCurrent(gen) else { return nil }
 
         if !parse.unknownKeys.isEmpty {
-            self.logger
-                .warning(
-                    "talk directive ignored keys: " +
-                        "\(parse.unknownKeys.joined(separator: ","), privacy: .public)")
+            let message = "talk directive ignored keys: \(parse.unknownKeys.joined(separator: ","))"
+            self.logger.warning("\(message, privacy: .public)")
         }
 
         let requestedVoice = directive?.voiceId?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -543,10 +536,8 @@ actor TalkModeRuntime {
         } else if voiceId == nil {
             self.ttsLogger.warning("talk missing voiceId; falling back to system voice")
         } else if let voiceId {
-            self.ttsLogger
-                .info(
-                    "talk TTS request voiceId=\(voiceId, privacy: .public) " +
-                        "chars=\(cleaned.count, privacy: .public)")
+            let message = "talk TTS request voiceId=\(voiceId) chars=\(cleaned.count)"
+            self.ttsLogger.info("\(message, privacy: .public)")
         }
         self.lastSpokenText = cleaned
 
@@ -568,10 +559,8 @@ actor TalkModeRuntime {
         let desiredOutputFormat = input.directive?.outputFormat ?? self.defaultOutputFormat ?? "pcm_44100"
         let outputFormat = ElevenLabsTTSClient.validatedOutputFormat(desiredOutputFormat)
         if outputFormat == nil, !desiredOutputFormat.isEmpty {
-            self.logger
-                .warning(
-                    "talk output_format unsupported for local playback: " +
-                        "\(desiredOutputFormat, privacy: .public)")
+            let message = "talk output_format unsupported for local playback: \(desiredOutputFormat)"
+            self.logger.warning("\(message, privacy: .public)")
         }
 
         let modelId = input.directive?.modelId ?? self.currentModelId ?? self.defaultModelId
@@ -614,10 +603,9 @@ actor TalkModeRuntime {
             outputFormat: outputFormat,
             makeRequest: makeRequest,
             stream: stream)
-        self.ttsLogger
-            .info(
-                "talk audio result finished=\(result.finished, privacy: .public) " +
-                    "interruptedAt=\(String(describing: result.interruptedAt), privacy: .public)")
+        let resultMessage =
+            "talk audio result finished=\(result.finished) interruptedAt=\(String(describing: result.interruptedAt))"
+        self.ttsLogger.info("\(resultMessage, privacy: .public)")
         if !result.finished, result.interruptedAt == nil {
             throw NSError(domain: "StreamingAudioPlayer", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "audio playback failed",
@@ -789,13 +777,9 @@ extension TalkModeRuntime {
         let hasApiKey = (cfg.apiKey?.isEmpty == false)
         let voiceLabel = (cfg.voiceId?.isEmpty == false) ? cfg.voiceId! : "none"
         let modelLabel = (cfg.modelId?.isEmpty == false) ? cfg.modelId! : "none"
-        self.logger
-            .info(
-                "talk config voiceId=\(voiceLabel, privacy: .public) " +
-                    "modelId=\(modelLabel, privacy: .public) " +
-                    "apiKey=\(hasApiKey, privacy: .public) " +
-                    "interrupt=\(cfg.interruptOnSpeech, privacy: .public) " +
-                    "silenceTimeoutMs=\(cfg.silenceTimeoutMs, privacy: .public)")
+        let configMessage =
+            "talk config voiceId=\(voiceLabel) modelId=\(modelLabel) apiKey=\(hasApiKey) interrupt=\(cfg.interruptOnSpeech) silenceTimeoutMs=\(cfg.silenceTimeoutMs)"
+        self.logger.info("\(configMessage, privacy: .public)")
     }
 
     static func selectTalkProviderConfig(

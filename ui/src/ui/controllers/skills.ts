@@ -1,5 +1,5 @@
 import type { GatewayBrowserClient } from "../gateway.ts";
-import type { SkillStatusReport } from "../types.ts";
+import type { SkillStatusEntry, SkillStatusReport } from "../types.ts";
 
 export type SkillsState = {
   client: GatewayBrowserClient | null;
@@ -43,11 +43,64 @@ function getErrorMessage(err: unknown) {
   return String(err);
 }
 
+function fallbackSkillEntry(entry: {
+  name: string;
+  skillKey: string;
+  description: string;
+  source: string;
+  filePath: string;
+  baseDir: string;
+}): SkillStatusEntry {
+  return {
+    name: entry.name,
+    description: entry.description || "内置技能",
+    source: entry.source || "haoclaw-bundled",
+    filePath: entry.filePath,
+    baseDir: entry.baseDir,
+    skillKey: entry.skillKey || entry.name,
+    bundled: true,
+    always: false,
+    disabled: false,
+    blockedByAllowlist: false,
+    eligible: true,
+    requirements: { bins: [], env: [], config: [], os: [] },
+    missing: { bins: [], env: [], config: [], os: [] },
+    configChecks: [],
+    install: [],
+  };
+}
+
+async function loadDesktopFallbackSkills(): Promise<SkillStatusReport | null> {
+  const loader = window.haoclawDesktop?.listBundledSkills;
+  if (typeof loader !== "function") {
+    return null;
+  }
+  try {
+    const list = await loader();
+    if (!Array.isArray(list) || list.length === 0) {
+      return null;
+    }
+    const skills = list.map((entry) => fallbackSkillEntry(entry));
+    return {
+      workspaceDir: "",
+      managedSkillsDir: "",
+      skills,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadSkills(state: SkillsState, options?: LoadSkillsOptions) {
   if (options?.clearMessages && Object.keys(state.skillMessages).length > 0) {
     state.skillMessages = {};
   }
   if (!state.client || !state.connected) {
+    const fallback = await loadDesktopFallbackSkills();
+    if (fallback) {
+      state.skillsReport = fallback;
+      state.skillsError = null;
+    }
     return;
   }
   if (state.skillsLoading) {
@@ -57,11 +110,26 @@ export async function loadSkills(state: SkillsState, options?: LoadSkillsOptions
   state.skillsError = null;
   try {
     const res = await state.client.request<SkillStatusReport | undefined>("skills.status", {});
-    if (res) {
+    if (res && Array.isArray(res.skills) && res.skills.length > 0) {
       state.skillsReport = res;
+      state.skillsError = null;
+    } else {
+      const fallback = await loadDesktopFallbackSkills();
+      if (fallback) {
+        state.skillsReport = fallback;
+        state.skillsError = null;
+      } else if (res) {
+        state.skillsReport = res;
+      }
     }
   } catch (err) {
-    state.skillsError = getErrorMessage(err);
+    const fallback = await loadDesktopFallbackSkills();
+    if (fallback) {
+      state.skillsReport = fallback;
+      state.skillsError = null;
+    } else {
+      state.skillsError = getErrorMessage(err);
+    }
   } finally {
     state.skillsLoading = false;
   }
@@ -82,7 +150,7 @@ export async function updateSkillEnabled(state: SkillsState, skillKey: string, e
     await loadSkills(state);
     setSkillMessage(state, skillKey, {
       kind: "success",
-      message: enabled ? "Skill enabled" : "Skill disabled",
+      message: enabled ? "技能已启用" : "技能已禁用",
     });
   } catch (err) {
     const message = getErrorMessage(err);
@@ -108,7 +176,7 @@ export async function saveSkillApiKey(state: SkillsState, skillKey: string) {
     await loadSkills(state);
     setSkillMessage(state, skillKey, {
       kind: "success",
-      message: "API key saved",
+      message: "API Key 已保存",
     });
   } catch (err) {
     const message = getErrorMessage(err);
@@ -142,7 +210,7 @@ export async function installSkill(
     await loadSkills(state);
     setSkillMessage(state, skillKey, {
       kind: "success",
-      message: result?.message ?? "Installed",
+      message: result?.message ?? "已安装",
     });
   } catch (err) {
     const message = getErrorMessage(err);

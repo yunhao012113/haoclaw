@@ -352,10 +352,7 @@ final class AppState {
         }
     }
 
-    @MainActor
-    deinit {
-        self.configWatcher?.stop()
-    }
+    deinit {}
 
     private static func remoteHost(from urlString: String?) -> String? {
         guard let raw = urlString?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -499,11 +496,13 @@ final class AppState {
         }
 
         if let desiredMode {
-            if desiredMode != self.connectionMode {
-                self.connectionMode = desiredMode
+            let resolvedMode: ConnectionMode =
+                desiredMode == .remote && !hasRemoteUrl ? .local : desiredMode
+            if resolvedMode != self.connectionMode {
+                self.connectionMode = resolvedMode
             }
-        } else if hasRemoteUrl, self.connectionMode != .remote {
-            self.connectionMode = .remote
+        } else if self.connectionMode == .remote, !hasRemoteUrl {
+            self.connectionMode = .local
         }
 
         if remoteTransport != self.remoteTransport {

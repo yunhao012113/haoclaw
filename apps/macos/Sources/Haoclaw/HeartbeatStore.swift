@@ -32,8 +32,5 @@ final class HeartbeatStore {
         }
     }
 
-    @MainActor
-    deinit {
-        if let observer { NotificationCenter.default.removeObserver(observer) }
-    }
+    deinit {}
 }

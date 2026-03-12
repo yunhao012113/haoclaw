@@ -218,9 +218,8 @@ actor VoiceWakeRuntime {
             }
 
             let preferred = config.micID?.isEmpty == false ? config.micID! : "system-default"
-            self.logger.info(
-                "voicewake runtime input preferred=\(preferred, privacy: .public) " +
-                    "\(AudioInputDeviceObserver.defaultInputDeviceSummary(), privacy: .public)")
+            let inputSummary = "voicewake runtime input preferred=\(preferred) \(AudioInputDeviceObserver.defaultInputDeviceSummary())"
+            self.logger.info("\(inputSummary, privacy: .public)")
             self.logger.info("voicewake runtime started")
             DiagnosticsFileLog.shared.log(category: "voicewake.runtime", event: "started", fields: [
                 "locale": config.localeID ?? "",
@@ -408,12 +407,12 @@ actor VoiceWakeRuntime {
             let end = String(format: "%.2f", seg.end)
             return "\(seg.text)@\(start)-\(end)"
         }.joined(separator: ", ")
-
-        self.logger.debug(
-            "voicewake runtime transcript='\(transcript, privacy: .private)' textOnly=\(summary.textOnly) " +
-                "isFinal=\(isFinal) timing=\(summary.timingCount)/\(segments.count) " +
-                "capturing=\(capturing) fallback=\(usedFallback) " +
-                "\(matchSummary) segments=[\(segmentSummary, privacy: .private)]")
+        let message =
+            "voicewake runtime transcript='\(transcript)' textOnly=\(summary.textOnly) " +
+            "isFinal=\(isFinal) timing=\(summary.timingCount)/\(segments.count) " +
+            "capturing=\(capturing) fallback=\(usedFallback) " +
+            "\(matchSummary) segments=[\(segmentSummary)]"
+        self.logger.debug("\(message, privacy: .private)")
     }
 
     private func noteAudioTap(rms: Double) {
@@ -423,9 +422,8 @@ actor VoiceWakeRuntime {
         }
         self.lastTapLogAt = now
         let db = 20 * log10(max(rms, 1e-7))
-        self.logger.debug(
-            "voicewake runtime audio tap rms=\(String(format: "%.6f", rms)) " +
-                "db=\(String(format: "%.1f", db)) capturing=\(self.isCapturing)")
+        let message = "voicewake runtime audio tap rms=\(String(format: "%.6f", rms)) db=\(String(format: "%.1f", db)) capturing=\(self.isCapturing)"
+        self.logger.debug("\(message, privacy: .public)")
     }
 
     private func noteRecognitionCallback(transcript: String?, isFinal: Bool, error: Error?) {

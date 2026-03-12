@@ -67,7 +67,7 @@ actor SessionPreviewLimiter {
         self.available = normalized
     }
 
-    func withPermit<T>(_ operation: () async throws -> T) async throws -> T {
+    func withPermit<T: Sendable>(_ operation: () async throws -> T) async throws -> T {
         await self.acquire()
         defer { self.release() }
         if Task.isCancelled { throw CancellationError() }
@@ -239,9 +239,8 @@ enum SessionMenuPreviewLoader {
         } catch {
             if self.isUnknownMethodError(error) { return }
             let errorDescription = String(describing: error)
-            Self.logger.debug(
-                "Session preview prewarm failed count=\(keys.count, privacy: .public) " +
-                    "error=\(errorDescription, privacy: .public)")
+            let message = "Session preview prewarm failed count=\(keys.count) error=\(errorDescription)"
+            Self.logger.debug("\(message, privacy: .public)")
         }
     }
 
@@ -264,9 +263,8 @@ enum SessionMenuPreviewLoader {
                 return fallback
             }
             let errorDescription = String(describing: error)
-            Self.logger.warning(
-                "Session preview failed session=\(sessionKey, privacy: .public) " +
-                    "error=\(errorDescription, privacy: .public)")
+            let message = "Session preview failed session=\(sessionKey) error=\(errorDescription)"
+            Self.logger.warning("\(message, privacy: .public)")
             return SessionMenuPreviewSnapshot(items: [], status: .error("Preview unavailable"))
         }
     }

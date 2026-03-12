@@ -387,7 +387,7 @@ private struct DesktopControlSkillsPane: View {
             }
 
             DesktopControlCard(title: "技能列表", subtitle: "直接在应用里查看、启停和补齐依赖，不再跳到占位页。") {
-                SkillsSettings(state: self.state)
+                SkillsSettings(state: self.state, model: self.model)
                     .frame(minHeight: 560)
             }
         }

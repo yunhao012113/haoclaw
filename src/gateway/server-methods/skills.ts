@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   listAgentIds,
   resolveAgentWorkspaceDir,
@@ -6,11 +7,14 @@ import {
 import { installSkill } from "../../agents/skills-install.js";
 import { buildWorkspaceSkillStatus } from "../../agents/skills-status.js";
 import { loadWorkspaceSkillEntries, type SkillEntry } from "../../agents/skills.js";
+import { resolveBundledSkillsDir } from "../../agents/skills/bundled-dir.js";
+import { ensureDefaultManagedSkills } from "../../agents/skills/default-managed.js";
 import { listAgentWorkspaceDirs } from "../../agents/workspace-dirs.js";
 import type { HaoclawConfig } from "../../config/config.js";
 import { loadConfig, writeConfigFile } from "../../config/config.js";
 import { getRemoteSkillEligibility } from "../../infra/skills-remote.js";
 import { normalizeAgentId } from "../../routing/session-key.js";
+import { CONFIG_DIR } from "../../utils.js";
 import { normalizeSecretInput } from "../../utils/normalize-secret-input.js";
 import {
   ErrorCodes,
@@ -82,6 +86,10 @@ export const skillsHandlers: GatewayRequestHandlers = {
       }
     }
     const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+    ensureDefaultManagedSkills({
+      managedSkillsDir: path.join(CONFIG_DIR, "skills"),
+      bundledSkillsDir: resolveBundledSkillsDir(),
+    });
     const report = buildWorkspaceSkillStatus(workspaceDir, {
       config: cfg,
       eligibility: { remote: getRemoteSkillEligibility() },

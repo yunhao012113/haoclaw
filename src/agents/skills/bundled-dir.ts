@@ -45,9 +45,15 @@ export function resolveBundledSkillsDir(
   try {
     const execPath = opts.execPath ?? process.execPath;
     const execDir = path.dirname(execPath);
-    const sibling = path.join(execDir, "skills");
-    if (fs.existsSync(sibling)) {
-      return sibling;
+    const runtimeCandidates = [
+      path.join(execDir, "skills"),
+      path.join(execDir, "resources", "skills"),
+      path.resolve(execDir, "..", "Resources", "skills"),
+    ];
+    for (const candidate of runtimeCandidates) {
+      if (looksLikeSkillsDir(candidate)) {
+        return candidate;
+      }
     }
   } catch {
     // ignore

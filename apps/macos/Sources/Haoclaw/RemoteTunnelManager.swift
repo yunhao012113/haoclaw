@@ -37,10 +37,8 @@ actor RemoteTunnelManager {
         if let desc = await PortGuardian.shared.describe(port: Int(desiredPort)),
            self.isSshProcess(desc)
         {
-            self.logger.info(
-                "reusing existing SSH tunnel listener " +
-                    "localPort=\(desiredPort, privacy: .public) " +
-                    "pid=\(desc.pid, privacy: .public)")
+            let message = "reusing existing SSH tunnel listener localPort=\(desiredPort) pid=\(desc.pid)"
+            self.logger.info("\(message, privacy: .public)")
             return desiredPort
         }
         return nil
@@ -58,9 +56,8 @@ actor RemoteTunnelManager {
         }
 
         let identitySet = !settings.identity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        self.logger.info(
-            "ensure SSH tunnel target=\(settings.target, privacy: .public) " +
-                "identitySet=\(identitySet, privacy: .public)")
+        let message = "ensure SSH tunnel target=\(settings.target) identitySet=\(identitySet)"
+        self.logger.info("\(message, privacy: .public)")
 
         if let local = await self.controlTunnelPortIfRunning() { return local }
         await self.waitForRestartBackoffIfNeeded()

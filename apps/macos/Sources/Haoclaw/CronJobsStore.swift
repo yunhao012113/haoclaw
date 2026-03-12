@@ -77,7 +77,7 @@ final class CronJobsStore {
             }
             self.jobs = try await GatewayConnection.shared.cronList(includeDisabled: true)
             if self.jobs.isEmpty {
-                self.statusMessage = "No cron jobs yet."
+                self.statusMessage = "还没有自动任务。"
             }
         } catch {
             self.logger.error("cron.list failed \(error.localizedDescription, privacy: .public)")

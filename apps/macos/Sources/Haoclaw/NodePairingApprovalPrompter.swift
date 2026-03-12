@@ -6,7 +6,7 @@ import HaoclawIPC
 import HaoclawKit
 import HaoclawProtocol
 import OSLog
-import UserNotifications
+@preconcurrency import UserNotifications
 
 enum NodePairingReconcilePolicy {
     static let activeIntervalMs: UInt64 = 15000

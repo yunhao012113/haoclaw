@@ -13,6 +13,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_ROOT="$ROOT_DIR/apps/macos/.build"
 PRODUCT="Haoclaw"
 BUILD_CONFIG="${BUILD_CONFIG:-release}"
+export BUILD_CONFIG
 
 # Default to universal binary for distribution builds (supports both Apple Silicon and Intel Macs)
 export BUILD_ARCHS="${BUILD_ARCHS:-all}"

@@ -1,6 +1,20 @@
-import ConcurrencyExtras
 import Foundation
 import OSLog
+
+private final class LockIsolated<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func withValue<Result>(_ operation: (inout Value) -> Result) -> Result {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        return operation(&self.value)
+    }
+}
 
 enum GatewayEndpointState: Equatable {
     case ready(mode: AppState.ConnectionMode, url: URL, token: String?, password: String?)
@@ -218,9 +232,9 @@ actor GatewayEndpointStore {
             }
         }
         guard shouldWarn else { return }
-        Self.staticLogger.warning(
-            "\(envVar, privacy: .public) is set and overrides \(configKey, privacy: .public). " +
-                "If this is unintentional, clear it with: launchctl unsetenv \(envVar, privacy: .public)")
+        let message =
+            "\(envVar) is set and overrides \(configKey). If this is unintentional, clear it with: launchctl unsetenv \(envVar)"
+        Self.staticLogger.warning("\(message, privacy: .public)")
     }
 
     private let deps: Deps

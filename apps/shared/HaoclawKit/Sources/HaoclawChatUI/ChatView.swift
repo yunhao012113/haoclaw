@@ -207,14 +207,12 @@ public struct HaoclawChatView: View {
         if self.viewModel.pendingRunCount > 0 {
             HStack {
                 ChatTypingIndicatorBubble(style: self.style)
-                    .equatable()
                 Spacer(minLength: 0)
             }
         }
 
         if !self.viewModel.pendingToolCalls.isEmpty {
             ChatPendingToolsBubble(toolCalls: self.viewModel.pendingToolCalls)
-                .equatable()
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
 
