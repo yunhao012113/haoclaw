@@ -106,6 +106,8 @@ function resolveChannelOrder(snapshot: ChannelsStatusSnapshot | null): ChannelKe
     "imessage",
     "googlechat",
     "nostr",
+    "line",
+    "twitch",
   ];
 }
 
@@ -281,6 +283,10 @@ function resolveChannelLabel(snapshot: ChannelsStatusSnapshot | null, key: strin
       return "Google Chat";
     case "nostr":
       return "Nostr";
+    case "line":
+      return "LINE";
+    case "twitch":
+      return "Twitch";
     default:
       return key;
   }
