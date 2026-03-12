@@ -492,8 +492,15 @@ final class DesktopClientModel {
             return
         }
 
-        guard !trimmedBaseURL.isEmpty, !trimmedModelID.isEmpty else {
-            self.statusMessage = "请先填写 Base URL 和模型 ID。"
+        let resolvedProviderID = trimmedProviderID.isEmpty ? selectedPreset.defaultProviderID : trimmedProviderID
+        let resolvedApiAdapter = trimmedApiAdapter.isEmpty ? selectedPreset.apiAdapter : trimmedApiAdapter
+        let resolvedModelID = self.resolveModelIDForSave(
+            explicitModelID: trimmedModelID,
+            providerID: resolvedProviderID,
+            preset: selectedPreset)
+
+        guard !trimmedBaseURL.isEmpty else {
+            self.statusMessage = "请先填写 API 接口地址。"
             return
         }
 
@@ -504,44 +511,48 @@ final class DesktopClientModel {
         var modelsRoot = root["models"] as? [String: Any] ?? [:]
         var providers = modelsRoot["providers"] as? [String: Any] ?? [:]
 
-        var providerEntry = providers[trimmedProviderID] as? [String: Any] ?? [:]
+        var providerEntry = providers[resolvedProviderID] as? [String: Any] ?? [:]
         providerEntry["baseUrl"] = trimmedBaseURL
-        providerEntry["api"] = trimmedApiAdapter
+        providerEntry["api"] = resolvedApiAdapter
         if !trimmedApiKey.isEmpty {
             providerEntry["apiKey"] = trimmedApiKey
         } else {
             providerEntry.removeValue(forKey: "apiKey")
         }
 
-        var providerModels = Self.extractProviderModels(from: providerEntry)
-        let nextModelEntry: [String: Any] = [
-            "id": trimmedModelID,
-            "name": trimmedModelID,
-            "api": trimmedApiAdapter,
-        ]
-        if let existingIndex = providerModels.firstIndex(where: {
-            (($0["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == trimmedModelID
-        }) {
-            providerModels[existingIndex] = nextModelEntry
-        } else {
-            providerModels.append(nextModelEntry)
+        if !resolvedModelID.isEmpty {
+            var providerModels = Self.extractProviderModels(from: providerEntry)
+            let nextModelEntry: [String: Any] = [
+                "id": resolvedModelID,
+                "name": resolvedModelID,
+                "api": resolvedApiAdapter,
+            ]
+            if let existingIndex = providerModels.firstIndex(where: {
+                (($0["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == resolvedModelID
+            }) {
+                providerModels[existingIndex] = nextModelEntry
+            } else {
+                providerModels.append(nextModelEntry)
+            }
+            providerEntry["models"] = providerModels
         }
-        providerEntry["models"] = providerModels
-        providers[trimmedProviderID] = providerEntry
+        providers[resolvedProviderID] = providerEntry
         modelsRoot["mode"] = "merge"
         modelsRoot["providers"] = providers
         root["models"] = modelsRoot
 
-        let primaryRef = "\(trimmedProviderID)/\(trimmedModelID)"
-        if var agentsRoot = root["agents"] as? [String: Any] {
-            var defaults = agentsRoot["defaults"] as? [String: Any] ?? [:]
-            defaults["model"] = ["primary": primaryRef]
-            agentsRoot["defaults"] = defaults
-            root["agents"] = agentsRoot
-        } else {
-            var agentRoot = root["agent"] as? [String: Any] ?? [:]
-            agentRoot["model"] = ["primary": primaryRef]
-            root["agent"] = agentRoot
+        let primaryRef = resolvedModelID.isEmpty ? nil : "\(resolvedProviderID)/\(resolvedModelID)"
+        if let primaryRef {
+            if var agentsRoot = root["agents"] as? [String: Any] {
+                var defaults = agentsRoot["defaults"] as? [String: Any] ?? [:]
+                defaults["model"] = ["primary": primaryRef]
+                agentsRoot["defaults"] = defaults
+                root["agents"] = agentsRoot
+            } else {
+                var agentRoot = root["agent"] as? [String: Any] ?? [:]
+                agentRoot["model"] = ["primary": primaryRef]
+                root["agent"] = agentRoot
+            }
         }
 
         do {
@@ -553,10 +564,14 @@ final class DesktopClientModel {
             self.appState.remoteToken = trimmedRemoteToken
             self.appState.remoteTarget = trimmedRemoteTarget
             self.appState.remoteIdentity = trimmedRemoteIdentity
-            self.currentModelRef = primaryRef
-            self.statusMessage = selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
-                ? "连接与模型配置已保存。"
-                : "\(selectedPreset.title) 连接已保存。"
+            if let primaryRef {
+                self.currentModelRef = primaryRef
+            }
+            self.statusMessage = primaryRef == nil
+                ? "接口已保存，重新扫描后会自动读取可用模型。"
+                : (selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
+                    ? "连接与模型配置已保存。"
+                    : "\(selectedPreset.title) 连接已保存。")
             self.isShowingModelSettings = false
             await self.refreshSupportData()
         }
@@ -693,6 +708,25 @@ final class DesktopClientModel {
         self.settingsDraft.providerPreset = inferredPreset
     }
 
+    private func resolveModelIDForSave(
+        explicitModelID: String,
+        providerID: String,
+        preset: DesktopProviderPreset) -> String
+    {
+        if !explicitModelID.isEmpty {
+            return explicitModelID
+        }
+        if let current = Self.modelID(from: self.currentModelRef, providerID: providerID), !current.isEmpty {
+            return current
+        }
+        if let existing = self.availableModels.first(where: { $0.provider.caseInsensitiveCompare(providerID) == .orderedSame })?.id,
+           !existing.isEmpty
+        {
+            return existing
+        }
+        return preset.defaultModelID
+    }
+
     private func loadModelCatalog() async {
         do {
             let result: ModelsListResult = try await GatewayConnection.shared.requestDecoded(
@@ -756,6 +790,13 @@ final class DesktopClientModel {
         }
 
         return nil
+    }
+
+    private static func modelID(from modelRef: String, providerID: String) -> String? {
+        let parts = modelRef.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+        guard parts[0].caseInsensitiveCompare(providerID) == .orderedSame else { return nil }
+        return parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func extractConfiguredModels(from root: [String: Any]) -> [ModelChoice] {
@@ -1251,35 +1292,18 @@ private struct DesktopModelSettingsSheet: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                TextField("服务商 ID", text: self.$model.settingsDraft.providerId)
+                TextField("接口名称", text: self.$model.settingsDraft.providerId)
                     .textFieldStyle(.roundedBorder)
 
-                TextField("接口地址", text: self.$model.settingsDraft.baseURL)
+                TextField("API 接口地址", text: self.$model.settingsDraft.baseURL)
                     .textFieldStyle(.roundedBorder)
 
-                SecureField("API Key", text: self.$model.settingsDraft.apiKey)
+                SecureField("API 密钥", text: self.$model.settingsDraft.apiKey)
                     .textFieldStyle(.roundedBorder)
 
-                TextField("模型 ID", text: self.$model.settingsDraft.modelID)
-                    .textFieldStyle(.roundedBorder)
-
-                TextField("适配器", text: self.$model.settingsDraft.apiAdapter)
-                    .textFieldStyle(.roundedBorder)
-
-                if !self.model.settingsSuggestedModels.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(self.model.settingsSuggestedModels, id: \.providerAndID) { choice in
-                                Button("\(choice.provider)/\(choice.id)") {
-                                    self.model.settingsDraft.providerId = choice.provider
-                                    self.model.settingsDraft.modelID = choice.id
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
-                        }
-                    }
-                }
+                Text("这里不再强制你先填模型 ID。保存后程序会自动扫描当前接口的可用模型。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             HStack {

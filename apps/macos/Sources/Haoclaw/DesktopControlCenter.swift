@@ -215,7 +215,7 @@ private struct DesktopControlModelsPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            DesktopControlCard(title: "模型接入", subtitle: "这里是 Haoclaw 自己的模型中心，用统一方式管理服务商、接口和模型。") {
+            DesktopControlCard(title: "模型接入", subtitle: "这里简化成最少配置项。先填名称、API 接口和密钥，模型列表后面按接口自动读取。") {
                 VStack(alignment: .leading, spacing: 12) {
                     Picker("服务商预设", selection: self.$model.settingsDraft.providerPreset) {
                         ForEach(DesktopProviderPreset.allCases) { preset in
@@ -231,16 +231,16 @@ private struct DesktopControlModelsPane: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    TextField("服务商 ID", text: self.$model.settingsDraft.providerId)
+                    TextField("接口名称", text: self.$model.settingsDraft.providerId)
                         .textFieldStyle(.roundedBorder)
-                    TextField("接口地址", text: self.$model.settingsDraft.baseURL)
+                    TextField("API 接口地址", text: self.$model.settingsDraft.baseURL)
                         .textFieldStyle(.roundedBorder)
-                    SecureField("接口密钥", text: self.$model.settingsDraft.apiKey)
+                    SecureField("API 密钥", text: self.$model.settingsDraft.apiKey)
                         .textFieldStyle(.roundedBorder)
-                    TextField("模型 ID", text: self.$model.settingsDraft.modelID)
-                        .textFieldStyle(.roundedBorder)
-                    TextField("适配器", text: self.$model.settingsDraft.apiAdapter)
-                        .textFieldStyle(.roundedBorder)
+
+                    Text("保存后会自动尝试读取接口返回的模型。只有当服务商不提供模型列表时，才需要再补默认模型。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
 
                     HStack(spacing: 10) {
                         Button("保存并应用") {
@@ -253,41 +253,6 @@ private struct DesktopControlModelsPane: View {
                             Task { await self.model.refreshSupportData() }
                         }
                         .buttonStyle(.bordered)
-                    }
-                }
-            }
-
-            DesktopControlCard(title: "已接入模型", subtitle: "会话下拉会优先显示当前服务商下的模型，这里列出你已经接入的项目。") {
-                VStack(alignment: .leading, spacing: 12) {
-                    if self.model.availableModels.isEmpty {
-                        Text("当前还没有可用模型。先填入接口地址和密钥，再保存。")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
-                            ForEach(self.model.availableModels, id: \.desktopModelRef) { choice in
-                                DesktopModelChoiceCard(
-                                    choice: choice,
-                                    isCurrent: choice.desktopModelRef == self.model.selectedSessionModelRef,
-                                    action: {
-                                        Task { await self.model.selectSessionModel(choice.desktopModelRef) }
-                                    })
-                            }
-                        }
-                    }
-
-                    if !self.model.settingsSuggestedModels.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(self.model.settingsSuggestedModels, id: \.desktopModelRef) { choice in
-                                    Button("\(choice.provider)/\(choice.id)") {
-                                        self.model.settingsDraft.providerId = choice.provider
-                                        self.model.settingsDraft.modelID = choice.id
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -396,20 +361,131 @@ private struct DesktopControlSkillsPane: View {
 }
 
 private struct DesktopControlChannelsPane: View {
+    @Bindable var store: ChannelsStore
+    @State private var selectedChannelId = "telegram"
+
+    init(store: ChannelsStore = .shared) {
+        self.store = store
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            DesktopControlCard(title: "渠道接入", subtitle: "消息渠道接入先通过独立管理页承接，后面再进一步并到统一运行台里。") {
+            DesktopControlCard(title: "渠道接入", subtitle: "这里直接管理飞书、Telegram、Slack、WhatsApp 等外部渠道。接好以后就可以在代理频道里用手机操控。") {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("这里可以管理飞书、Telegram、Slack 等外部渠道接入。")
-                        .foregroundStyle(.secondary)
-                    Button("打开渠道管理") {
-                        SettingsTabRouter.request(.channels)
-                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    Picker("当前渠道", selection: self.$selectedChannelId) {
+                        ForEach(self.visibleChannelIds, id: \.self) { channelId in
+                            Text(self.channelLabel(channelId)).tag(channelId)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .pickerStyle(.menu)
+
+                    DesktopInfoSection(
+                        title: "渠道状态",
+                        rows: [
+                            ("渠道", self.channelLabel(self.selectedChannelId)),
+                            ("配置", self.channelConfiguredText(self.selectedChannelId)),
+                            ("运行", self.channelRunningText(self.selectedChannelId)),
+                            ("连接", self.channelConnectedText(self.selectedChannelId)),
+                        ])
+
+                    if let error = self.channelLastError(self.selectedChannelId), !error.isEmpty {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.orange.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+
+                    ChannelConfigForm(store: self.store, channelId: self.selectedChannelId)
+
+                    HStack(spacing: 10) {
+                        Button("保存渠道配置") {
+                            Task { await self.store.saveConfigDraft() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(self.store.isSavingConfig || !self.store.configDirty)
+
+                        Button("重新加载") {
+                            Task { await self.store.reloadConfigDraft() }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(self.store.isSavingConfig)
+
+                        Button("刷新状态") {
+                            Task { await self.store.refresh(probe: true) }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    if let status = self.store.configStatus, !status.isEmpty {
+                        Text(status)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
+        .task {
+            self.store.start()
+            await self.store.refresh(probe: true)
+            await self.store.loadConfigSchema()
+            await self.store.loadConfig()
+            if !self.visibleChannelIds.contains(self.selectedChannelId) {
+                self.selectedChannelId = self.visibleChannelIds.first ?? "telegram"
+            }
+        }
+    }
+
+    private var visibleChannelIds: [String] {
+        let dynamic = self.store.orderedChannelIds()
+        if !dynamic.isEmpty {
+            return dynamic
+        }
+        return ["feishu", "telegram", "whatsapp", "slack", "discord", "signal", "imessage", "googlechat", "nostr"]
+    }
+
+    private func channelLabel(_ id: String) -> String {
+        let resolved = self.store.resolveChannelLabel(id)
+        if resolved != id {
+            return resolved
+        }
+        switch id {
+        case "feishu": return "飞书"
+        case "telegram": return "Telegram"
+        case "whatsapp": return "WhatsApp"
+        case "slack": return "Slack"
+        case "discord": return "Discord"
+        case "signal": return "Signal"
+        case "imessage": return "iMessage"
+        case "googlechat": return "Google Chat"
+        case "nostr": return "Nostr"
+        default: return id
+        }
+    }
+
+    private func channelStatus(_ id: String) -> [String: AnyCodable]? {
+        self.store.snapshot?.channels[id]?.dictionaryValue
+    }
+
+    private func channelConfiguredText(_ id: String) -> String {
+        (self.channelStatus(id)?["configured"]?.boolValue ?? false) ? "已配置" : "未配置"
+    }
+
+    private func channelRunningText(_ id: String) -> String {
+        (self.channelStatus(id)?["running"]?.boolValue ?? false) ? "运行中" : "未运行"
+    }
+
+    private func channelConnectedText(_ id: String) -> String {
+        if let connected = self.channelStatus(id)?["connected"]?.boolValue {
+            return connected ? "已连接" : "未连接"
+        }
+        return "待检测"
+    }
+
+    private func channelLastError(_ id: String) -> String? {
+        self.channelStatus(id)?["lastError"]?.stringValue
     }
 }
 

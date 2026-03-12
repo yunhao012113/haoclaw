@@ -185,6 +185,62 @@ private struct SkillRow: View {
         self.skill.missing.config
     }
 
+    private static let localizedSummaries: [String: String] = [
+        "1password": "用于 1Password CLI 的登录、读取和密钥注入辅助。",
+        "agent-browser": "用于浏览器自动化、页面点击、截图和元素读取。",
+        "apple-notes": "用于读写 Apple Notes 备忘录内容。",
+        "apple-reminders": "用于管理 Apple 提醒事项。",
+        "bear-notes": "用于 Bear 笔记的读取、创建和整理。",
+        "blogwatcher": "用于订阅博客更新并整理新增内容。",
+        "blucli": "用于蓝牙设备和蓝牙状态操作。",
+        "bluebubbles": "用于 BlueBubbles / iMessage 相关联动。",
+        "camsnap": "用于摄像头拍照与图像采集。",
+        "canvas": "用于桌面画布、截图和可视化产出。",
+        "clawhub": "用于连接 ClawHub 技能市场或技能仓库。",
+        "coding-agent": "用于代码任务、补丁编写和工程辅助。",
+        "discord": "用于 Discord 渠道接入和消息操作。",
+        "eightctl": "用于 eightctl 命令集成。",
+        "gemini": "用于 Gemini 系列模型与工具联动。",
+        "gh-issues": "用于 GitHub Issue 查询和处理。",
+        "gifgrep": "用于 GIF / 动图搜索与筛选。",
+        "github": "用于 GitHub 仓库、PR 和提交管理。",
+        "gog": "用于命令行工作流和任务操作。",
+        "goplaces": "用于地点搜索和地理信息读取。",
+        "healthcheck": "用于运行状态检查和健康巡检。",
+        "himalaya": "用于邮件客户端和邮箱操作。",
+        "imsg": "用于 iMessage / 消息数据库相关功能。",
+        "mcporter": "用于 MCP 服务搬运和封装。",
+        "model-usage": "用于模型调用量、成本和上下文统计。",
+        "nano-banana-pro": "用于图像理解和 Nano Banana 系列能力。",
+        "nano-pdf": "用于 PDF 读取、提取和总结。",
+        "notion": "用于 Notion 页面和数据库操作。",
+        "obsidian": "用于 Obsidian 笔记库读写。",
+        "openai-image-gen": "用于 OpenAI 图像生成。",
+        "openai-whisper": "用于 Whisper 本地语音转写。",
+        "openai-whisper-api": "用于 Whisper API 语音转写。",
+        "openhue": "用于 Hue 灯光与家庭设备控制。",
+        "oracle": "用于数据库或 Oracle 相关操作。",
+        "ordercli": "用于命令行订单或流程管理。",
+        "peekaboo": "用于桌面 UI 自动化和可视化交互。",
+        "sag": "用于命令行检索与摘要。",
+        "session-logs": "用于会话日志查看和归档。",
+        "sherpa-onnx-tts": "用于本地语音合成。",
+        "skill-creator": "用于创建和维护自定义技能。",
+        "slack": "用于 Slack 渠道接入和消息收发。",
+        "songsee": "用于音乐内容查询。",
+        "sonoscli": "用于 Sonos 播放器控制。",
+        "spotify-player": "用于 Spotify 播放控制。",
+        "summarize": "用于网页、文档或对话摘要。",
+        "things-mac": "用于 Things 任务管理。",
+        "tmux": "用于 tmux 会话和终端管理。",
+        "trello": "用于 Trello 看板操作。",
+        "video-frames": "用于视频抽帧和画面分析。",
+        "voice-call": "用于语音通话和电话型交互。",
+        "wacli": "用于 WhatsApp CLI 或相关工具联动。",
+        "weather": "用于天气查询。",
+        "xurl": "用于网络请求和 URL 调试。",
+    ]
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Text(self.skill.emoji ?? "✨")
@@ -193,7 +249,7 @@ private struct SkillRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(self.skill.name)
                     .font(.headline)
-                Text(self.skill.description)
+                Text(self.localizedDescription)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -226,9 +282,9 @@ private struct SkillRow: View {
     private var sourceLabel: String {
         switch self.skill.source {
         case "haoclaw-bundled":
-            "内置"
+            "后台目录"
         case "haoclaw-managed":
-            "托管"
+            "后台目录"
         case "haoclaw-workspace":
             "工作区"
         case "haoclaw-extra":
@@ -243,6 +299,9 @@ private struct SkillRow: View {
     private var metaRow: some View {
         HStack(spacing: 10) {
             SkillTag(text: self.sourceLabel)
+            if self.skill.source == "haoclaw-bundled" || self.skill.source == "haoclaw-managed" {
+                SkillTag(text: "按需启用")
+            }
             if let url = self.homepageUrl {
                 Link(destination: url) {
                     Label("说明页", systemImage: "link")
@@ -321,30 +380,11 @@ private struct SkillRow: View {
     private var trailingActions: some View {
         VStack(alignment: .trailing, spacing: 8) {
             if !self.installOptions.isEmpty {
-                ForEach(self.installOptions, id: \.id) { (option: SkillInstallOption) in
-                    HStack(spacing: 6) {
-                        if self.showGatewayInstall {
-                            Button("安装到网关") { self.onInstall(option, .gateway) }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(self.isBusy)
-                        }
-                        if self.showGatewayInstall {
-                            Button("安装到本机") { self.onInstall(option, .local) }
-                                .buttonStyle(.bordered)
-                                .disabled(self.isBusy)
-                                .help(
-                                    self.localInstallNeedsSwitch
-                                        ? "会先切换到本地模式，再安装到当前电脑。"
-                                        : "")
-                        } else {
-                            Button("安装到本机") { self.onInstall(option, .local) }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(self.isBusy)
-                                .help(
-                                    self.localInstallNeedsSwitch
-                                        ? "会先切换到本地模式，再安装到当前电脑。"
-                                        : "")
-                        }
+                VStack(alignment: .trailing, spacing: 6) {
+                    SkillTag(text: "需用户自行安装")
+                    if let url = self.homepageUrl {
+                        Link("打开安装说明", destination: url)
+                            .font(.caption.weight(.semibold))
                     }
                 }
             } else {
@@ -384,12 +424,18 @@ private struct SkillRow: View {
             !self.missingConfig.isEmpty
     }
 
-    private var showGatewayInstall: Bool {
-        self.connectionMode == .remote
+    private var localizedDescription: String {
+        let raw = self.skill.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
+            return Self.localizedSummaries[self.skill.skillKey] ?? "用于后台技能调用。"
+        }
+        guard !Self.containsChinese(raw) else { return raw }
+        let localized = Self.localizedSummaries[self.skill.skillKey] ?? "用于 \(self.skill.name) 的后台技能扩展。"
+        return "\(raw)\n中文：\(localized)"
     }
 
-    private var localInstallNeedsSwitch: Bool {
-        self.connectionMode != .local
+    private static func containsChinese(_ text: String) -> Bool {
+        text.range(of: #"\p{Han}"#, options: .regularExpression) != nil
     }
 
     private func formatConfigValue(_ value: AnyCodable?) -> String {
@@ -700,7 +746,7 @@ final class SkillsSettingsModel {
             let skillFile = skillDir.appendingPathComponent("SKILL.md")
             return SkillStatus(
                 name: key,
-                description: "Haoclaw 预装技能",
+                description: "Haoclaw 后台技能",
                 source: "haoclaw-bundled",
                 filePath: skillFile.path,
                 baseDir: managedDir.path,

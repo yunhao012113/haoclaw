@@ -331,7 +331,7 @@ extension ChannelsSettings {
     }
 
     var orderedChannels: [ChannelItem] {
-        let fallback = ["whatsapp", "telegram", "discord", "googlechat", "slack", "signal", "imessage"]
+        let fallback = ["feishu", "telegram", "whatsapp", "slack", "discord", "signal", "imessage", "googlechat", "nostr"]
         let order = self.store.snapshot?.channelOrder ?? fallback
         let channels = order.enumerated().map { index, id in
             ChannelItem(
@@ -409,6 +409,10 @@ extension ChannelsSettings {
 
     func channelSummary(_ channel: ChannelItem) -> String {
         switch channel.id {
+        case "feishu":
+            if self.channelHasError(channel) { return "异常" }
+            if self.channelEnabled(channel) { return "已启用" }
+            return "未配置"
         case "whatsapp":
             return self.whatsAppSummary
         case "telegram":
@@ -430,6 +434,12 @@ extension ChannelsSettings {
 
     func channelDetails(_ channel: ChannelItem) -> String? {
         switch channel.id {
+        case "feishu":
+            let status = self.channelStatusDictionary(channel.id)
+            if let err = status?["lastError"]?.stringValue, !err.isEmpty {
+                return "错误：\(err)"
+            }
+            return nil
         case "whatsapp":
             return self.whatsAppDetails
         case "telegram":
