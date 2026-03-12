@@ -22,6 +22,10 @@ ensure_symlink() {
   local destination="$1"
   local source="$2"
 
+  if [[ "${destination}" == "${source}" ]]; then
+    return
+  fi
+
   if [[ -L "${destination}" ]]; then
     local current_target
     current_target="$(readlink "${destination}" 2>/dev/null || true)"
@@ -29,10 +33,10 @@ ensure_symlink() {
       return
     fi
     rm -f "${destination}"
-  elif [[ -d "${destination}" ]]; then
-    return
   elif [[ -e "${destination}" ]]; then
-    rm -f "${destination}" 2>/dev/null || true
+    chflags -R nouchg "${destination}" 2>/dev/null || true
+    chmod -R u+w "${destination}" 2>/dev/null || true
+    rm -rf "${destination}" 2>/dev/null || true
   fi
 
   ln -s "${source}" "${destination}"

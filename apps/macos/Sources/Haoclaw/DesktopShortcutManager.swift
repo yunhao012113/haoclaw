@@ -32,6 +32,10 @@ enum DesktopShortcutManager {
                 if currentDestination == appURL.path {
                     return
                 }
+                try? fileManager.removeItem(at: shortcutURL)
+            }
+
+            if fileManager.fileExists(atPath: shortcutURL.path) {
                 try fileManager.removeItem(at: shortcutURL)
             }
 
