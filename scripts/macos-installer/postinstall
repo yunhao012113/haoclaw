@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APP_PATH="/Applications/Haoclaw.app"
+APP_NAME="Haoclaw.app"
 
 console_user="$(stat -f '%Su' /dev/console 2>/dev/null || true)"
 if [[ -z "${console_user}" || "${console_user}" == "root" || "${console_user}" == "loginwindow" ]]; then
@@ -13,14 +14,69 @@ if [[ -z "${user_home}" || ! -d "${user_home}" ]]; then
   exit 0
 fi
 
-desktop_dir="${user_home}/Desktop"
-if [[ ! -d "${desktop_dir}" || ! -d "${APP_PATH}" ]]; then
+if [[ ! -d "${APP_PATH}" ]]; then
   exit 0
 fi
 
-shortcut_path="${desktop_dir}/Haoclaw.app"
-rm -rf "${shortcut_path}"
-ln -s "${APP_PATH}" "${shortcut_path}"
-chown -h "${console_user}" "${shortcut_path}" 2>/dev/null || true
+ensure_symlink() {
+  local destination="$1"
+  local source="$2"
+
+  if [[ -L "${destination}" ]]; then
+    local current_target
+    current_target="$(readlink "${destination}" 2>/dev/null || true)"
+    if [[ "${current_target}" == "${source}" ]]; then
+      return
+    fi
+    rm -f "${destination}"
+  elif [[ -d "${destination}" ]]; then
+    return
+  elif [[ -e "${destination}" ]]; then
+    rm -f "${destination}" 2>/dev/null || true
+  fi
+
+  ln -s "${source}" "${destination}"
+  chown -h "${console_user}" "${destination}" 2>/dev/null || true
+}
+
+ensure_finder_alias() {
+  local parent_dir="$1"
+  local alias_path="${parent_dir}/${APP_NAME}"
+
+  [[ -d "${parent_dir}" ]] || return
+
+  rm -rf "${alias_path}" 2>/dev/null || true
+
+  local script
+  script=$(cat <<EOF
+tell application "Finder"
+  set targetApp to POSIX file "${APP_PATH}" as alias
+  set parentFolder to POSIX file "${parent_dir}" as alias
+  make new alias file at parentFolder to targetApp
+end tell
+EOF
+)
+
+  if command -v launchctl >/dev/null 2>&1; then
+    local uid
+    uid="$(id -u "${console_user}" 2>/dev/null || true)"
+    if [[ -n "${uid}" ]]; then
+      launchctl asuser "${uid}" sudo -u "${console_user}" osascript -e "${script}" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  if [[ ! -e "${alias_path}" ]]; then
+    ensure_symlink "${alias_path}" "${APP_PATH}"
+  fi
+}
+
+user_applications_dir="${user_home}/Applications"
+desktop_dir="${user_home}/Desktop"
+
+mkdir -p "${user_applications_dir}"
+chown "${console_user}" "${user_applications_dir}" 2>/dev/null || true
+
+ensure_symlink "${user_applications_dir}/${APP_NAME}" "${APP_PATH}"
+ensure_finder_alias "${desktop_dir}"
 
 exit 0
