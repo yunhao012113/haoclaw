@@ -117,6 +117,24 @@ jobs:
             tail -n 200 package-macos.log
           fi
 
+      - name: Smoke test macOS installer outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pkg_path="$(find dist -maxdepth 1 -name 'Haoclaw-*.pkg' -print -quit)"
+          if [[ -z "${pkg_path}" ]]; then
+            echo "Missing pkg artifact" >&2
+            exit 1
+          fi
+
+          rm -rf /Applications/Haoclaw.app "$HOME/Applications/Haoclaw.app" "$HOME/Desktop/Haoclaw.app" "$HOME/Desktop/打开 Haoclaw.command"
+
+          sudo installer -pkg "${pkg_path}" -target /
+
+          [[ -d /Applications/Haoclaw.app ]]
+          [[ -d "$HOME/Applications/Haoclaw.app" ]]
+          [[ -e "$HOME/Desktop/Haoclaw.app" || -e "$HOME/Desktop/打开 Haoclaw.command" ]]
+
       - name: Upload macOS packaging log
         if: always()
         uses: actions/upload-artifact@v4
