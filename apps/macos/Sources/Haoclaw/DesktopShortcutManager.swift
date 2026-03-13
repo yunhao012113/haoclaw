@@ -1,6 +1,8 @@
 import Foundation
 
 enum DesktopShortcutManager {
+    private static let launcherName = "打开 Haoclaw.command"
+
     static func ensureDesktopShortcutIfNeeded() {
         let appURL = Bundle.main.bundleURL.standardizedFileURL
         guard appURL.pathExtension == "app" else { return }
@@ -21,6 +23,7 @@ enum DesktopShortcutManager {
 
         let shortcutURL = desktopURL.appendingPathComponent("Haoclaw.app", isDirectory: false)
         ensureShortcut(at: shortcutURL, pointingTo: appURL)
+        ensureLauncherScript(at: desktopURL, pointingTo: appURL)
     }
 
     private static func ensureShortcut(at shortcutURL: URL, pointingTo appURL: URL) {
@@ -42,6 +45,21 @@ enum DesktopShortcutManager {
             try fileManager.createSymbolicLink(at: shortcutURL, withDestinationURL: appURL)
         } catch {
             // Convenience only; the app should still launch even if a shortcut cannot be repaired.
+        }
+    }
+
+    private static func ensureLauncherScript(at directoryURL: URL, pointingTo appURL: URL) {
+        let fileManager = FileManager.default
+        let scriptURL = directoryURL.appendingPathComponent(Self.launcherName, isDirectory: false)
+        let scriptBody = "#!/bin/bash\nopen \"\(appURL.path)\"\n"
+
+        do {
+            try scriptBody.write(to: scriptURL, atomically: true, encoding: .utf8)
+            try fileManager.setAttributes(
+                [.posixPermissions: 0o755],
+                ofItemAtPath: scriptURL.path)
+        } catch {
+            // Convenience only; startup should continue even if the launcher cannot be written.
         }
     }
 }

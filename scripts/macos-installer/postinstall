@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_PATH="/Applications/Haoclaw.app"
 APP_NAME="Haoclaw.app"
+LAUNCHER_NAME="打开 Haoclaw.command"
 
 console_user="$(stat -f '%Su' /dev/console 2>/dev/null || true)"
 if [[ -z "${console_user}" || "${console_user}" == "root" || "${console_user}" == "loginwindow" ]]; then
@@ -65,13 +66,28 @@ EOF
     local uid
     uid="$(id -u "${console_user}" 2>/dev/null || true)"
     if [[ -n "${uid}" ]]; then
-      launchctl asuser "${uid}" sudo -u "${console_user}" osascript -e "${script}" >/dev/null 2>&1 || true
+      launchctl asuser "${uid}" osascript -e "${script}" >/dev/null 2>&1 || true
     fi
   fi
 
   if [[ ! -e "${alias_path}" ]]; then
     ensure_symlink "${alias_path}" "${APP_PATH}"
   fi
+}
+
+ensure_launcher_script() {
+  local parent_dir="$1"
+  local script_path="${parent_dir}/${LAUNCHER_NAME}"
+
+  [[ -d "${parent_dir}" ]] || return
+
+  cat > "${script_path}" <<EOF
+#!/bin/bash
+open "${APP_PATH}"
+EOF
+
+  chmod 755 "${script_path}" 2>/dev/null || true
+  chown "${console_user}" "${script_path}" 2>/dev/null || true
 }
 
 user_applications_dir="${user_home}/Applications"
@@ -82,5 +98,6 @@ chown "${console_user}" "${user_applications_dir}" 2>/dev/null || true
 
 ensure_symlink "${user_applications_dir}/${APP_NAME}" "${APP_PATH}"
 ensure_finder_alias "${desktop_dir}"
+ensure_launcher_script "${desktop_dir}"
 
 exit 0
