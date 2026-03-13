@@ -102,6 +102,7 @@ function resolveChannelOrder(snapshot: ChannelsStatusSnapshot | null): ChannelKe
     "whatsapp",
     "slack",
     "discord",
+    "mattermost",
     "signal",
     "imessage",
     "googlechat",
@@ -133,6 +134,8 @@ function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChan
         discord: data.discord,
         accountCountLabel,
       });
+    case "mattermost":
+      return renderGenericChannelCard(key, props, data.channelAccounts ?? {});
     case "googlechat":
       return renderGoogleChatCard({
         props,
@@ -275,6 +278,8 @@ function resolveChannelLabel(snapshot: ChannelsStatusSnapshot | null, key: strin
       return "Slack";
     case "discord":
       return "Discord";
+    case "mattermost":
+      return "Mattermost";
     case "signal":
       return "Signal";
     case "imessage":

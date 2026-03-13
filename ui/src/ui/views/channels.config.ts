@@ -137,6 +137,13 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
   telegram: [
     { path: ["enabled"], label: "启用渠道", kind: "boolean" },
     { path: ["botToken"], label: "Bot Token", kind: "secret", placeholder: "123456:ABC..." },
+    { path: ["tokenFile"], label: "Token 文件", kind: "text", placeholder: "/path/to/token.txt" },
+    {
+      path: ["webhookUrl"],
+      label: "Webhook 公网地址",
+      kind: "text",
+      placeholder: "https://example.com/telegram",
+    },
     {
       path: ["webhookPath"],
       label: "Webhook 路径",
@@ -146,6 +153,12 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
     { path: ["webhookSecret"], label: "Webhook Secret", kind: "secret" },
     { path: ["proxy"], label: "代理地址", kind: "text", placeholder: "socks5://127.0.0.1:7890" },
     { path: ["allowFrom"], label: "允许用户", kind: "textarea", placeholder: "每行一个 tg:userId" },
+    {
+      path: ["groupAllowFrom"],
+      label: "允许群组发送者",
+      kind: "textarea",
+      placeholder: "每行一个 tg:userId",
+    },
     {
       path: ["dmPolicy"],
       label: "私聊策略",
@@ -158,6 +171,26 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
       kind: "select",
       options: COMMON_GROUP_POLICY_OPTIONS,
     },
+    {
+      path: ["streamMode"],
+      label: "流式模式",
+      kind: "select",
+      options: [
+        { label: "关闭", value: "off" },
+        { label: "草稿流", value: "partial" },
+        { label: "块流", value: "block" },
+      ],
+    },
+    {
+      path: ["replyToMode"],
+      label: "回复模式",
+      kind: "select",
+      options: [
+        { label: "关闭", value: "off" },
+        { label: "首条回复", value: "first" },
+        { label: "全部回复", value: "all" },
+      ],
+    },
     { path: ["requireMention"], label: "群聊必须 @", kind: "boolean" },
     {
       path: ["defaultTo"],
@@ -168,8 +201,18 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
   ],
   slack: [
     { path: ["enabled"], label: "启用渠道", kind: "boolean" },
+    {
+      path: ["mode"],
+      label: "接入模式",
+      kind: "select",
+      options: [
+        { label: "Socket 模式", value: "socket" },
+        { label: "HTTP 模式", value: "http" },
+      ],
+    },
     { path: ["botToken"], label: "Bot Token", kind: "secret", placeholder: "xoxb-..." },
     { path: ["appToken"], label: "App Token", kind: "secret", placeholder: "xapp-..." },
+    { path: ["userToken"], label: "User Token", kind: "secret", placeholder: "xoxp-..." },
     { path: ["signingSecret"], label: "Signing Secret", kind: "secret" },
     { path: ["webhookPath"], label: "Webhook 路径", kind: "text", placeholder: "/webhook/slack" },
     {
@@ -196,6 +239,15 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
       label: "默认发送目标",
       kind: "text",
       placeholder: "C12345678 / U12345678",
+    },
+    {
+      path: ["replyToMode"],
+      label: "回复模式",
+      kind: "select",
+      options: [
+        { label: "主频道", value: "off" },
+        { label: "线程回复", value: "thread" },
+      ],
     },
   ],
   discord: [
@@ -289,6 +341,12 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
       kind: "select",
       options: COMMON_GROUP_POLICY_OPTIONS,
     },
+    {
+      path: ["defaultTo"],
+      label: "默认发送目标",
+      kind: "text",
+      placeholder: "spaces/AAAA...",
+    },
   ],
   signal: [
     { path: ["enabled"], label: "启用渠道", kind: "boolean" },
@@ -334,8 +392,31 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
       placeholder: "~/Library/Messages/chat.db",
     },
     {
+      path: ["remoteHost"],
+      label: "远程主机",
+      kind: "text",
+      placeholder: "user@remote-mac",
+    },
+    {
+      path: ["service"],
+      label: "发送服务",
+      kind: "select",
+      options: [
+        { label: "自动", value: "auto" },
+        { label: "iMessage", value: "imessage" },
+        { label: "短信", value: "sms" },
+      ],
+    },
+    { path: ["region"], label: "短信区域", kind: "text", placeholder: "CN / US" },
+    {
       path: ["allowFrom"],
       label: "允许联系人",
+      kind: "textarea",
+      placeholder: "每行一个手机号或邮箱",
+    },
+    {
+      path: ["groupAllowFrom"],
+      label: "允许群组发送者",
       kind: "textarea",
       placeholder: "每行一个手机号或邮箱",
     },
@@ -388,6 +469,12 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
       kind: "select",
       options: COMMON_GROUP_POLICY_OPTIONS,
     },
+    {
+      path: ["groupAllowFrom"],
+      label: "允许群组发送者",
+      kind: "textarea",
+      placeholder: "每行一个 LINE user id",
+    },
   ],
   twitch: [
     { path: ["enabled"], label: "启用渠道", kind: "boolean" },
@@ -408,7 +495,38 @@ const MANUAL_CHANNEL_FIELDS: Record<string, ManualChannelField[]> = {
     { path: ["relays"], label: "Relay 列表", kind: "textarea", placeholder: "每行一个 wss://..." },
     { path: ["privateKey"], label: "私钥", kind: "secret" },
     { path: ["publicKey"], label: "公钥", kind: "text" },
+    { path: ["dmPolicy"], label: "私聊策略", kind: "select", options: COMMON_POLICY_OPTIONS },
+    {
+      path: ["allowFrom"],
+      label: "允许用户",
+      kind: "textarea",
+      placeholder: "每行一个 npub 或 hex pubkey",
+    },
     { path: ["defaultTo"], label: "默认发送目标", kind: "text", placeholder: "npub..." },
+  ],
+  mattermost: [
+    { path: ["enabled"], label: "启用渠道", kind: "boolean" },
+    { path: ["baseUrl"], label: "服务地址", kind: "text", placeholder: "https://chat.example.com" },
+    { path: ["botToken"], label: "Bot Token", kind: "secret", placeholder: "mm-token" },
+    {
+      path: ["defaultTo"],
+      label: "默认发送目标",
+      kind: "text",
+      placeholder: "channel-id / @username",
+    },
+    {
+      path: ["allowFrom"],
+      label: "允许用户",
+      kind: "textarea",
+      placeholder: "每行一个 Mattermost 用户名或 ID",
+    },
+    { path: ["dmPolicy"], label: "私聊策略", kind: "select", options: COMMON_POLICY_OPTIONS },
+    {
+      path: ["groupPolicy"],
+      label: "频道策略",
+      kind: "select",
+      options: COMMON_GROUP_POLICY_OPTIONS,
+    },
   ],
 };
 

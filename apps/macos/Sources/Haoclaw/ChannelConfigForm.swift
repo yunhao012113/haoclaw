@@ -640,20 +640,38 @@ private func manualChannelFields(for channelId: String) -> [ManualChannelField] 
         return [
             .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
             .init(path: ["botToken"], label: "Bot Token", kind: .secret, placeholder: "123456:ABC...", help: nil),
+            .init(path: ["tokenFile"], label: "Token 文件", kind: .text, placeholder: "/path/to/token.txt", help: nil),
+            .init(path: ["webhookUrl"], label: "Webhook 公网地址", kind: .text, placeholder: "https://example.com/telegram", help: nil),
             .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/telegram", help: nil),
             .init(path: ["webhookSecret"], label: "Webhook Secret", kind: .secret, placeholder: "", help: nil),
             .init(path: ["proxy"], label: "代理地址", kind: .text, placeholder: "socks5://127.0.0.1:7890", help: nil),
             .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 tg:userId"),
+            .init(path: ["groupAllowFrom"], label: "允许群组发送者", kind: .multiline, placeholder: "", help: "每行一个 tg:userId"),
             .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
             .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
+            .init(path: ["streamMode"], label: "流式模式", kind: .select([
+                .init(label: "关闭", value: "off"),
+                .init(label: "草稿流", value: "partial"),
+                .init(label: "块流", value: "block"),
+            ]), placeholder: "", help: nil),
+            .init(path: ["replyToMode"], label: "回复模式", kind: .select([
+                .init(label: "关闭", value: "off"),
+                .init(label: "首条回复", value: "first"),
+                .init(label: "全部回复", value: "all"),
+            ]), placeholder: "", help: nil),
             .init(path: ["requireMention"], label: "群聊必须 @", kind: .toggle, placeholder: "", help: nil),
             .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "user:12345678 / group:-100...", help: nil),
         ]
     case "slack":
         return [
             .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
+            .init(path: ["mode"], label: "接入模式", kind: .select([
+                .init(label: "Socket 模式", value: "socket"),
+                .init(label: "HTTP 模式", value: "http"),
+            ]), placeholder: "", help: nil),
             .init(path: ["botToken"], label: "Bot Token", kind: .secret, placeholder: "xoxb-...", help: nil),
             .init(path: ["appToken"], label: "App Token", kind: .secret, placeholder: "xapp-...", help: nil),
+            .init(path: ["userToken"], label: "User Token", kind: .secret, placeholder: "xoxp-...", help: nil),
             .init(path: ["signingSecret"], label: "Signing Secret", kind: .secret, placeholder: "", help: nil),
             .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/slack", help: nil),
             .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 Slack user id"),
@@ -661,6 +679,10 @@ private func manualChannelFields(for channelId: String) -> [ManualChannelField] 
             .init(path: ["groupPolicy"], label: "频道策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
             .init(path: ["requireMention"], label: "频道必须 @", kind: .toggle, placeholder: "", help: nil),
             .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "C12345678 / U12345678", help: nil),
+            .init(path: ["replyToMode"], label: "回复模式", kind: .select([
+                .init(label: "主频道", value: "off"),
+                .init(label: "线程回复", value: "thread"),
+            ]), placeholder: "", help: nil),
         ]
     case "discord":
         return [
@@ -689,6 +711,7 @@ private func manualChannelFields(for channelId: String) -> [ManualChannelField] 
             .init(path: ["dm", "allowFrom"], label: "允许私聊用户", kind: .multiline, placeholder: "", help: "每行一个 users/xxx"),
             .init(path: ["dm", "policy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
             .init(path: ["groupPolicy"], label: "空间策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
+            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "spaces/AAAA...", help: nil),
         ]
     case "signal":
         return [
@@ -705,7 +728,15 @@ private func manualChannelFields(for channelId: String) -> [ManualChannelField] 
             .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
             .init(path: ["cliPath"], label: "命令行路径", kind: .text, placeholder: "imessage / bluebubbles-cli", help: nil),
             .init(path: ["dbPath"], label: "数据库路径", kind: .text, placeholder: "~/Library/Messages/chat.db", help: nil),
+            .init(path: ["remoteHost"], label: "远程主机", kind: .text, placeholder: "user@remote-mac", help: nil),
+            .init(path: ["service"], label: "发送服务", kind: .select([
+                .init(label: "自动", value: "auto"),
+                .init(label: "iMessage", value: "imessage"),
+                .init(label: "短信", value: "sms"),
+            ]), placeholder: "", help: nil),
+            .init(path: ["region"], label: "短信区域", kind: .text, placeholder: "CN / US", help: nil),
             .init(path: ["allowFrom"], label: "允许联系人", kind: .multiline, placeholder: "", help: "每行一个手机号或邮箱"),
+            .init(path: ["groupAllowFrom"], label: "允许群组发送者", kind: .multiline, placeholder: "", help: "每行一个手机号或邮箱"),
             .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
             .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
             .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "+86138... / someone@example.com", help: nil),
@@ -727,6 +758,7 @@ private func manualChannelFields(for channelId: String) -> [ManualChannelField] 
             .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 LINE user id"),
             .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
             .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
+            .init(path: ["groupAllowFrom"], label: "允许群组发送者", kind: .multiline, placeholder: "", help: "每行一个 LINE user id"),
         ]
     case "twitch":
         return [
@@ -744,7 +776,19 @@ private func manualChannelFields(for channelId: String) -> [ManualChannelField] 
             .init(path: ["relays"], label: "Relay 列表", kind: .multiline, placeholder: "wss://...", help: "每行一个 relay 地址"),
             .init(path: ["privateKey"], label: "私钥", kind: .secret, placeholder: "", help: nil),
             .init(path: ["publicKey"], label: "公钥", kind: .text, placeholder: "", help: nil),
+            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
+            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 npub 或 hex 公钥"),
             .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "npub...", help: nil),
+        ]
+    case "mattermost":
+        return [
+            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
+            .init(path: ["baseUrl"], label: "服务地址", kind: .text, placeholder: "https://chat.example.com", help: nil),
+            .init(path: ["botToken"], label: "Bot Token", kind: .secret, placeholder: "mm-token", help: nil),
+            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "channel-id / @username", help: nil),
+            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 Mattermost 用户名或 ID"),
+            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
+            .init(path: ["groupPolicy"], label: "频道策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
         ]
     default:
         return []

@@ -443,7 +443,7 @@ private struct DesktopControlChannelsPane: View {
         if !dynamic.isEmpty {
             return dynamic
         }
-        return ["feishu", "telegram", "whatsapp", "slack", "discord", "signal", "imessage", "googlechat", "nostr", "line", "twitch"]
+        return ["feishu", "telegram", "whatsapp", "slack", "discord", "mattermost", "signal", "imessage", "googlechat", "nostr", "line", "twitch"]
     }
 
     private func channelLabel(_ id: String) -> String {
@@ -457,6 +457,7 @@ private struct DesktopControlChannelsPane: View {
         case "whatsapp": return "WhatsApp"
         case "slack": return "Slack"
         case "discord": return "Discord"
+        case "mattermost": return "Mattermost"
         case "signal": return "Signal"
         case "imessage": return "iMessage"
         case "googlechat": return "Google Chat"
