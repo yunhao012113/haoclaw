@@ -4,18 +4,28 @@ set -euo pipefail
 APP_PATH="/Applications/Haoclaw.app"
 APP_NAME="Haoclaw.app"
 LAUNCHER_NAME="打开 Haoclaw.command"
+LOG_PATH="/tmp/haoclaw-postinstall.log"
+
+log() {
+  /bin/echo "[$(/bin/date '+%Y-%m-%d %H:%M:%S')] $*" >> "${LOG_PATH}" 2>/dev/null || true
+}
 
 console_user="$(stat -f '%Su' /dev/console 2>/dev/null || true)"
+log "console_user=${console_user}"
 if [[ -z "${console_user}" || "${console_user}" == "root" || "${console_user}" == "loginwindow" ]]; then
+  log "skip: console user unavailable"
   exit 0
 fi
 
 user_home="$(dscl . -read "/Users/${console_user}" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
+log "user_home=${user_home}"
 if [[ -z "${user_home}" || ! -d "${user_home}" ]]; then
+  log "skip: user home missing"
   exit 0
 fi
 
 if [[ ! -d "${APP_PATH}" ]]; then
+  log "skip: app missing at ${APP_PATH}"
   exit 0
 fi
 
@@ -24,6 +34,7 @@ ensure_symlink() {
   local source="$2"
 
   if [[ "${destination}" == "${source}" ]]; then
+    log "skip symlink: destination equals source"
     return
   fi
 
@@ -42,6 +53,7 @@ ensure_symlink() {
 
   ln -s "${source}" "${destination}"
   chown -h "${console_user}" "${destination}" 2>/dev/null || true
+  log "created symlink: ${destination} -> ${source}"
 }
 
 ensure_finder_alias() {
@@ -67,6 +79,7 @@ EOF
     uid="$(id -u "${console_user}" 2>/dev/null || true)"
     if [[ -n "${uid}" ]]; then
       launchctl asuser "${uid}" osascript -e "${script}" >/dev/null 2>&1 || true
+      log "requested Finder alias in ${parent_dir}"
     fi
   fi
 
@@ -88,6 +101,25 @@ EOF
 
   chmod 755 "${script_path}" 2>/dev/null || true
   chown "${console_user}" "${script_path}" 2>/dev/null || true
+  log "wrote launcher script: ${script_path}"
+}
+
+sync_user_app_copy() {
+  local destination="$1"
+
+  if [[ "${destination}" == "${APP_PATH}" ]]; then
+    return
+  fi
+
+  if [[ -e "${destination}" || -L "${destination}" ]]; then
+    chflags -R nouchg "${destination}" 2>/dev/null || true
+    chmod -R u+w "${destination}" 2>/dev/null || true
+    rm -rf "${destination}" 2>/dev/null || true
+  fi
+
+  ditto "${APP_PATH}" "${destination}"
+  chown -R "${console_user}":staff "${destination}" 2>/dev/null || true
+  log "copied app bundle to ${destination}"
 }
 
 user_applications_dir="${user_home}/Applications"
@@ -96,8 +128,9 @@ desktop_dir="${user_home}/Desktop"
 mkdir -p "${user_applications_dir}"
 chown "${console_user}" "${user_applications_dir}" 2>/dev/null || true
 
-ensure_symlink "${user_applications_dir}/${APP_NAME}" "${APP_PATH}"
+sync_user_app_copy "${user_applications_dir}/${APP_NAME}"
 ensure_finder_alias "${desktop_dir}"
 ensure_launcher_script "${desktop_dir}"
+log "postinstall complete"
 
 exit 0
