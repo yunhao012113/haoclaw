@@ -127,13 +127,23 @@ jobs:
             exit 1
           fi
 
-          rm -rf /Applications/Haoclaw.app "$HOME/Applications/Haoclaw.app" "$HOME/Desktop/Haoclaw.app" "$HOME/Desktop/打开 Haoclaw.command"
+          fake_existing_dir="$HOME/Downloads/haoclaw-test"
+
+          rm -rf /Applications/Haoclaw.app \
+            "$HOME/Applications/Haoclaw.app" \
+            "$HOME/Desktop/Haoclaw.app" \
+            "$HOME/Desktop/打开 Haoclaw.command" \
+            "${fake_existing_dir}"
+
+          mkdir -p "${fake_existing_dir}"
+          cp -R "dist/Haoclaw.app" "${fake_existing_dir}/Haoclaw.app"
 
           sudo installer -pkg "${pkg_path}" -target /
 
           [[ -d /Applications/Haoclaw.app ]]
           [[ -d "$HOME/Applications/Haoclaw.app" ]]
           [[ -e "$HOME/Desktop/Haoclaw.app" || -e "$HOME/Desktop/打开 Haoclaw.command" ]]
+          [[ -d "${fake_existing_dir}/Haoclaw.app" ]]
 
       - name: Upload macOS packaging log
         if: always()

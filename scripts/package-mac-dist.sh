@@ -30,12 +30,22 @@ if [[ ! -d "$APP" ]]; then
   exit 1
 fi
 
+PKG_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/haoclaw-pkg-stage.XXXXXX")"
+cleanup() {
+  rm -rf "$PKG_STAGE"
+}
+trap cleanup EXIT
+
+mkdir -p "$PKG_STAGE/Applications"
+ditto "$APP" "$PKG_STAGE/Applications/Haoclaw.app"
+
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null || echo "0.0.0")
 ZIP="$ROOT_DIR/dist/Haoclaw-$VERSION.zip"
 DMG="$ROOT_DIR/dist/Haoclaw-$VERSION.dmg"
 PKG="$ROOT_DIR/dist/Haoclaw-$VERSION.pkg"
 NOTARY_ZIP="$ROOT_DIR/dist/Haoclaw-$VERSION.notary.zip"
 DSYM_ZIP="$ROOT_DIR/dist/Haoclaw-$VERSION.dSYM.zip"
+COMPONENT_PLIST="$ROOT_DIR/scripts/macos-installer/component.plist"
 SKIP_NOTARIZE="${SKIP_NOTARIZE:-0}"
 NOTARIZE=1
 SKIP_DSYM="${SKIP_DSYM:-0}"
@@ -63,8 +73,11 @@ echo "💿 DMG: $DMG"
 echo "📦 PKG: $PKG"
 rm -f "$PKG"
 pkg_args=(
-  --component "$APP"
-  --install-location /Applications
+  --root "$PKG_STAGE"
+  --component-plist "$COMPONENT_PLIST"
+  --identifier "$BUNDLE_ID"
+  --version "$VERSION"
+  --install-location /
   --scripts "$ROOT_DIR/scripts/macos-installer"
   "$PKG"
 )
