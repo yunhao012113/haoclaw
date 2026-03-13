@@ -7,7 +7,7 @@ const { spawn } = require("node:child_process");
 const { app, BrowserWindow, Menu, dialog, shell, ipcMain } = require("electron");
 
 const PRODUCT_NAME = "Haoclaw";
-const RELEASES_API = "https://api.github.com/repos/yunhao012113/haoclaw/releases/latest";
+const RELEASES_API = "https://api.github.com/repos/yunhao012113/haoclaw/releases?per_page=12";
 const RELEASES_PAGE = "https://github.com/yunhao012113/haoclaw/releases/latest";
 let updateCheckRunning = false;
 const FALLBACK_SKILL_KEYS = [
@@ -178,6 +178,14 @@ function currentVersion() {
   return app.getVersion();
 }
 
+function isUnifiedDesktopRelease(release) {
+  const assets = release?.assets || [];
+  return (
+    assets.some((asset) => asset.name.endsWith(".pkg")) &&
+    assets.some((asset) => asset.name.endsWith("-setup.exe"))
+  );
+}
+
 async function fetchLatestRelease() {
   const response = await fetch(RELEASES_API, {
     headers: {
@@ -189,7 +197,8 @@ async function fetchLatestRelease() {
     throw new Error(`GitHub API ${response.status}`);
   }
 
-  return response.json();
+  const releases = await response.json();
+  return releases.find(isUnifiedDesktopRelease) ?? null;
 }
 
 function chooseWindowsInstaller(release) {
@@ -268,6 +277,10 @@ async function checkForUpdates({ manual = false } = {}) {
 
   try {
     const release = await fetchLatestRelease();
+    if (!release) {
+      return { available: false, reason: "未找到同时包含 mac 和 Windows 安装包的统一版本" };
+    }
+
     const latestVersion = normalizeVersion(release.tag_name);
     const installer = chooseWindowsInstaller(release);
 

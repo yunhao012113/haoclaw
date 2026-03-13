@@ -51,7 +51,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
     let isAvailable: Bool = true
     let updateStatus = UpdateStatus()
 
-    private let latestReleaseEndpoint = URL(string: "https://api.github.com/repos/yunhao012113/haoclaw/releases/latest")!
+    private let latestReleaseEndpoint = URL(string: "https://api.github.com/repos/yunhao012113/haoclaw/releases?per_page=12")!
     private let session: URLSession = .shared
     private let autoUpdateKey = "autoUpdateEnabled"
     private var cachedUpdate: AvailableUpdate?
@@ -119,7 +119,10 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
                 userInfo: [NSLocalizedDescriptionKey: "GitHub 返回了无效响应。"])
         }
 
-        let release = try JSONDecoder().decode(ReleasePayload.self, from: data)
+        let releases = try JSONDecoder().decode([ReleasePayload].self, from: data)
+        guard let release = releases.first(where: Self.isUnifiedDesktopRelease) else {
+            return nil
+        }
         let latestVersion = Self.normalizedVersion(release.tagName)
         guard Self.compareVersion(latestVersion, to: self.currentVersion) == .orderedDescending else {
             return nil
@@ -129,6 +132,13 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
             release.assets.first(where: { $0.name.hasSuffix(".dmg") })
 
         return AvailableUpdate(version: latestVersion, asset: preferredAsset, releaseURL: release.htmlURL)
+    }
+
+    private static func isUnifiedDesktopRelease(_ release: ReleasePayload) -> Bool {
+        let assets = release.assets
+        let hasMacInstaller = assets.contains { $0.name.hasSuffix(".pkg") }
+        let hasWindowsInstaller = assets.contains { $0.name.hasSuffix("-setup.exe") }
+        return hasMacInstaller && hasWindowsInstaller
     }
 
     private func promptAndInstall(update: AvailableUpdate) async {
