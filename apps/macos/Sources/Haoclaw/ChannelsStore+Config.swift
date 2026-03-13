@@ -77,8 +77,11 @@ extension ChannelsStore {
         defer { self.isSavingConfig = false }
 
         do {
+            self.normalizeDraftBeforeSave()
             try await ConfigStore.save(self.configDraft)
             await self.loadConfig()
+            await self.refresh(probe: true)
+            self.configStatus = "渠道配置已保存并刷新。"
         } catch {
             self.configStatus = error.localizedDescription
         }
@@ -86,6 +89,96 @@ extension ChannelsStore {
 
     func reloadConfigDraft() async {
         await self.loadConfig()
+    }
+
+    private func normalizeDraftBeforeSave() {
+        var root = self.configDraft
+        var channels = root["channels"] as? [String: Any] ?? [:]
+
+        func normalizeOpenDMChannel(
+            _ channelId: String,
+            hasCredentials: Bool,
+            extra: ((inout [String: Any]) -> Void)? = nil
+        ) {
+            var channel = channels[channelId] as? [String: Any] ?? [:]
+            guard hasCredentials else {
+                channels[channelId] = channel
+                return
+            }
+            channel["enabled"] = true
+            if (channel["dmPolicy"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                channel["dmPolicy"] = "open"
+            }
+            if channel["allowFrom"] == nil {
+                channel["allowFrom"] = ["*"]
+            }
+            if (channel["groupPolicy"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                channel["groupPolicy"] = "disabled"
+            }
+            extra?(&channel)
+            channels[channelId] = channel
+        }
+
+        do {
+            let feishu = channels["feishu"] as? [String: Any] ?? [:]
+            let hasCreds = !((feishu["appId"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)).isEmpty &&
+                !((feishu["appSecret"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)).isEmpty
+            normalizeOpenDMChannel("feishu", hasCredentials: hasCreds) { channel in
+                if (channel["connectionMode"] as? String ?? "").isEmpty {
+                    channel["connectionMode"] = "websocket"
+                }
+                if (channel["domain"] as? String ?? "").isEmpty {
+                    channel["domain"] = "feishu"
+                }
+            }
+        }
+
+        do {
+            let telegram = channels["telegram"] as? [String: Any] ?? [:]
+            let botToken = (telegram["botToken"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let tokenFile = (telegram["tokenFile"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            normalizeOpenDMChannel("telegram", hasCredentials: !botToken.isEmpty || !tokenFile.isEmpty) { channel in
+                if (channel["streamMode"] as? String ?? "").isEmpty {
+                    channel["streamMode"] = "partial"
+                }
+                if (channel["replyToMode"] as? String ?? "").isEmpty {
+                    channel["replyToMode"] = "off"
+                }
+                let webhookUrl = (channel["webhookUrl"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if webhookUrl.isEmpty, (channel["webhookPath"] as? String ?? "").isEmpty {
+                    channel["webhookPath"] = "/telegram-webhook"
+                }
+            }
+        }
+
+        do {
+            let discord = channels["discord"] as? [String: Any] ?? [:]
+            let token = (discord["token"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            normalizeOpenDMChannel("discord", hasCredentials: !token.isEmpty)
+        }
+
+        do {
+            let mattermost = channels["mattermost"] as? [String: Any] ?? [:]
+            let token = (mattermost["botToken"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let baseUrl = (mattermost["baseUrl"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            normalizeOpenDMChannel("mattermost", hasCredentials: !token.isEmpty && !baseUrl.isEmpty)
+        }
+
+        do {
+            let slack = channels["slack"] as? [String: Any] ?? [:]
+            let botToken = (slack["botToken"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let appToken = (slack["appToken"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let signingSecret = (slack["signingSecret"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            normalizeOpenDMChannel("slack", hasCredentials: !botToken.isEmpty || !appToken.isEmpty || !signingSecret.isEmpty) { channel in
+                if (channel["mode"] as? String ?? "").isEmpty {
+                    channel["mode"] = !appToken.isEmpty ? "socket" : "http"
+                }
+            }
+        }
+
+        root["channels"] = channels
+        self.configDraft = root
+        self.configDirty = true
     }
 }
 

@@ -558,6 +558,12 @@ final class DesktopClientModel {
         do {
             HaoclawConfigFile.saveDict(root)
             self.configuredModels = Self.extractConfiguredModels(from: root)
+            self.settingsDraft.providerPreset = selectedPreset
+            self.settingsDraft.providerId = resolvedProviderID
+            self.settingsDraft.apiAdapter = resolvedApiAdapter
+            self.settingsDraft.baseURL = trimmedBaseURL
+            self.settingsDraft.apiKey = trimmedApiKey
+            self.settingsDraft.modelID = resolvedModelID
             self.appState.connectionMode = connectionMode
             self.appState.remoteTransport = remoteTransport
             self.appState.remoteUrl = trimmedRemoteURL
@@ -566,9 +572,12 @@ final class DesktopClientModel {
             self.appState.remoteIdentity = trimmedRemoteIdentity
             if let primaryRef {
                 self.currentModelRef = primaryRef
+                try? await GatewayConnection.shared.patchSessionModel(
+                    sessionKey: self.chatViewModel.sessionKey,
+                    modelRef: primaryRef)
             }
             self.statusMessage = primaryRef == nil
-                ? "接口已保存，重新扫描后会自动读取可用模型。"
+                ? "接口已保存，正在保留当前配置并重新扫描模型。"
                 : (selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
                     ? "连接与模型配置已保存。"
                     : "\(selectedPreset.title) 连接已保存。")
@@ -666,6 +675,21 @@ final class DesktopClientModel {
             }
         } else {
             self.currentModelRef = "未配置"
+            if let savedProvider = Self.extractSavedProviderDraft(from: root) {
+                let preset = DesktopProviderPreset.infer(
+                    providerID: savedProvider.providerID,
+                    baseURL: savedProvider.baseURL,
+                    apiAdapter: savedProvider.apiAdapter)
+                self.settingsDraft.providerPreset = preset
+                self.settingsDraft.providerId = savedProvider.providerID
+                self.settingsDraft.apiAdapter = savedProvider.apiAdapter
+                self.settingsDraft.baseURL = savedProvider.baseURL
+                self.settingsDraft.apiKey = savedProvider.apiKey
+                self.settingsDraft.modelID = savedProvider.modelID
+                if !savedProvider.modelID.isEmpty {
+                    self.currentModelRef = "\(savedProvider.providerID)/\(savedProvider.modelID)"
+                }
+            }
         }
 
         self.refreshSettingsDraftFromState()
@@ -716,6 +740,9 @@ final class DesktopClientModel {
         if !explicitModelID.isEmpty {
             return explicitModelID
         }
+        if let current = Self.modelID(from: self.selectedSessionModelRef, providerID: providerID), !current.isEmpty {
+            return current
+        }
         if let current = Self.modelID(from: self.currentModelRef, providerID: providerID), !current.isEmpty {
             return current
         }
@@ -724,7 +751,34 @@ final class DesktopClientModel {
         {
             return existing
         }
-        return preset.defaultModelID
+        return ""
+    }
+
+    private static func extractSavedProviderDraft(from root: [String: Any]) -> (
+        providerID: String,
+        baseURL: String,
+        apiKey: String,
+        apiAdapter: String,
+        modelID: String
+    )? {
+        guard let modelsRoot = root["models"] as? [String: Any],
+              let providers = modelsRoot["providers"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        for (providerID, rawEntry) in providers {
+            guard let providerEntry = rawEntry as? [String: Any] else { continue }
+            let baseURL = (providerEntry["baseUrl"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let apiKey = (providerEntry["apiKey"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let apiAdapter = (providerEntry["api"] as? String ?? "openai-completions").trimmingCharacters(in: .whitespacesAndNewlines)
+            let models = Self.extractProviderModels(from: providerEntry)
+            let modelID = ((models.first?["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !baseURL.isEmpty || !apiKey.isEmpty || !modelID.isEmpty {
+                return (providerID, baseURL, apiKey, apiAdapter.isEmpty ? "openai-completions" : apiAdapter, modelID)
+            }
+        }
+        return nil
     }
 
     private func loadModelCatalog() async {
