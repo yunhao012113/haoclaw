@@ -307,6 +307,15 @@
         return null;
       }
 
+      function findUnifiedRelease(releases) {
+        return releases.find((release) => {
+          const assets = release.assets || [];
+          const hasMacPkg = assets.some((asset) => asset.name.endsWith(".pkg"));
+          const hasWinExe = assets.some((asset) => asset.name.endsWith("-setup.exe"));
+          return hasMacPkg && hasWinExe;
+        });
+      }
+
       async function loadDownloads() {
         preferCard();
         try {
@@ -318,32 +327,39 @@
           }
           const releases = await response.json();
 
-          const macPkgAsset = findAsset(releases, (asset) => asset.name.endsWith(".pkg"));
-          const macDmgAsset = findAsset(releases, (asset) => asset.name.endsWith(".dmg"));
-          const winExeAsset = findAsset(releases, (asset) => asset.name.endsWith("-setup.exe"));
+          const unifiedRelease = findUnifiedRelease(releases);
+          if (!unifiedRelease) {
+            throw new Error("No unified release with both macOS and Windows assets");
+          }
+
+          const macPkgAsset = (unifiedRelease.assets || []).find((asset) => asset.name.endsWith(".pkg"));
+          const macDmgAsset = (unifiedRelease.assets || []).find((asset) => asset.name.endsWith(".dmg"));
+          const winExeAsset = (unifiedRelease.assets || []).find((asset) => asset.name.endsWith("-setup.exe"));
 
           if (macPkgAsset) {
-            macPkg.href = macPkgAsset.asset.browser_download_url;
-            macMeta.textContent = `最新 PKG：${macPkgAsset.asset.name} · ${macPkgAsset.release.tag_name}`;
+            macPkg.href = macPkgAsset.browser_download_url;
+            macMeta.textContent = `统一版本：${unifiedRelease.tag_name} · PKG：${macPkgAsset.name}`;
           } else {
-            macMeta.textContent = "暂时没有找到 macOS PKG 安装包。";
+            macMeta.textContent = `统一版本：${unifiedRelease.tag_name}，但暂时没有找到 PKG。`;
           }
 
           if (macDmgAsset) {
-            macDmg.href = macDmgAsset.asset.browser_download_url;
+            macDmg.href = macDmgAsset.browser_download_url;
             if (!macPkgAsset) {
-              macMeta.textContent = `最新 DMG：${macDmgAsset.asset.name} · ${macDmgAsset.release.tag_name}`;
+              macMeta.textContent = `统一版本：${unifiedRelease.tag_name} · DMG：${macDmgAsset.name}`;
             }
+          } else {
+            macDmg.href = unifiedRelease.html_url;
           }
 
           if (winExeAsset) {
-            winExe.href = winExeAsset.asset.browser_download_url;
-            winMeta.textContent = `最新 EXE：${winExeAsset.asset.name} · ${winExeAsset.release.tag_name}`;
+            winExe.href = winExeAsset.browser_download_url;
+            winMeta.textContent = `统一版本：${unifiedRelease.tag_name} · EXE：${winExeAsset.name}`;
           } else {
-            winMeta.textContent = "暂时没有找到 Windows 安装包。";
+            winMeta.textContent = `统一版本：${unifiedRelease.tag_name}，但暂时没有找到 EXE。`;
           }
 
-          status.textContent = "已同步最新安装包信息。";
+          status.textContent = `已同步统一发布版本：${unifiedRelease.tag_name}。`;
         } catch (error) {
           console.error(error);
           status.textContent = "获取最新版本失败，已回退到 GitHub 最新发布页。";
