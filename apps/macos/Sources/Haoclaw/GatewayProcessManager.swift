@@ -145,6 +145,13 @@ final class GatewayProcessManager {
         self.lastFailureReason = nil
     }
 
+    func reportBootstrapFailure(_ reason: String) {
+        self.status = .failed(reason)
+        self.lastFailureReason = reason
+        self.appendLog("[gateway] local bootstrap failed: \(reason)\n")
+        self.logger.error("gateway local bootstrap failed: \(reason, privacy: .public)")
+    }
+
     func refreshEnvironmentStatus(force: Bool = false) {
         let now = Date()
         if !force {

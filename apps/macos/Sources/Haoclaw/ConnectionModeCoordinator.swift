@@ -34,6 +34,17 @@ final class ConnectionModeCoordinator {
             WebChatManager.shared.resetTunnels()
             let shouldStart = GatewayAutostartPolicy.shouldStartGateway(mode: .local, paused: paused)
             if shouldStart {
+                let bootstrap = await LocalGatewayBootstrapper.shared.ensureReady()
+                if !bootstrap.isReady {
+                    let message = bootstrap.message ?? "本地运行时尚未准备好，无法启动网关。"
+                    NodesStore.shared.lastError = message
+                    GatewayProcessManager.shared.reportBootstrapFailure(message)
+                    return
+                }
+                if let message = bootstrap.message, !message.isEmpty {
+                    NodesStore.shared.lastError = nil
+                    self.logger.info("local bootstrap: \(message, privacy: .public)")
+                }
                 GatewayProcessManager.shared.setActive(true)
                 if GatewayAutostartPolicy.shouldEnsureLaunchAgent(
                     mode: .local,

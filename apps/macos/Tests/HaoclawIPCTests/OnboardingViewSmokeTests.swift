@@ -17,7 +17,7 @@ struct OnboardingViewSmokeTests {
     }
 
     @Test func `page order omits workspace and identity steps`() {
-        let order = OnboardingView.pageOrder(for: .local, showOnboardingChat: false)
+        let order = OnboardingView.pageOrder(for: .local, showOnboardingChat: false, showCLIInstall: true)
         #expect(!order.contains(7))
         #expect(order.contains(3))
     }
@@ -25,6 +25,11 @@ struct OnboardingViewSmokeTests {
     @Test func `page order omits onboarding chat when identity known`() {
         let order = OnboardingView.pageOrder(for: .local, showOnboardingChat: false)
         #expect(!order.contains(8))
+    }
+
+    @Test func `page order includes cli install step when runtime missing`() {
+        let order = OnboardingView.pageOrder(for: .local, showOnboardingChat: false, showCLIInstall: true)
+        #expect(order.contains(6))
     }
 
     @Test func `select remote gateway clears stale ssh target when endpoint unresolved`() async {

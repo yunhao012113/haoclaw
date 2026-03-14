@@ -93,17 +93,28 @@ struct OnboardingView: View {
     let permissionsPageIndex = 5
     static func pageOrder(
         for mode: AppState.ConnectionMode,
-        showOnboardingChat: Bool) -> [Int]
+        showOnboardingChat: Bool,
+        showCLIInstall: Bool = false) -> [Int]
     {
         switch mode {
         case .remote:
             // Remote setup doesn't need local gateway/CLI/workspace setup pages,
             // and WhatsApp/Telegram setup is optional.
-            showOnboardingChat ? [0, 1, 5, 8, 9] : [0, 1, 5, 9]
+            return showOnboardingChat ? [0, 1, 5, 8, 9] : [0, 1, 5, 9]
         case .unconfigured:
-            showOnboardingChat ? [0, 1, 8, 9] : [0, 1, 9]
+            return showOnboardingChat ? [0, 1, 8, 9] : [0, 1, 9]
         case .local:
-            showOnboardingChat ? [0, 1, 3, 5, 8, 9] : [0, 1, 3, 5, 9]
+            var order = [0, 1]
+            if showCLIInstall {
+                order.append(6)
+            }
+            order.append(3)
+            order.append(5)
+            if showOnboardingChat {
+                order.append(8)
+            }
+            order.append(9)
+            return order
         }
     }
 
@@ -111,8 +122,15 @@ struct OnboardingView: View {
         self.state.connectionMode == .local && self.needsBootstrap
     }
 
+    var showCLIInstallPage: Bool {
+        self.state.connectionMode == .local && !self.cliInstalled
+    }
+
     var pageOrder: [Int] {
-        Self.pageOrder(for: self.state.connectionMode, showOnboardingChat: self.showOnboardingChat)
+        Self.pageOrder(
+            for: self.state.connectionMode,
+            showOnboardingChat: self.showOnboardingChat,
+            showCLIInstall: self.showCLIInstallPage)
     }
 
     var pageCount: Int {
