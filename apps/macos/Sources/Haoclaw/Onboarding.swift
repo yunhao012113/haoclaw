@@ -6,7 +6,7 @@ import HaoclawIPC
 import SwiftUI
 
 enum UIStrings {
-    static let welcomeTitle = "Welcome to Haoclaw"
+    static let welcomeTitle = "欢迎使用 Haoclaw"
 }
 
 @MainActor
@@ -124,7 +124,7 @@ struct OnboardingView: View {
     }
 
     var buttonTitle: String {
-        self.currentPage == self.pageCount - 1 ? "Finish" : "Next"
+        self.currentPage == self.pageCount - 1 ? "完成" : "下一步"
     }
 
     var wizardPageOrderIndex: Int? {

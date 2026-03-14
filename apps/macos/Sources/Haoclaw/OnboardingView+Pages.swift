@@ -30,9 +30,9 @@ extension OnboardingView {
     func welcomePage() -> some View {
         self.onboardingPage {
             VStack(spacing: 22) {
-                Text("Welcome to Haoclaw")
+                Text("欢迎使用 Haoclaw")
                     .font(.largeTitle.weight(.semibold))
-                Text("Haoclaw is a powerful personal AI assistant that can connect to WhatsApp or Telegram.")
+                Text("Haoclaw 是一个强大的个人 AI 助手，可以接入 WhatsApp、Telegram 等消息渠道。")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -49,14 +49,12 @@ extension OnboardingView {
                             .padding(.top, 1)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Security notice")
+                            Text("安全提示")
                                 .font(.headline)
                             Text(
-                                "The connected AI agent (e.g. Claude) can trigger powerful actions on your Mac, " +
-                                    "including running commands, reading/writing files, and capturing screenshots — " +
-                                    "depending on the permissions you grant.\n\n" +
-                                    "Only enable Haoclaw if you understand the risks and trust the prompts and " +
-                                    "integrations you use.")
+                                "接入后的 AI 代理（例如 Claude）在你授权后，可以在这台 Mac 上执行较强的操作，" +
+                                    "包括运行命令、读写文件、截取屏幕等。\n\n" +
+                                    "请只在你理解相关风险，并且信任自己使用的提示词、工具和集成时再启用 Haoclaw。")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -71,11 +69,11 @@ extension OnboardingView {
 
     func connectionPage() -> some View {
         self.onboardingPage {
-            Text("Choose your Gateway")
+            Text("选择你的 Gateway")
                 .font(.largeTitle.weight(.semibold))
             Text(
-                "Haoclaw uses a single Gateway that stays running. Pick this Mac, " +
-                    "connect to a discovered gateway nearby, or configure later.")
+                "Haoclaw 依赖一个持续运行的 Gateway。你可以选择当前这台 Mac、连接附近发现到的 Gateway，" +
+                    "或者稍后再配置。")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -86,7 +84,7 @@ extension OnboardingView {
             self.onboardingCard(spacing: 12, padding: 14) {
                 VStack(alignment: .leading, spacing: 10) {
                     self.connectionChoiceButton(
-                        title: "This Mac",
+                        title: "当前这台 Mac",
                         subtitle: self.localGatewaySubtitle,
                         selected: self.state.connectionMode == .local)
                     {
@@ -98,8 +96,8 @@ extension OnboardingView {
                     self.gatewayDiscoverySection()
 
                     self.connectionChoiceButton(
-                        title: "Configure later",
-                        subtitle: "Don’t start the Gateway yet.",
+                        title: "稍后再配置",
+                        subtitle: "暂时先不启动 Gateway。",
                         selected: self.state.connectionMode == .unconfigured)
                     {
                         self.selectUnconfiguredGateway()
@@ -113,13 +111,13 @@ extension OnboardingView {
 
     private var localGatewaySubtitle: String {
         guard let probe = self.localGatewayProbe else {
-            return "Gateway starts automatically on this Mac."
+            return "Gateway 会在这台 Mac 上自动启动。"
         }
         let base = probe.expected
-            ? "Existing gateway detected"
-            : "Port \(probe.port) already in use"
+            ? "已检测到现有 Gateway"
+            : "端口 \(probe.port) 已被占用"
         let command = probe.command.isEmpty ? "" : " (\(probe.command) pid \(probe.pid))"
-        return "\(base)\(command). Will attach."
+        return "\(base)\(command)，将直接接入。"
     }
 
     @ViewBuilder
@@ -133,23 +131,23 @@ extension OnboardingView {
                 .foregroundStyle(.secondary)
             if self.gatewayDiscovery.gateways.isEmpty {
                 ProgressView().controlSize(.small)
-                Button("Refresh") {
+                Button("刷新") {
                     self.gatewayDiscovery.refreshRemoteFallbackNow(timeoutSeconds: 5.0)
                 }
                 .buttonStyle(.link)
-                .help("Retry remote discovery (Tailscale DNS-SD + Serve probe).")
+                .help("重新尝试远程发现（Tailscale DNS-SD + Serve 探测）。")
             }
             Spacer(minLength: 0)
         }
 
         if self.gatewayDiscovery.gateways.isEmpty {
-            Text("Searching for nearby gateways…")
+            Text("正在搜索附近可用的 Gateway…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.leading, 4)
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Nearby gateways")
+                Text("附近发现的 Gateway")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 4)
@@ -172,7 +170,7 @@ extension OnboardingView {
 
     @ViewBuilder
     private func advancedConnectionSection() -> some View {
-        Button(self.showAdvancedConnection ? "Hide Advanced" : "Advanced…") {
+        Button(self.showAdvancedConnection ? "收起高级设置" : "高级设置…") {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
                 self.showAdvancedConnection.toggle()
             }
@@ -189,21 +187,21 @@ extension OnboardingView {
             VStack(alignment: .leading, spacing: 10) {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
                     GridRow {
-                        Text("Transport")
+                        Text("连接方式")
                             .font(.callout.weight(.semibold))
                             .frame(width: labelWidth, alignment: .leading)
-                        Picker("Transport", selection: self.$state.remoteTransport) {
-                            Text("SSH tunnel").tag(AppState.RemoteTransport.ssh)
-                            Text("Direct (ws/wss)").tag(AppState.RemoteTransport.direct)
+                        Picker("连接方式", selection: self.$state.remoteTransport) {
+                            Text("SSH 隧道").tag(AppState.RemoteTransport.ssh)
+                            Text("直连（ws/wss）").tag(AppState.RemoteTransport.direct)
                         }
                         .pickerStyle(.segmented)
                         .frame(width: fieldWidth)
                     }
                     GridRow {
-                        Text("Gateway token")
+                        Text("Gateway 令牌")
                             .font(.callout.weight(.semibold))
                             .frame(width: labelWidth, alignment: .leading)
-                        SecureField("remote gateway auth token (gateway.remote.token)", text: self.$state.remoteToken)
+                        SecureField("填写远程 Gateway 的认证令牌（gateway.remote.token）", text: self.$state.remoteToken)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: fieldWidth)
                     }
@@ -212,7 +210,7 @@ extension OnboardingView {
                             Text("")
                                 .frame(width: labelWidth, alignment: .leading)
                             Text(
-                                "The current gateway.remote.token value is not plain text. Haoclaw for macOS cannot use it directly; enter a plaintext token here to replace it.")
+                                "当前 gateway.remote.token 不是明文值。macOS 客户端无法直接使用它，请在这里填入明文令牌进行替换。")
                                 .font(.caption)
                                 .foregroundStyle(.orange)
                                 .frame(width: fieldWidth, alignment: .leading)
@@ -220,7 +218,7 @@ extension OnboardingView {
                     }
                     if self.state.remoteTransport == .direct {
                         GridRow {
-                            Text("Gateway URL")
+                            Text("Gateway 地址")
                                 .font(.callout.weight(.semibold))
                                 .frame(width: labelWidth, alignment: .leading)
                             TextField("wss://gateway.example.ts.net", text: self.$state.remoteUrl)
@@ -230,7 +228,7 @@ extension OnboardingView {
                     }
                     if self.state.remoteTransport == .ssh {
                         GridRow {
-                            Text("SSH target")
+                            Text("SSH 目标")
                                 .font(.callout.weight(.semibold))
                                 .frame(width: labelWidth, alignment: .leading)
                             TextField("user@host[:port]", text: self.$state.remoteTarget)
@@ -250,7 +248,7 @@ extension OnboardingView {
                             }
                         }
                         GridRow {
-                            Text("Identity file")
+                            Text("密钥文件")
                                 .font(.callout.weight(.semibold))
                                 .frame(width: labelWidth, alignment: .leading)
                             TextField("/Users/you/.ssh/id_ed25519", text: self.$state.remoteIdentity)
@@ -258,7 +256,7 @@ extension OnboardingView {
                                 .frame(width: fieldWidth)
                         }
                         GridRow {
-                            Text("Project root")
+                            Text("项目根目录")
                                 .font(.callout.weight(.semibold))
                                 .frame(width: labelWidth, alignment: .leading)
                             TextField("/home/you/Projects/haoclaw", text: self.$state.remoteProjectRoot)
@@ -266,7 +264,7 @@ extension OnboardingView {
                                 .frame(width: fieldWidth)
                         }
                         GridRow {
-                            Text("CLI path")
+                            Text("CLI 路径")
                                 .font(.callout.weight(.semibold))
                                 .frame(width: labelWidth, alignment: .leading)
                             TextField(
@@ -279,8 +277,8 @@ extension OnboardingView {
                 }
 
                 Text(self.state.remoteTransport == .direct
-                    ? "Tip: use Tailscale Serve so the gateway has a valid HTTPS cert."
-                    : "Tip: keep Tailscale enabled so your gateway stays reachable.")
+                    ? "提示：建议使用 Tailscale Serve，这样 Gateway 会带上有效的 HTTPS 证书。"
+                    : "提示：建议保持 Tailscale 在线，确保 Gateway 始终可达。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -291,7 +289,7 @@ extension OnboardingView {
 
     func gatewaySubtitle(for gateway: GatewayDiscoveryModel.DiscoveredGateway) -> String? {
         if self.state.remoteTransport == .direct {
-            return GatewayDiscoveryHelpers.directUrl(for: gateway) ?? "Gateway pairing only"
+            return GatewayDiscoveryHelpers.directUrl(for: gateway) ?? "仅支持配对"
         }
         if let target = GatewayDiscoveryHelpers.sshTarget(for: gateway),
            let parsed = CommandResolver.parseSSHTarget(target)
@@ -299,7 +297,7 @@ extension OnboardingView {
             let portSuffix = parsed.port != 22 ? " · ssh \(parsed.port)" : ""
             return "\(parsed.host)\(portSuffix)"
         }
-        return "Gateway pairing only"
+        return "仅支持配对"
     }
 
     func isSelectedGateway(_ gateway: GatewayDiscoveryModel.DiscoveredGateway) -> Bool {
@@ -343,9 +341,9 @@ extension OnboardingView {
 
     func permissionsPage() -> some View {
         self.onboardingPage {
-            Text("Grant permissions")
+            Text("授予权限")
                 .font(.largeTitle.weight(.semibold))
-            Text("These macOS permissions let Haoclaw automate apps and capture context on this Mac.")
+            Text("这些 macOS 权限会让 Haoclaw 能在这台 Mac 上执行自动化操作，并读取必要上下文。")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -367,11 +365,11 @@ extension OnboardingView {
                     Button {
                         Task { await self.refreshPerms() }
                     } label: {
-                        Label("Refresh", systemImage: "arrow.clockwise")
+                        Label("刷新状态", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Refresh status")
+                    .help("刷新权限状态")
                     if self.isRequesting {
                         ProgressView()
                             .controlSize(.small)
@@ -384,9 +382,9 @@ extension OnboardingView {
 
     func cliPage() -> some View {
         self.onboardingPage {
-            Text("Install the CLI")
+            Text("安装 CLI")
                 .font(.largeTitle.weight(.semibold))
-            Text("Required for local mode: installs `haoclaw` so launchd can run the gateway.")
+            Text("本地模式需要安装 `haoclaw` CLI，这样 launchd 才能拉起本地 Gateway。")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -398,7 +396,7 @@ extension OnboardingView {
                     Button {
                         Task { await self.installCLI() }
                     } label: {
-                        let title = self.cliInstalled ? "Reinstall CLI" : "Install CLI"
+                        let title = self.cliInstalled ? "重新安装 CLI" : "安装 CLI"
                         ZStack {
                             Text(title)
                                 .opacity(self.installingCLI ? 0 : 1)
@@ -412,13 +410,13 @@ extension OnboardingView {
                     .buttonStyle(.borderedProminent)
                     .disabled(self.installingCLI)
 
-                    Button(self.copied ? "Copied" : "Copy install command") {
+                    Button(self.copied ? "已复制" : "复制安装命令") {
                         self.copyToPasteboard(self.devLinkCommand)
                     }
                     .disabled(self.installingCLI)
 
                     if self.cliInstalled, let loc = self.cliInstallLocation {
-                        Label("Installed at \(loc)", systemImage: "checkmark.circle.fill")
+                        Label("已安装到 \(loc)", systemImage: "checkmark.circle.fill")
                             .font(.footnote)
                             .foregroundStyle(.green)
                     }
@@ -431,8 +429,8 @@ extension OnboardingView {
                 } else if !self.cliInstalled, self.cliInstallLocation == nil {
                     Text(
                         """
-                        Installs a user-space Node 22+ runtime and the CLI (no Homebrew).
-                        Rerun anytime to reinstall or update.
+                        会安装用户目录下的 Node 22+ 运行时和 CLI（不依赖 Homebrew）。
+                        后续你随时都可以重新执行，用于重装或更新。
                         """)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -443,11 +441,11 @@ extension OnboardingView {
 
     func workspacePage() -> some View {
         self.onboardingPage {
-            Text("Agent workspace")
+            Text("Agent 工作区")
                 .font(.largeTitle.weight(.semibold))
             Text(
-                "Haoclaw runs the agent from a dedicated workspace so it can load `AGENTS.md` " +
-                    "and write files there without mixing into your other projects.")
+                "Haoclaw 会在一个独立工作区中运行代理，这样它可以读取 `AGENTS.md`、写入文件，" +
+                    "同时不影响你其他项目。")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -456,21 +454,21 @@ extension OnboardingView {
 
             self.onboardingCard(spacing: 10) {
                 if self.state.connectionMode == .remote {
-                    Text("Remote gateway detected")
+                    Text("已检测到远程 Gateway")
                         .font(.headline)
                     Text(
-                        "Create the workspace on the remote host (SSH in first). " +
-                            "The macOS app can’t write files on your gateway over SSH yet.")
+                        "请先在远程主机上创建工作区（先通过 SSH 登录过去）。" +
+                            "当前 macOS 客户端还不能通过 SSH 直接在远程 Gateway 上写文件。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
-                    Button(self.copied ? "Copied" : "Copy setup command") {
+                    Button(self.copied ? "已复制" : "复制初始化命令") {
                         self.copyToPasteboard(self.workspaceBootstrapCommand)
                     }
                     .buttonStyle(.bordered)
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Workspace folder")
+                        Text("工作区目录")
                             .font(.headline)
                         TextField(
                             AgentWorkspace.displayPath(for: HaoclawConfigFile.defaultWorkspaceURL()),
@@ -484,26 +482,26 @@ extension OnboardingView {
                                 if self.workspaceApplying {
                                     ProgressView()
                                 } else {
-                                    Text("Create workspace")
+                                    Text("创建工作区")
                                 }
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(self.workspaceApplying)
 
-                            Button("Open folder") {
+                            Button("打开目录") {
                                 let url = AgentWorkspace.resolveWorkspaceURL(from: self.workspacePath)
                                 NSWorkspace.shared.open(url)
                             }
                             .buttonStyle(.bordered)
                             .disabled(self.workspaceApplying)
 
-                            Button("Save in config") {
+                            Button("写入配置") {
                                 Task {
                                     let url = AgentWorkspace.resolveWorkspaceURL(from: self.workspacePath)
                                     let saved = await self.saveAgentWorkspace(AgentWorkspace.displayPath(for: url))
                                     if saved {
                                         self.workspaceStatus =
-                                            "Saved to ~/.haoclaw/haoclaw.json (agents.defaults.workspace)"
+                                            "已写入 ~/.haoclaw/haoclaw.json（agents.defaults.workspace）"
                                     }
                                 }
                             }
@@ -519,9 +517,8 @@ extension OnboardingView {
                             .lineLimit(2)
                     } else {
                         Text(
-                            "Tip: edit AGENTS.md in this folder to shape the assistant’s behavior. " +
-                                "For backup, make the workspace a private git repo so your agent’s " +
-                                "“memory” is versioned.")
+                            "提示：你可以编辑这个目录里的 AGENTS.md 来约束助手行为。" +
+                                "如果要做备份，建议把工作区建成私有 git 仓库，方便把代理“记忆”版本化。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -533,11 +530,11 @@ extension OnboardingView {
 
     func onboardingChatPage() -> some View {
         VStack(spacing: 16) {
-            Text("Meet your agent")
+            Text("认识一下你的 Agent")
                 .font(.largeTitle.weight(.semibold))
             Text(
-                "This is a dedicated onboarding chat. Your agent will introduce itself, " +
-                    "learn who you are, and help you connect WhatsApp or Telegram if you want.")
+                "这里是专门用于引导配置的对话窗口。你的 Agent 会先做自我介绍，了解你的背景，" +
+                    "并在你需要时帮助接入 WhatsApp 或 Telegram。")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -556,59 +553,58 @@ extension OnboardingView {
 
     func readyPage() -> some View {
         self.onboardingPage {
-            Text("All set")
+            Text("配置完成")
                 .font(.largeTitle.weight(.semibold))
             self.onboardingCard {
                 if self.state.connectionMode == .unconfigured {
                     self.featureRow(
-                        title: "Configure later",
-                        subtitle: "Pick Local or Remote in Settings → General whenever you’re ready.",
+                        title: "稍后再配置",
+                        subtitle: "等你准备好之后，可以随时去“设置 → 通用”里选择本地或远程模式。",
                         systemImage: "gearshape")
                     Divider()
                         .padding(.vertical, 6)
                 }
                 if self.state.connectionMode == .remote {
                     self.featureRow(
-                        title: "Remote gateway checklist",
+                        title: "远程 Gateway 检查清单",
                         subtitle: """
-                        On your gateway host: install/update the `haoclaw` package and make sure credentials exist
-                        (typically `~/.haoclaw/credentials/oauth.json`). Then connect again if needed.
+                        请在 Gateway 所在主机上安装或更新 `haoclaw`，并确认凭据文件已经就绪
+                        （通常是 `~/.haoclaw/credentials/oauth.json`）。准备好后如有需要请重新连接。
                         """,
                         systemImage: "network")
                     Divider()
                         .padding(.vertical, 6)
                 }
                 self.featureRow(
-                    title: "Open the menu bar panel",
-                    subtitle: "Click the Haoclaw menu bar icon for quick chat and status.",
+                    title: "打开菜单栏面板",
+                    subtitle: "点击 Haoclaw 菜单栏图标，可以快速聊天并查看状态。",
                     systemImage: "bubble.left.and.bubble.right")
                 self.featureActionRow(
-                    title: "Connect WhatsApp or Telegram",
-                    subtitle: "Open Settings → Channels to link channels and monitor status.",
+                    title: "接入 WhatsApp 或 Telegram",
+                    subtitle: "打开“设置 → 渠道”即可完成渠道绑定并查看运行状态。",
                     systemImage: "link",
-                    buttonTitle: "Open Settings → Channels")
+                    buttonTitle: "打开“设置 → 渠道”")
                 {
                     self.openSettings(tab: .channels)
                 }
                 self.featureRow(
-                    title: "Try Voice Wake",
-                    subtitle: "Enable Voice Wake in Settings for hands-free commands with a live transcript overlay.",
+                    title: "试试语音唤醒",
+                    subtitle: "在设置里启用语音唤醒后，你可以免手动发指令，并看到实时转写浮层。",
                     systemImage: "waveform.circle")
                 self.featureRow(
-                    title: "Use the panel + Canvas",
-                    subtitle: "Open the menu bar panel for quick chat; the agent can show previews " +
-                        "and richer visuals in Canvas.",
+                    title: "使用面板和 Canvas",
+                    subtitle: "菜单栏面板适合快速对话；需要更丰富的预览和可视化内容时可以使用 Canvas。",
                     systemImage: "rectangle.inset.filled.and.person.filled")
                 self.featureActionRow(
-                    title: "Give your agent more powers",
-                    subtitle: "Enable optional skills (Peekaboo, oracle, camsnap, …) from Settings → Skills.",
+                    title: "给 Agent 更多能力",
+                    subtitle: "你可以在“设置 → 技能”里启用 Peekaboo、oracle、camsnap 等可选技能。",
                     systemImage: "sparkles",
-                    buttonTitle: "Open Settings → Skills")
+                    buttonTitle: "打开“设置 → 技能”")
                 {
                     self.openSettings(tab: .skills)
                 }
                 self.skillsOverview
-                Toggle("Launch at login", isOn: self.$state.launchAtLogin)
+                Toggle("登录时自动启动", isOn: self.$state.launchAtLogin)
                     .onChange(of: self.state.launchAtLogin) { _, newValue in
                         AppStateStore.updateLaunchAtLogin(enabled: newValue)
                     }
@@ -629,14 +625,14 @@ extension OnboardingView {
                 .padding(.vertical, 6)
 
             HStack(spacing: 10) {
-                Text("Skills included")
+                Text("已包含的技能")
                     .font(.headline)
                 Spacer(minLength: 0)
                 if self.onboardingSkillsModel.isLoading {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Button("Refresh") {
+                    Button("刷新") {
                         Task { await self.onboardingSkillsModel.refresh() }
                     }
                     .buttonStyle(.link)
@@ -645,22 +641,21 @@ extension OnboardingView {
 
             if let error = self.onboardingSkillsModel.error {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Couldn’t load skills from the Gateway.")
+                    Text("暂时无法从 Gateway 读取技能列表。")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.orange)
                     Text(
-                        "Make sure the Gateway is running and connected, " +
-                            "then hit Refresh (or open Settings → Skills).")
+                        "请先确认 Gateway 已启动并连通，然后再点一次“刷新”（或直接打开“设置 → 技能”）。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Details: \(error)")
+                    Text("详细信息：\(error)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } else if self.onboardingSkillsModel.skills.isEmpty {
-                Text("No skills reported yet.")
+                Text("当前还没有读取到技能列表。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {

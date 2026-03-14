@@ -78,6 +78,11 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
     case openrouter
     case anthropic
     case gemini
+    case mistral
+    case minimax
+    case qwenPortal
+    case qianfan
+    case nvidia
     case zhipu
     case deepseek
     case moonshot
@@ -99,6 +104,11 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "OpenRouter"
         case .anthropic: "Anthropic"
         case .gemini: "Gemini"
+        case .mistral: "Mistral"
+        case .minimax: "MiniMax"
+        case .qwenPortal: "Qwen Portal"
+        case .qianfan: "百度千帆"
+        case .nvidia: "NVIDIA"
         case .zhipu: "智谱 GLM"
         case .deepseek: "DeepSeek"
         case .moonshot: "Moonshot"
@@ -120,6 +130,11 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "openrouter"
         case .anthropic: "anthropic"
         case .gemini: "google"
+        case .mistral: "mistral"
+        case .minimax: "minimax"
+        case .qwenPortal: "qwen-portal"
+        case .qianfan: "qianfan"
+        case .nvidia: "nvidia"
         case .zhipu: "zhipu"
         case .deepseek: "deepseek"
         case .moonshot: "moonshot"
@@ -141,6 +156,11 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "https://openrouter.ai/api/v1"
         case .anthropic: "https://api.anthropic.com"
         case .gemini: "https://generativelanguage.googleapis.com"
+        case .mistral: "https://api.mistral.ai/v1"
+        case .minimax: "https://api.minimax.io/anthropic"
+        case .qwenPortal: "https://portal.qwen.ai/v1"
+        case .qianfan: "https://qianfan.baidubce.com/v2"
+        case .nvidia: "https://integrate.api.nvidia.com/v1"
         case .zhipu: "https://open.bigmodel.cn/api/paas/v4"
         case .deepseek: "https://api.deepseek.com/v1"
         case .moonshot: "https://api.moonshot.cn/v1"
@@ -161,6 +181,11 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .openrouter: "anthropic/claude-sonnet-4-5"
         case .anthropic: "claude-sonnet-4-5"
         case .gemini: "gemini-2.5-pro"
+        case .mistral: "mistral-large-latest"
+        case .minimax: "MiniMax-M2.5"
+        case .qwenPortal: "coder-model"
+        case .qianfan: "deepseek-v3.2"
+        case .nvidia: "nvidia/llama-3.1-nemotron-70b-instruct"
         case .zhipu: "glm-4.5"
         case .deepseek: "deepseek-chat"
         case .moonshot: "kimi-k2-0905-preview"
@@ -178,12 +203,21 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
     var apiAdapter: String {
         switch self {
         case .custom: "openai-completions"
-        case .anthropic, .anthropicCompatible: "anthropic-messages"
+        case .anthropic, .anthropicCompatible, .minimax: "anthropic-messages"
         case .gemini: "google-generative-ai"
         case .openai: "openai-responses"
-        case .openrouter, .zhipu, .deepseek, .moonshot, .siliconFlow, .groq, .together, .cerebras, .xai,
+        case .openrouter, .mistral, .qwenPortal, .qianfan, .nvidia, .zhipu, .deepseek, .moonshot, .siliconFlow, .groq, .together, .cerebras, .xai,
              .ollama, .openAICompatible:
             "openai-completions"
+        }
+    }
+
+    var authHeader: Bool {
+        switch self {
+        case .minimax:
+            true
+        default:
+            false
         }
     }
 
@@ -199,6 +233,16 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
             "官方 Anthropic Messages 接口。"
         case .gemini:
             "官方 Gemini 接口。"
+        case .mistral:
+            "Mistral 官方接口，已预填官方地址和默认模型。"
+        case .minimax:
+            "MiniMax 官方接口，已预填 Anthropic 兼容地址，并自动启用 Authorization Header。"
+        case .qwenPortal:
+            "Qwen Portal 官方接口，适合直接填写 Qwen Portal 的访问凭据。"
+        case .qianfan:
+            "百度千帆统一接口，适合用一套 API 接多个模型。"
+        case .nvidia:
+            "NVIDIA NIM 官方接口，已预填官方地址和常用默认模型。"
         case .zhipu:
             "智谱 GLM 接口，适合直接填智谱 API Key。"
         case .deepseek:
@@ -218,9 +262,22 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .ollama:
             "本地 Ollama，默认地址是 127.0.0.1:11434。"
         case .openAICompatible:
-            "适合 Ollama、vLLM、LiteLLM、自建代理等 OpenAI 兼容接口。"
+            "适合 Ollama、vLLM、LiteLLM、自建代理等 OpenAI 兼容接口。这个预设需要你手动填写 API 接口地址。"
         case .anthropicCompatible:
-            "适合兼容 Anthropic Messages 协议的代理或网关。"
+            "适合兼容 Anthropic Messages 协议的代理或网关。这个预设需要你手动填写 API 接口地址。"
+        }
+    }
+
+    var missingBaseURLMessage: String {
+        switch self {
+        case .openAICompatible:
+            "请先填写 API 接口地址。OpenAI 兼容接口不会自动生成地址；如果你要接 NVIDIA，请直接选择 NVIDIA 预设。"
+        case .anthropicCompatible:
+            "请先填写 API 接口地址。Anthropic 兼容接口需要手动提供网关地址。"
+        case .custom:
+            "请先填写 API 接口地址。"
+        default:
+            "请先填写 API 接口地址，或重新选择一个带默认地址的服务商预设。"
         }
     }
 
@@ -231,6 +288,21 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
 
         if normalizedProvider == "openrouter" || normalizedBaseURL.contains("openrouter.ai") {
             return .openrouter
+        }
+        if normalizedProvider == "mistral" || normalizedBaseURL.contains("api.mistral.ai") {
+            return .mistral
+        }
+        if normalizedProvider == "minimax" || normalizedBaseURL.contains("api.minimax.io/anthropic") {
+            return .minimax
+        }
+        if normalizedProvider == "qwen-portal" || normalizedBaseURL.contains("portal.qwen.ai") {
+            return .qwenPortal
+        }
+        if normalizedProvider == "qianfan" || normalizedBaseURL.contains("qianfan.baidubce.com") {
+            return .qianfan
+        }
+        if normalizedProvider == "nvidia" || normalizedBaseURL.contains("integrate.api.nvidia.com") {
+            return .nvidia
         }
         if normalizedProvider == "zhipu" || normalizedBaseURL.contains("bigmodel.cn") {
             return .zhipu
@@ -316,6 +388,7 @@ final class DesktopClientModel {
     var connectionHint: String?
     var isRepairingConnection = false
     var settingsDraft = DesktopModelSettingsDraft()
+    var appliedModelSettings = DesktopModelSettingsDraft()
     var isShowingControlCenter = false
     var controlSection: DesktopControlSection = .general
 
@@ -353,6 +426,35 @@ final class DesktopClientModel {
         guard !providerID.isEmpty else { return self.availableModels }
         let filtered = self.availableModels.filter { $0.provider.lowercased() == providerID }
         return filtered.isEmpty ? self.availableModels : filtered
+    }
+
+    var settingsResolvedProviderID: String {
+        let trimmed = self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? self.settingsDraft.providerPreset.defaultProviderID : trimmed
+    }
+
+    var settingsResolvedApiAdapter: String {
+        let trimmed = self.settingsDraft.apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? self.settingsDraft.providerPreset.apiAdapter : trimmed
+    }
+
+    var settingsResolvedModelChoices: [ModelChoice] {
+        let providerID = self.settingsResolvedProviderID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !providerID.isEmpty else { return [] }
+        return self.availableModels.filter { $0.provider.lowercased() == providerID }
+    }
+
+    var firstResolvedDiscoveredModelID: String? {
+        self.settingsResolvedModelChoices
+            .lazy
+            .map { $0.id.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty })
+    }
+
+    var canApplyDraftModelSelection: Bool {
+        let providerID = self.settingsResolvedProviderID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelID = self.settingsDraft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !providerID.isEmpty && !modelID.isEmpty
     }
 
     init(appState: AppState, chatViewModel: HaoclawChatViewModel) {
@@ -438,6 +540,7 @@ final class DesktopClientModel {
     }
 
     func openModelSettings() {
+        self.restoreSettingsDraftFromApplied()
         self.refreshSettingsDraftFromState()
         self.controlSection = .models
         self.isShowingControlCenter = true
@@ -445,6 +548,7 @@ final class DesktopClientModel {
 
     func openControlCenter(_ section: DesktopControlSection = .general) {
         if section == .models {
+            self.restoreSettingsDraftFromApplied()
             self.refreshSettingsDraftFromState()
         }
         self.controlSection = section
@@ -500,7 +604,7 @@ final class DesktopClientModel {
             preset: selectedPreset)
 
         guard !trimmedBaseURL.isEmpty else {
-            self.statusMessage = "请先填写 API 接口地址。"
+            self.statusMessage = selectedPreset.missingBaseURLMessage
             return
         }
 
@@ -514,6 +618,11 @@ final class DesktopClientModel {
         var providerEntry = providers[resolvedProviderID] as? [String: Any] ?? [:]
         providerEntry["baseUrl"] = trimmedBaseURL
         providerEntry["api"] = resolvedApiAdapter
+        if selectedPreset.authHeader {
+            providerEntry["authHeader"] = true
+        } else {
+            providerEntry.removeValue(forKey: "authHeader")
+        }
         if !trimmedApiKey.isEmpty {
             providerEntry["apiKey"] = trimmedApiKey
         } else {
@@ -535,14 +644,20 @@ final class DesktopClientModel {
                 providerModels.append(nextModelEntry)
             }
             providerEntry["models"] = providerModels
+        } else {
+            providerEntry.removeValue(forKey: "models")
         }
         providers[resolvedProviderID] = providerEntry
         modelsRoot["mode"] = "merge"
         modelsRoot["providers"] = providers
         root["models"] = modelsRoot
+        Self.persistLastSavedProviderSelection(
+            in: &root,
+            providerID: resolvedProviderID,
+            modelID: resolvedModelID)
 
-        let primaryRef = resolvedModelID.isEmpty ? nil : "\(resolvedProviderID)/\(resolvedModelID)"
-        if let primaryRef {
+        if !resolvedModelID.isEmpty {
+            let primaryRef = "\(resolvedProviderID)/\(resolvedModelID)"
             if var agentsRoot = root["agents"] as? [String: Any] {
                 var defaults = agentsRoot["defaults"] as? [String: Any] ?? [:]
                 defaults["model"] = ["primary": primaryRef]
@@ -551,6 +666,17 @@ final class DesktopClientModel {
             } else {
                 var agentRoot = root["agent"] as? [String: Any] ?? [:]
                 agentRoot["model"] = ["primary": primaryRef]
+                root["agent"] = agentRoot
+            }
+        } else {
+            if var agentsRoot = root["agents"] as? [String: Any] {
+                var defaults = agentsRoot["defaults"] as? [String: Any] ?? [:]
+                defaults.removeValue(forKey: "model")
+                agentsRoot["defaults"] = defaults
+                root["agents"] = agentsRoot
+            }
+            if var agentRoot = root["agent"] as? [String: Any] {
+                agentRoot.removeValue(forKey: "model")
                 root["agent"] = agentRoot
             }
         }
@@ -564,26 +690,62 @@ final class DesktopClientModel {
             self.settingsDraft.baseURL = trimmedBaseURL
             self.settingsDraft.apiKey = trimmedApiKey
             self.settingsDraft.modelID = resolvedModelID
+            self.appliedModelSettings = self.settingsDraft
             self.appState.connectionMode = connectionMode
             self.appState.remoteTransport = remoteTransport
             self.appState.remoteUrl = trimmedRemoteURL
             self.appState.remoteToken = trimmedRemoteToken
             self.appState.remoteTarget = trimmedRemoteTarget
             self.appState.remoteIdentity = trimmedRemoteIdentity
-            if let primaryRef {
-                self.currentModelRef = primaryRef
-                try? await GatewayConnection.shared.patchSessionModel(
-                    sessionKey: self.chatViewModel.sessionKey,
-                    modelRef: primaryRef)
-            }
-            self.statusMessage = primaryRef == nil
-                ? "接口已保存，正在保留当前配置并重新扫描模型。"
-                : (selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
-                    ? "连接与模型配置已保存。"
-                    : "\(selectedPreset.title) 连接已保存。")
-            self.isShowingModelSettings = false
+            self.statusMessage = "接口已保存，正在验证连接并读取模型…"
             await self.refreshSupportData()
+
+            var effectiveModelID = resolvedModelID
+            if effectiveModelID.isEmpty, let discoveredModelID = self.firstResolvedDiscoveredModelID {
+                effectiveModelID = discoveredModelID
+            }
+
+            if !effectiveModelID.isEmpty {
+                let primaryRef = await self.applyPrimaryModelSelection(
+                    providerID: resolvedProviderID,
+                    modelID: effectiveModelID,
+                    apiAdapter: resolvedApiAdapter)
+                self.statusMessage = resolvedModelID.isEmpty
+                    ? "接口已连接，已自动选用 \(primaryRef) 作为默认模型。"
+                    : (selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
+                        ? "连接与模型配置已保存。"
+                        : "\(selectedPreset.title) 连接已保存。")
+                await self.refreshSupportData()
+            } else {
+                self.controlSection = .models
+                self.statusMessage = self.isGatewayReady
+                    ? "接口已保存，但当前没有发现模型列表。请手动填写默认模型 ID 后再保存。"
+                    : "接口已保存，但网关暂时还没准备好读取模型。请稍后重试，或手动填写默认模型 ID。"
+            }
         }
+    }
+
+    func applyDraftModelSelection() async {
+        let providerID = self.settingsResolvedProviderID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiAdapter = self.settingsResolvedApiAdapter.trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelID = self.settingsDraft.modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !providerID.isEmpty else {
+            self.statusMessage = "请先填写接口名称。"
+            return
+        }
+        guard !modelID.isEmpty else {
+            self.statusMessage = "请先选择或填写默认模型 ID。"
+            return
+        }
+
+        self.statusMessage = "正在应用默认模型…"
+        let primaryRef = await self.applyPrimaryModelSelection(
+            providerID: providerID,
+            modelID: modelID,
+            apiAdapter: apiAdapter)
+        self.statusMessage = "已将 \(primaryRef) 设为默认模型，并同步到当前会话。"
+        await self.refreshSupportData()
     }
 
     var currentSessionTitle: String {
@@ -693,6 +855,7 @@ final class DesktopClientModel {
         }
 
         self.refreshSettingsDraftFromState()
+        self.appliedModelSettings = self.settingsDraft
         self.ensureLocalStateLayout()
         self.stateDirectory = HaoclawPaths.stateDirURL.path
         self.configPath = HaoclawPaths.configURL.path
@@ -708,6 +871,15 @@ final class DesktopClientModel {
         self.settingsDraft.apiAdapter = preset.apiAdapter
         self.settingsDraft.baseURL = preset.defaultBaseURL
         self.settingsDraft.modelID = preset.defaultModelID
+    }
+
+    func restoreSettingsDraftFromApplied() {
+        self.settingsDraft.providerPreset = self.appliedModelSettings.providerPreset
+        self.settingsDraft.providerId = self.appliedModelSettings.providerId
+        self.settingsDraft.apiAdapter = self.appliedModelSettings.apiAdapter
+        self.settingsDraft.baseURL = self.appliedModelSettings.baseURL
+        self.settingsDraft.apiKey = self.appliedModelSettings.apiKey
+        self.settingsDraft.modelID = self.appliedModelSettings.modelID
     }
 
     private func refreshSettingsDraftFromState() {
@@ -767,6 +939,15 @@ final class DesktopClientModel {
             return nil
         }
 
+        if let preferred = self.extractLastSavedProviderSelection(from: root),
+           let preferredDraft = self.extractSavedProviderDraft(
+               providers: providers,
+               providerID: preferred.providerID,
+               preferredModelID: preferred.modelID)
+        {
+            return preferredDraft
+        }
+
         for (providerID, rawEntry) in providers {
             guard let providerEntry = rawEntry as? [String: Any] else { continue }
             let baseURL = (providerEntry["baseUrl"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -779,6 +960,65 @@ final class DesktopClientModel {
             }
         }
         return nil
+    }
+
+    private static func extractSavedProviderDraft(
+        providers: [String: Any],
+        providerID: String,
+        preferredModelID: String) -> (
+        providerID: String,
+        baseURL: String,
+        apiKey: String,
+        apiAdapter: String,
+        modelID: String
+    )? {
+        guard let providerEntry = providers[providerID] as? [String: Any] else { return nil }
+        let baseURL = (providerEntry["baseUrl"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiKey = (providerEntry["apiKey"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiAdapter = (providerEntry["api"] as? String ?? "openai-completions").trimmingCharacters(in: .whitespacesAndNewlines)
+        let models = Self.extractProviderModels(from: providerEntry)
+        let fallbackModelID = ((models.first?["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPreferredModelID = preferredModelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelID = trimmedPreferredModelID.isEmpty ? fallbackModelID : trimmedPreferredModelID
+        if !baseURL.isEmpty || !apiKey.isEmpty || !modelID.isEmpty {
+            return (providerID, baseURL, apiKey, apiAdapter.isEmpty ? "openai-completions" : apiAdapter, modelID)
+        }
+        return nil
+    }
+
+    private static func persistLastSavedProviderSelection(
+        in root: inout [String: Any],
+        providerID: String,
+        modelID: String)
+    {
+        var desktop = root["desktop"] as? [String: Any] ?? [:]
+        var modelSettings = desktop["modelSettings"] as? [String: Any] ?? [:]
+        modelSettings["selectedProviderId"] = providerID
+        let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedModelID.isEmpty {
+            modelSettings.removeValue(forKey: "selectedModelId")
+        } else {
+            modelSettings["selectedModelId"] = trimmedModelID
+        }
+        desktop["modelSettings"] = modelSettings
+        root["desktop"] = desktop
+    }
+
+    private static func extractLastSavedProviderSelection(
+        from root: [String: Any]) -> (providerID: String, modelID: String)?
+    {
+        guard let desktop = root["desktop"] as? [String: Any],
+              let modelSettings = desktop["modelSettings"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        let providerID = (modelSettings["selectedProviderId"] as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !providerID.isEmpty else { return nil }
+        let modelID = (modelSettings["selectedModelId"] as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (providerID, modelID)
     }
 
     private func loadModelCatalog() async {
@@ -825,6 +1065,67 @@ final class DesktopClientModel {
         try? FileManager.default.createDirectory(
             at: HaoclawPaths.workspaceURL,
             withIntermediateDirectories: true)
+    }
+
+    @discardableResult
+    private func applyPrimaryModelSelection(
+        providerID: String,
+        modelID: String,
+        apiAdapter: String) async -> String
+    {
+        let trimmedProviderID = providerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedApiAdapter = apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines)
+        let primaryRef = "\(trimmedProviderID)/\(trimmedModelID)"
+
+        guard !trimmedProviderID.isEmpty, !trimmedModelID.isEmpty else {
+            return primaryRef
+        }
+
+        var root = HaoclawConfigFile.loadDict()
+        var modelsRoot = root["models"] as? [String: Any] ?? [:]
+        var providers = modelsRoot["providers"] as? [String: Any] ?? [:]
+        var providerEntry = providers[trimmedProviderID] as? [String: Any] ?? [:]
+        var providerModels = Self.extractProviderModels(from: providerEntry)
+        let nextModelEntry: [String: Any] = [
+            "id": trimmedModelID,
+            "name": trimmedModelID,
+            "api": trimmedApiAdapter.isEmpty ? self.settingsDraft.providerPreset.apiAdapter : trimmedApiAdapter,
+        ]
+        if let existingIndex = providerModels.firstIndex(where: {
+            (($0["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == trimmedModelID
+        }) {
+            providerModels[existingIndex] = nextModelEntry
+        } else {
+            providerModels.append(nextModelEntry)
+        }
+        providerEntry["models"] = providerModels
+        providers[trimmedProviderID] = providerEntry
+        modelsRoot["mode"] = "merge"
+        modelsRoot["providers"] = providers
+        root["models"] = modelsRoot
+
+        if var agentsRoot = root["agents"] as? [String: Any] {
+            var defaults = agentsRoot["defaults"] as? [String: Any] ?? [:]
+            defaults["model"] = ["primary": primaryRef]
+            agentsRoot["defaults"] = defaults
+            root["agents"] = agentsRoot
+        } else {
+            var agentRoot = root["agent"] as? [String: Any] ?? [:]
+            agentRoot["model"] = ["primary": primaryRef]
+            root["agent"] = agentRoot
+        }
+
+        HaoclawConfigFile.saveDict(root)
+        self.configuredModels = Self.extractConfiguredModels(from: root)
+        self.currentModelRef = primaryRef
+        self.settingsDraft.providerId = trimmedProviderID
+        self.settingsDraft.apiAdapter = trimmedApiAdapter
+        self.settingsDraft.modelID = trimmedModelID
+        try? await GatewayConnection.shared.patchSessionModel(
+            sessionKey: self.chatViewModel.sessionKey,
+            modelRef: primaryRef)
+        return primaryRef
     }
 
     private static func extractPrimaryModelRef(from root: [String: Any]) -> String? {
@@ -1595,7 +1896,7 @@ private struct DesktopInfoSection: View {
     }
 }
 
-private extension ModelChoice {
+extension ModelChoice {
     var providerAndID: String {
         "\(self.provider)/\(self.id)"
     }

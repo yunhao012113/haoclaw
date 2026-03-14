@@ -21,7 +21,7 @@ struct GatewayDiscoveryInlineList: View {
             }
 
             if self.discovery.gateways.isEmpty {
-                Text("No gateways found yet.")
+                Text("暂未发现可用 Gateway。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -69,8 +69,8 @@ struct GatewayDiscoveryInlineList: View {
             }
         }
         .help(self.transport == .direct
-            ? "Click a discovered gateway to fill the gateway URL."
-            : "Click a discovered gateway to fill the SSH target.")
+            ? "点击发现到的 Gateway，可自动填入网关地址。"
+            : "点击发现到的 Gateway，可自动填入 SSH 目标。")
     }
 
     private func displayInfo(
@@ -79,12 +79,12 @@ struct GatewayDiscoveryInlineList: View {
         switch self.transport {
         case .direct:
             let url = GatewayDiscoveryHelpers.directUrl(for: gateway)
-            let label = url ?? "Gateway pairing only"
+            let label = url ?? "仅支持配对"
             let selected = url != nil && self.trimmed(self.currentUrl) == url
             return (label, selected)
         case .ssh:
             let target = GatewayDiscoveryHelpers.sshTarget(for: gateway)
-            let label = target ?? "Gateway pairing only"
+            let label = target ?? "仅支持配对"
             let selected = target != nil && self.trimmed(self.currentTarget) == target
             return (label, selected)
         }
@@ -112,6 +112,6 @@ struct GatewayDiscoveryMenu: View {
         } label: {
             Image(systemName: "dot.radiowaves.left.and.right")
         }
-        .help("Discover Haoclaw gateways on your LAN")
+        .help("发现当前局域网中的 Haoclaw Gateway")
     }
 }

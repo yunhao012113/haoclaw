@@ -214,9 +214,33 @@ private struct DesktopControlModelsPane: View {
     @Bindable var model: DesktopClientModel
 
     var body: some View {
+        let suggestedModels = self.model.settingsResolvedModelChoices
         VStack(alignment: .leading, spacing: 18) {
             DesktopControlCard(title: "模型接入", subtitle: "这里简化成最少配置项。先填名称、API 接口和密钥，模型列表后面按接口自动读取。") {
                 VStack(alignment: .leading, spacing: 12) {
+                    DesktopInfoSection(
+                        title: "当前状态",
+                        rows: [
+                            ("网关", self.model.gatewayStatus),
+                            ("当前模型", self.model.selectedSessionModelRef),
+                            ("已发现", suggestedModels.isEmpty ? "0 个" : "\(suggestedModels.count) 个"),
+                        ])
+
+                    DesktopInfoSection(
+                        title: "当前已应用配置",
+                        rows: [
+                            ("服务商", self.model.appliedModelSettings.providerPreset.title),
+                            ("接口名称", self.model.appliedModelSettings.providerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? "未配置"
+                                : self.model.appliedModelSettings.providerId),
+                            ("API 地址", self.model.appliedModelSettings.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? "未填写"
+                                : self.model.appliedModelSettings.baseURL),
+                            ("默认模型", self.model.appliedModelSettings.modelID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? self.model.currentModelRef
+                                : self.model.appliedModelSettings.modelID),
+                        ])
+
                     Picker("服务商预设", selection: self.$model.settingsDraft.providerPreset) {
                         ForEach(DesktopProviderPreset.allCases) { preset in
                             Text(preset.title).tag(preset)
@@ -237,10 +261,40 @@ private struct DesktopControlModelsPane: View {
                         .textFieldStyle(.roundedBorder)
                     SecureField("API 密钥", text: self.$model.settingsDraft.apiKey)
                         .textFieldStyle(.roundedBorder)
+                    TextField("默认模型 ID（选填）", text: self.$model.settingsDraft.modelID)
+                        .textFieldStyle(.roundedBorder)
 
-                    Text("保存后会自动尝试读取接口返回的模型。只有当服务商不提供模型列表时，才需要再补默认模型。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    if !suggestedModels.isEmpty {
+                        Picker("发现到的模型", selection: self.$model.settingsDraft.modelID) {
+                            if !self.model.settingsDraft.modelID.isEmpty &&
+                                !suggestedModels.contains(where: { $0.id == self.model.settingsDraft.modelID })
+                            {
+                                Text("保留手填值：\(self.model.settingsDraft.modelID)").tag(self.model.settingsDraft.modelID)
+                            }
+                            ForEach(suggestedModels, id: \.providerAndID) { choice in
+                                Text(choice.id).tag(choice.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Text("保存时如果你没有手填模型 ID，Haoclaw 会优先使用这里发现到的第一个模型作为默认值。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("保存后会自动尝试读取接口返回的模型。只有当服务商不提供模型列表时，才需要再补默认模型。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let status = self.model.statusMessage, !status.isEmpty {
+                        Text(status)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.secondary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
 
                     HStack(spacing: 10) {
                         Button("保存并应用") {
@@ -248,6 +302,12 @@ private struct DesktopControlModelsPane: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(self.model.isSavingModelSettings)
+
+                        Button("设为默认模型") {
+                            Task { await self.model.applyDraftModelSelection() }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!self.model.canApplyDraftModelSelection || self.model.isSavingModelSettings)
 
                         Button("重新扫描") {
                             Task { await self.model.refreshSupportData() }
@@ -369,6 +429,7 @@ private struct DesktopControlChannelsPane: View {
     }
 
     var body: some View {
+        let setupSummary = self.store.channelSetupSummary(for: self.selectedChannelId)
         VStack(alignment: .leading, spacing: 18) {
             DesktopControlCard(title: "渠道接入", subtitle: "这里直接管理飞书、Telegram、Slack、WhatsApp 等外部渠道。接好以后就可以在代理频道里用手机操控。") {
                 VStack(alignment: .leading, spacing: 12) {
@@ -388,6 +449,49 @@ private struct DesktopControlChannelsPane: View {
                             ("连接", self.channelConnectedText(self.selectedChannelId)),
                         ])
 
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("简化接入")
+                            .font(.headline)
+                        Text(self.store.channelQuickSetupHint(for: self.selectedChannelId))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text("最少必填：\(self.store.channelRequiredFieldSummary(for: self.selectedChannelId))")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(setupSummary.title)
+                            .font(.callout.weight(.semibold))
+                        Text(setupSummary.detail)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(self.setupSummaryTint(setupSummary.state).opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("下一步")
+                            .font(.headline)
+                        ForEach(Array(self.store.channelNextSteps(for: self.selectedChannelId).enumerated()), id: \.offset) { index, step in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("\(index + 1).")
+                                    .foregroundStyle(.secondary)
+                                Text(step)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.secondary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
                     if let error = self.channelLastError(self.selectedChannelId), !error.isEmpty {
                         Text(error)
                             .font(.footnote)
@@ -398,11 +502,13 @@ private struct DesktopControlChannelsPane: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
 
+                    self.channelActionPane
+
                     ChannelConfigForm(store: self.store, channelId: self.selectedChannelId)
 
                     HStack(spacing: 10) {
-                        Button("保存渠道配置") {
-                            Task { await self.store.saveConfigDraft() }
+                        Button("保存并验证") {
+                            Task { await self.saveAndValidateSelectedChannel() }
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(self.store.isSavingConfig || !self.store.configDirty)
@@ -413,7 +519,7 @@ private struct DesktopControlChannelsPane: View {
                         .buttonStyle(.bordered)
                         .disabled(self.store.isSavingConfig)
 
-                        Button("刷新状态") {
+                        Button("立即验证") {
                             Task { await self.store.refresh(probe: true) }
                         }
                         .buttonStyle(.bordered)
@@ -489,6 +595,92 @@ private struct DesktopControlChannelsPane: View {
 
     private func channelLastError(_ id: String) -> String? {
         self.channelStatus(id)?["lastError"]?.stringValue
+    }
+
+    @ViewBuilder
+    private var channelActionPane: some View {
+        switch self.selectedChannelId {
+        case "whatsapp":
+            VStack(alignment: .leading, spacing: 10) {
+                Text("配对动作")
+                    .font(.headline)
+
+                if let message = self.store.whatsappLoginMessage, !message.isEmpty {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let qr = self.store.whatsappLoginQrDataUrl, let image = self.qrImage(from: qr) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.none)
+                        .frame(width: 180, height: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+
+                HStack(spacing: 10) {
+                    Button("显示二维码") {
+                        Task { await self.store.startWhatsAppLogin(force: false) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(self.store.whatsappBusy)
+
+                    Button("重新配对") {
+                        Task { await self.store.startWhatsAppLogin(force: true) }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(self.store.whatsappBusy)
+
+                    Button("退出登录") {
+                        Task { await self.store.logoutWhatsApp() }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(self.store.whatsappBusy)
+                }
+            }
+        case "telegram":
+            HStack(spacing: 10) {
+                Button("清除 Telegram Token") {
+                    Task { await self.store.logoutTelegram() }
+                }
+                .buttonStyle(.bordered)
+                .disabled(self.store.telegramBusy)
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    private func saveAndValidateSelectedChannel() async {
+        await self.store.saveConfigDraft()
+        if let status = self.store.configStatus, status.localizedCaseInsensitiveContains("保存") {
+            let summary = self.store.channelSetupSummary(for: self.selectedChannelId)
+            self.store.configStatus = "\(summary.title)：\(summary.detail)"
+        }
+    }
+
+    private func setupSummaryTint(_ state: ChannelSetupState) -> Color {
+        switch state {
+        case .verified:
+            return .green
+        case .attention:
+            return .orange
+        case .incomplete:
+            return .secondary
+        case .ready:
+            return .blue
+        }
+    }
+
+    private func qrImage(from dataUrl: String) -> NSImage? {
+        guard let comma = dataUrl.firstIndex(of: ",") else { return nil }
+        let header = dataUrl[..<comma]
+        guard header.contains("base64") else { return nil }
+        let base64 = dataUrl[dataUrl.index(after: comma)...]
+        guard let data = Data(base64Encoded: String(base64)) else { return nil }
+        return NSImage(data: data)
     }
 }
 
