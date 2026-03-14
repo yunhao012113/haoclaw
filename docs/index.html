@@ -97,6 +97,34 @@
         margin-top: 22px;
       }
 
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        margin-top: 22px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .toolbar-label {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .version-select {
+        min-width: 220px;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: white;
+        color: var(--text);
+        font-size: 15px;
+      }
+
       .card {
         padding: 24px;
         border-radius: 24px;
@@ -164,6 +192,10 @@
         margin-top: 14px;
         font-size: 13px;
         color: var(--muted);
+      }
+
+      .meta strong {
+        color: var(--text);
       }
 
       .footer {
@@ -244,6 +276,14 @@
         <div class="tip">
           如果你是 mac 用户，优先下载 <strong>PKG</strong>。如果你是 Windows 用户，直接下载 <strong>EXE 安装程序</strong>。
         </div>
+
+        <div class="toolbar">
+          <span class="toolbar-label">选择版本</span>
+          <select class="version-select" id="release-select" aria-label="选择发布版本">
+            <option>正在加载版本列表…</option>
+          </select>
+          <a class="button secondary" id="all-releases" href="https://github.com/yunhao012113/haoclaw/releases">查看全部版本</a>
+        </div>
       </section>
 
       <section class="grid">
@@ -264,7 +304,7 @@
           <p>直接下载 `setup.exe`，安装后会创建桌面快捷方式和开始菜单入口。</p>
           <div class="actions">
             <a class="button" id="win-exe" href="https://github.com/yunhao012113/haoclaw/releases/latest">下载 EXE</a>
-            <a class="button secondary" href="https://github.com/yunhao012113/haoclaw/releases/latest">查看全部版本</a>
+            <a class="button secondary" href="https://github.com/yunhao012113/haoclaw/releases">查看全部版本</a>
           </div>
           <div class="meta" id="win-meta">正在检查最新 Windows 安装包…</div>
         </article>
@@ -287,6 +327,8 @@
       const macMeta = document.getElementById("mac-meta");
       const winMeta = document.getElementById("win-meta");
       const status = document.getElementById("status");
+      const releaseSelect = document.getElementById("release-select");
+      const allReleases = document.getElementById("all-releases");
 
       function preferCard() {
         const platform = navigator.platform.toLowerCase();
@@ -297,23 +339,71 @@
         }
       }
 
-      function findAsset(releases, predicate) {
-        for (const release of releases) {
-          const asset = (release.assets || []).find(predicate);
-          if (asset) {
-            return { asset, release };
-          }
-        }
-        return null;
+      function findDownloadableReleases(releases) {
+        return releases.filter((release) => {
+          const assets = release.assets || [];
+          return assets.some((asset) => {
+            return (
+              asset.name.endsWith(".pkg") ||
+              asset.name.endsWith(".dmg") ||
+              asset.name.endsWith("-setup.exe")
+            );
+          });
+        });
       }
 
-      function findUnifiedRelease(releases) {
-        return releases.find((release) => {
-          const assets = release.assets || [];
-          const hasMacPkg = assets.some((asset) => asset.name.endsWith(".pkg"));
-          const hasWinExe = assets.some((asset) => asset.name.endsWith("-setup.exe"));
-          return hasMacPkg && hasWinExe;
-        });
+      function updateAssetLink(anchor, asset, fallbackUrl, enabledLabel, disabledLabel) {
+        if (asset) {
+          anchor.href = asset.browser_download_url;
+          anchor.textContent = enabledLabel;
+          anchor.style.pointerEvents = "auto";
+          anchor.style.opacity = "1";
+          return true;
+        }
+
+        anchor.href = fallbackUrl;
+        anchor.textContent = disabledLabel;
+        anchor.style.pointerEvents = "none";
+        anchor.style.opacity = "0.56";
+        return false;
+      }
+
+      function applyRelease(release) {
+        const assets = release.assets || [];
+        const macPkgAsset = assets.find((asset) => asset.name.endsWith(".pkg"));
+        const macDmgAsset = assets.find((asset) => asset.name.endsWith(".dmg"));
+        const winExeAsset = assets.find((asset) => asset.name.endsWith("-setup.exe"));
+
+        const hasPkg = updateAssetLink(macPkg, macPkgAsset, release.html_url, "下载 PKG", "暂无 PKG");
+        const hasDmg = updateAssetLink(macDmg, macDmgAsset, release.html_url, "下载 DMG", "暂无 DMG");
+        const hasExe = updateAssetLink(winExe, winExeAsset, release.html_url, "下载 EXE", "暂无 EXE");
+
+        if (hasPkg) {
+          macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name} · PKG：${macPkgAsset.name}`;
+        } else if (hasDmg) {
+          macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name} · DMG：${macDmgAsset.name}`;
+        } else {
+          macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
+        }
+
+        if (hasExe) {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · EXE：${winExeAsset.name}`;
+        } else {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
+        }
+
+        allReleases.href = "https://github.com/yunhao012113/haoclaw/releases";
+        status.textContent = `当前官网版本：${release.tag_name}。你也可以在上方切换历史版本。`;
+      }
+
+      function fillReleaseSelector(releases) {
+        releaseSelect.innerHTML = "";
+        for (const release of releases) {
+          const option = document.createElement("option");
+          option.value = release.tag_name;
+          option.textContent = release.tag_name;
+          releaseSelect.append(option);
+        }
       }
 
       async function loadDownloads() {
@@ -326,40 +416,22 @@
             throw new Error(`GitHub API ${response.status}`);
           }
           const releases = await response.json();
-
-          const unifiedRelease = findUnifiedRelease(releases);
-          if (!unifiedRelease) {
-            throw new Error("No unified release with both macOS and Windows assets");
+          const downloadableReleases = findDownloadableReleases(releases);
+          const initialRelease = downloadableReleases[0];
+          if (!initialRelease) {
+            throw new Error("No release with downloadable desktop assets");
           }
 
-          const macPkgAsset = (unifiedRelease.assets || []).find((asset) => asset.name.endsWith(".pkg"));
-          const macDmgAsset = (unifiedRelease.assets || []).find((asset) => asset.name.endsWith(".dmg"));
-          const winExeAsset = (unifiedRelease.assets || []).find((asset) => asset.name.endsWith("-setup.exe"));
+          fillReleaseSelector(downloadableReleases);
+          releaseSelect.value = initialRelease.tag_name;
+          applyRelease(initialRelease);
 
-          if (macPkgAsset) {
-            macPkg.href = macPkgAsset.browser_download_url;
-            macMeta.textContent = `统一版本：${unifiedRelease.tag_name} · PKG：${macPkgAsset.name}`;
-          } else {
-            macMeta.textContent = `统一版本：${unifiedRelease.tag_name}，但暂时没有找到 PKG。`;
-          }
-
-          if (macDmgAsset) {
-            macDmg.href = macDmgAsset.browser_download_url;
-            if (!macPkgAsset) {
-              macMeta.textContent = `统一版本：${unifiedRelease.tag_name} · DMG：${macDmgAsset.name}`;
+          releaseSelect.addEventListener("change", () => {
+            const selected = downloadableReleases.find((release) => release.tag_name === releaseSelect.value);
+            if (selected) {
+              applyRelease(selected);
             }
-          } else {
-            macDmg.href = unifiedRelease.html_url;
-          }
-
-          if (winExeAsset) {
-            winExe.href = winExeAsset.browser_download_url;
-            winMeta.textContent = `统一版本：${unifiedRelease.tag_name} · EXE：${winExeAsset.name}`;
-          } else {
-            winMeta.textContent = `统一版本：${unifiedRelease.tag_name}，但暂时没有找到 EXE。`;
-          }
-
-          status.textContent = `已同步统一发布版本：${unifiedRelease.tag_name}。`;
+          });
         } catch (error) {
           console.error(error);
           status.textContent = "获取最新版本失败，已回退到 GitHub 最新发布页。";
