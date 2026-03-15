@@ -109,6 +109,25 @@
         background: rgba(255, 255, 255, 0.72);
       }
 
+      .hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       .toolbar-label {
         font-size: 14px;
         color: var(--muted);
@@ -277,12 +296,18 @@
           如果你是 mac 用户，优先下载 <strong>PKG</strong>。如果你是 Windows 用户，直接下载 <strong>EXE 安装程序</strong>。
         </div>
 
+        <div class="hero-meta">
+          <div class="hero-pill" id="latest-pill">最新稳定版：加载中…</div>
+          <div class="hero-pill" id="published-pill">发布时间：加载中…</div>
+        </div>
+
         <div class="toolbar">
           <span class="toolbar-label">选择版本</span>
           <select class="version-select" id="release-select" aria-label="选择发布版本">
             <option>正在加载版本列表…</option>
           </select>
           <a class="button secondary" id="all-releases" href="https://github.com/yunhao012113/haoclaw/releases">查看全部版本</a>
+          <button class="button secondary" id="copy-link" type="button">复制当前页面链接</button>
         </div>
       </section>
 
@@ -329,6 +354,13 @@
       const status = document.getElementById("status");
       const releaseSelect = document.getElementById("release-select");
       const allReleases = document.getElementById("all-releases");
+      const latestPill = document.getElementById("latest-pill");
+      const publishedPill = document.getElementById("published-pill");
+      const copyLink = document.getElementById("copy-link");
+
+      const releasesUrl = "https://github.com/yunhao012113/haoclaw/releases";
+      const releasesLatestUrl = "https://github.com/yunhao012113/haoclaw/releases/latest";
+      const canonicalPageUrl = `${window.location.origin}${window.location.pathname}`;
 
       function preferCard() {
         const platform = navigator.platform.toLowerCase();
@@ -339,17 +371,59 @@
         }
       }
 
+      function parseVersion(value) {
+        return String(value || "")
+          .replace(/^[vV]/, "")
+          .split(/[^0-9]+/)
+          .filter(Boolean)
+          .map((part) => Number.parseInt(part, 10));
+      }
+
+      function compareVersions(left, right) {
+        const lhs = parseVersion(left);
+        const rhs = parseVersion(right);
+        const count = Math.max(lhs.length, rhs.length);
+        for (let index = 0; index < count; index += 1) {
+          const a = lhs[index] ?? 0;
+          const b = rhs[index] ?? 0;
+          if (a !== b) {
+            return b - a;
+          }
+        }
+        return String(right).localeCompare(String(left));
+      }
+
+      function formatPublishedAt(value) {
+        if (!value) {
+          return "未知";
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return value;
+        }
+        return new Intl.DateTimeFormat("zh-CN", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(date);
+      }
+
       function findDownloadableReleases(releases) {
-        return releases.filter((release) => {
-          const assets = release.assets || [];
-          return assets.some((asset) => {
-            return (
-              asset.name.endsWith(".pkg") ||
-              asset.name.endsWith(".dmg") ||
-              asset.name.endsWith("-setup.exe")
-            );
-          });
-        });
+        return releases
+          .filter((release) => !release.draft && !release.prerelease)
+          .filter((release) => {
+            const assets = release.assets || [];
+            return assets.some((asset) => {
+              return (
+                asset.name.endsWith(".pkg") ||
+                asset.name.endsWith(".dmg") ||
+                asset.name.endsWith("-setup.exe")
+              );
+            });
+          })
+          .sort((left, right) => compareVersions(left.tag_name, right.tag_name));
       }
 
       function updateAssetLink(anchor, asset, fallbackUrl, enabledLabel, disabledLabel) {
@@ -392,8 +466,14 @@
           winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
         }
 
-        allReleases.href = "https://github.com/yunhao012113/haoclaw/releases";
+        latestPill.textContent = `最新稳定版：${release.tag_name}`;
+        publishedPill.textContent = `发布时间：${formatPublishedAt(release.published_at)}`;
+        allReleases.href = releasesUrl;
         status.textContent = `当前官网版本：${release.tag_name}。你也可以在上方切换历史版本。`;
+
+        const current = new URL(window.location.href);
+        current.searchParams.set("version", release.tag_name);
+        window.history.replaceState({}, "", current);
       }
 
       function fillReleaseSelector(releases) {
@@ -417,7 +497,9 @@
           }
           const releases = await response.json();
           const downloadableReleases = findDownloadableReleases(releases);
-          const initialRelease = downloadableReleases[0];
+          const requestedTag = new URL(window.location.href).searchParams.get("version");
+          const initialRelease =
+            downloadableReleases.find((release) => release.tag_name === requestedTag) || downloadableReleases[0];
           if (!initialRelease) {
             throw new Error("No release with downloadable desktop assets");
           }
@@ -437,8 +519,30 @@
           status.textContent = "获取最新版本失败，已回退到 GitHub 最新发布页。";
           macMeta.textContent = "当前显示的是 GitHub 最新发布页入口。";
           winMeta.textContent = "当前显示的是 GitHub 最新发布页入口。";
+          latestPill.textContent = "最新稳定版：请打开 GitHub Releases 查看";
+          publishedPill.textContent = "发布时间：暂时不可用";
+          macPkg.href = releasesLatestUrl;
+          macDmg.href = releasesLatestUrl;
+          winExe.href = releasesLatestUrl;
+          allReleases.href = releasesUrl;
         }
       }
+
+      copyLink?.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(canonicalPageUrl);
+          copyLink.textContent = "已复制链接";
+          window.setTimeout(() => {
+            copyLink.textContent = "复制当前页面链接";
+          }, 1800);
+        } catch (error) {
+          console.error(error);
+          copyLink.textContent = "复制失败";
+          window.setTimeout(() => {
+            copyLink.textContent = "复制当前页面链接";
+          }, 1800);
+        }
+      });
 
       void loadDownloads();
     </script>
