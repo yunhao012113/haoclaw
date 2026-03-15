@@ -192,8 +192,12 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
             if let asset = update.asset {
                 try await self.downloadAndInstall(asset: asset, announcedVersion: update.version, showCompletionAlert: true)
             } else {
-                self.updateStatus.detail = "未找到可安装的更新包，已为你打开发布页。"
-                NSWorkspace.shared.open(update.releaseURL)
+                self.updateStatus.detail = "未找到可安装的更新包，已为你打开统一下载页。"
+                if let url = URL(string: desktopDownloadsURL) {
+                    NSWorkspace.shared.open(url)
+                } else {
+                    NSWorkspace.shared.open(update.releaseURL)
+                }
             }
         } catch {
             self.updateStatus.detail = "升级失败：\(error.localizedDescription)"

@@ -50,7 +50,7 @@ struct AboutSettings: View {
                     icon: "chevron.left.slash.chevron.right",
                     title: "项目仓库",
                     url: "https://github.com/yunhao012113/haoclaw")
-                AboutLinkRow(icon: "globe", title: "下载页", url: "https://yunhao012113.github.io/haoclaw/")
+                AboutLinkRow(icon: "globe", title: "下载页", url: desktopDownloadsURL)
                 AboutLinkRow(icon: "shippingbox", title: "最新发布", url: "https://github.com/yunhao012113/haoclaw/releases/latest")
             }
             .frame(maxWidth: .infinity)

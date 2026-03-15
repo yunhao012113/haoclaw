@@ -825,8 +825,8 @@ private struct DesktopControlUpdatesPane: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(updater.updateStatus.isChecking || updater.updateStatus.isInstalling)
 
-                            Button("打开发布记录") {
-                                if let url = URL(string: "https://github.com/yunhao012113/haoclaw/releases/latest") {
+                            Button("打开统一下载页") {
+                                if let url = URL(string: desktopDownloadsURL) {
                                     NSWorkspace.shared.open(url)
                                 }
                             }

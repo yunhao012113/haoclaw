@@ -45,4 +45,5 @@ let heartbeatsEnabledKey = "haoclaw.heartbeatsEnabled"
 let debugPaneEnabledKey = "haoclaw.debugPaneEnabled"
 let debugFileLogEnabledKey = "haoclaw.debug.fileLogEnabled"
 let appLogLevelKey = "haoclaw.debug.appLogLevel"
+let desktopDownloadsURL = "https://yunhao012113.github.io/haoclaw/"
 let voiceWakeSupported: Bool = ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26
