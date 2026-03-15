@@ -3,6 +3,12 @@ import Foundation
 
 @MainActor
 final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
+    enum FetchLatestResult {
+        case none
+        case available(AvailableUpdate)
+        case pending(version: String, releaseURL: URL)
+    }
+
     struct ReleaseAsset: Decodable {
         let name: String
         let browserDownloadURL: URL
@@ -101,12 +107,12 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
 
         do {
-            let update = try await self.fetchLatestUpdate()
-            self.cachedUpdate = update
-            self.updateStatus.isUpdateReady = update != nil
-            self.updateStatus.availableVersion = update?.version
-
-            guard let update else {
+            let result = try await self.fetchLatestUpdate()
+            switch result {
+            case .none:
+                self.cachedUpdate = nil
+                self.updateStatus.isUpdateReady = false
+                self.updateStatus.availableVersion = nil
                 self.updateStatus.detail = manual ? "当前桌面客户端已经是最新版本。" : "当前已经是最新版本。"
                 if manual {
                     self.presentMessage(
@@ -114,17 +120,40 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
                         text: "当前桌面客户端已经是最新版本。",
                         style: .informational)
                 }
-                return
-            }
+            case let .pending(version, releaseURL):
+                self.cachedUpdate = nil
+                self.updateStatus.isUpdateReady = false
+                self.updateStatus.availableVersion = version
+                self.updateStatus.detail = "发现新版本 \(version)，但 mac 安装包还在发布中。"
+                if manual {
+                    let alert = NSAlert()
+                    alert.messageText = "发现新版本 \(version)"
+                    alert.informativeText = "官网已经更新，但 mac 安装包还在发布中。你可以稍后再试，或先打开统一下载页查看。"
+                    alert.alertStyle = .informational
+                    alert.addButton(withTitle: "打开统一下载页")
+                    alert.addButton(withTitle: "稍后")
+                    NSApp.activate(ignoringOtherApps: true)
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        if let url = URL(string: desktopDownloadsURL) {
+                            NSWorkspace.shared.open(url)
+                        } else {
+                            NSWorkspace.shared.open(releaseURL)
+                        }
+                    }
+                }
+            case let .available(update):
+                self.cachedUpdate = update
+                self.updateStatus.isUpdateReady = true
+                self.updateStatus.availableVersion = update.version
+                self.updateStatus.detail = "发现新版本 \(update.version)。"
+                if !manual, self.automaticallyDownloadsUpdates {
+                    await self.installAutomaticallyIfPossible(update: update)
+                    return
+                }
 
-            self.updateStatus.detail = "发现新版本 \(update.version)。"
-            if !manual, self.automaticallyDownloadsUpdates {
-                await self.installAutomaticallyIfPossible(update: update)
-                return
-            }
-
-            if manual {
-                await self.promptAndInstall(update: update)
+                if manual {
+                    await self.promptAndInstall(update: update)
+                }
             }
         } catch {
             self.updateStatus.isUpdateReady = self.cachedUpdate != nil
@@ -138,7 +167,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
     }
 
-    private func fetchLatestUpdate() async throws -> AvailableUpdate? {
+    private func fetchLatestUpdate() async throws -> FetchLatestResult {
         var request = URLRequest(url: self.latestReleaseEndpoint)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("HaoclawDesktop/\(self.currentVersion)", forHTTPHeaderField: "User-Agent")
@@ -152,21 +181,33 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
 
         let releases = try JSONDecoder().decode([ReleasePayload].self, from: data)
-        guard let release = Self.preferredRelease(from: releases, currentVersion: self.currentVersion) else {
-            return nil
+        guard let release = Self.latestNewerStableRelease(from: releases, currentVersion: self.currentVersion) else {
+            return .none
         }
         let latestVersion = Self.normalizedVersion(release.tagName)
-        let preferredAsset = Self.preferredMacAsset(in: release.assets)
+        guard let preferredAsset = Self.preferredMacAsset(in: release.assets) else {
+            return .pending(version: latestVersion, releaseURL: release.htmlURL)
+        }
 
-        return AvailableUpdate(version: latestVersion, asset: preferredAsset, releaseURL: release.htmlURL)
+        return .available(AvailableUpdate(version: latestVersion, asset: preferredAsset, releaseURL: release.htmlURL))
+    }
+
+    static func latestNewerStableRelease(from releases: [ReleasePayload], currentVersion: String) -> ReleasePayload? {
+        releases
+            .filter { release in
+                guard !release.draft, !release.prerelease else { return false }
+                let version = Self.normalizedVersion(release.tagName)
+                return Self.compareVersion(version, to: currentVersion) == .orderedDescending
+            }
+            .sorted { lhs, rhs in
+                Self.compareVersion(Self.normalizedVersion(lhs.tagName), to: Self.normalizedVersion(rhs.tagName)) == .orderedDescending
+            }
+            .first
     }
 
     static func preferredRelease(from releases: [ReleasePayload], currentVersion: String) -> ReleasePayload? {
-        releases.first { release in
-            guard !release.draft, !release.prerelease else { return false }
-            guard Self.preferredMacAsset(in: release.assets) != nil else { return false }
-            let latestVersion = Self.normalizedVersion(release.tagName)
-            return Self.compareVersion(latestVersion, to: currentVersion) == .orderedDescending
+        self.latestNewerStableRelease(from: releases, currentVersion: currentVersion).flatMap { release in
+            Self.preferredMacAsset(in: release.assets) == nil ? nil : release
         }
     }
 
