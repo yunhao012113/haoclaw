@@ -268,6 +268,15 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         }
     }
 
+    var supportsModelDiscovery: Bool {
+        switch self {
+        case .anthropic, .anthropicCompatible, .gemini, .minimax:
+            false
+        default:
+            true
+        }
+    }
+
     var missingBaseURLMessage: String {
         switch self {
         case .openAICompatible:
@@ -430,12 +439,22 @@ final class DesktopClientModel {
 
     var settingsResolvedProviderID: String {
         let trimmed = self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? self.settingsDraft.providerPreset.defaultProviderID : trimmed
+        let fallback = self.settingsDraft.providerPreset.defaultProviderID
+        return Self.canonicalProviderID(trimmed.isEmpty ? fallback : trimmed)
     }
 
     var settingsResolvedApiAdapter: String {
         let trimmed = self.settingsDraft.apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? self.settingsDraft.providerPreset.apiAdapter : trimmed
+    }
+
+    var usesCustomProviderIdentity: Bool {
+        switch self.settingsDraft.providerPreset {
+        case .custom, .openAICompatible, .anthropicCompatible:
+            true
+        default:
+            false
+        }
     }
 
     var settingsResolvedModelChoices: [ModelChoice] {
@@ -596,7 +615,8 @@ final class DesktopClientModel {
             return
         }
 
-        let resolvedProviderID = trimmedProviderID.isEmpty ? selectedPreset.defaultProviderID : trimmedProviderID
+        let resolvedProviderID = Self.canonicalProviderID(
+            trimmedProviderID.isEmpty ? selectedPreset.defaultProviderID : trimmedProviderID)
         let resolvedApiAdapter = trimmedApiAdapter.isEmpty ? selectedPreset.apiAdapter : trimmedApiAdapter
         let resolvedModelID = self.resolveModelIDForSave(
             explicitModelID: trimmedModelID,
@@ -611,9 +631,16 @@ final class DesktopClientModel {
         self.isSavingModelSettings = true
         defer { self.isSavingModelSettings = false }
 
+        let discoveredProviderModels = await self.discoverProviderModels(
+            providerID: resolvedProviderID,
+            preset: selectedPreset,
+            baseURL: trimmedBaseURL,
+            apiKey: trimmedApiKey,
+            apiAdapter: resolvedApiAdapter)
+
         var root = HaoclawConfigFile.loadDict()
         var modelsRoot = root["models"] as? [String: Any] ?? [:]
-        var providers = modelsRoot["providers"] as? [String: Any] ?? [:]
+        var providers = Self.normalizedProviderEntries(modelsRoot["providers"] as? [String: Any] ?? [:])
 
         var providerEntry = providers[resolvedProviderID] as? [String: Any] ?? [:]
         providerEntry["baseUrl"] = trimmedBaseURL
@@ -629,8 +656,13 @@ final class DesktopClientModel {
             providerEntry.removeValue(forKey: "apiKey")
         }
 
+        var providerModels = Self.extractProviderModels(from: providerEntry)
+        providerModels = Self.mergeDiscoveredProviderModels(
+            providerModels,
+            discoveredProviderModels,
+            apiAdapter: resolvedApiAdapter)
+
         if !resolvedModelID.isEmpty {
-            var providerModels = Self.extractProviderModels(from: providerEntry)
             let nextModelEntry: [String: Any] = [
                 "id": resolvedModelID,
                 "name": resolvedModelID,
@@ -643,18 +675,18 @@ final class DesktopClientModel {
             } else {
                 providerModels.append(nextModelEntry)
             }
-            providerEntry["models"] = providerModels
-        } else {
+        }
+
+        if providerModels.isEmpty {
             providerEntry.removeValue(forKey: "models")
+        } else {
+            providerEntry["models"] = providerModels
         }
         providers[resolvedProviderID] = providerEntry
         modelsRoot["mode"] = "merge"
         modelsRoot["providers"] = providers
         root["models"] = modelsRoot
-        Self.persistLastSavedProviderSelection(
-            in: &root,
-            providerID: resolvedProviderID,
-            modelID: resolvedModelID)
+        Self.persistLastSavedProviderSelection(providerID: resolvedProviderID, modelID: resolvedModelID)
 
         if !resolvedModelID.isEmpty {
             let primaryRef = "\(resolvedProviderID)/\(resolvedModelID)"
@@ -711,7 +743,9 @@ final class DesktopClientModel {
                     modelID: effectiveModelID,
                     apiAdapter: resolvedApiAdapter)
                 self.statusMessage = resolvedModelID.isEmpty
-                    ? "接口已连接，已自动选用 \(primaryRef) 作为默认模型。"
+                    ? (discoveredProviderModels.isEmpty
+                        ? "接口已连接，已自动选用 \(primaryRef) 作为默认模型。"
+                        : "接口已连接，已发现 \(discoveredProviderModels.count) 个模型，并自动选用 \(primaryRef)。")
                     : (selectedPreset == .openAICompatible || selectedPreset == .anthropicCompatible
                         ? "连接与模型配置已保存。"
                         : "\(selectedPreset.title) 连接已保存。")
@@ -814,11 +848,13 @@ final class DesktopClientModel {
         let root = HaoclawConfigFile.loadDict()
         self.configuredModels = Self.extractConfiguredModels(from: root)
         let modelRef = Self.extractPrimaryModelRef(from: root)
+        let providers = ((root["models"] as? [String: Any])?["providers"] as? [String: Any]) ?? [:]
         if let modelRef, !modelRef.isEmpty {
             self.currentModelRef = modelRef
             let parts = modelRef.split(separator: "/", maxSplits: 1).map(String.init)
-            let providerID = parts.first ?? "haoclaw-desktop"
-            let providerEntry = ((root["models"] as? [String: Any])?["providers"] as? [String: Any])?[providerID] as? [String: Any]
+            let providerID = Self.canonicalProviderID(parts.first ?? "haoclaw-desktop")
+            let providerMatch = Self.providerEntry(in: providers, providerID: providerID)
+            let providerEntry = providerMatch?.entry
             let baseURL = providerEntry?["baseUrl"] as? String ?? ""
             let apiKey = providerEntry?["apiKey"] as? String ?? ""
             let apiAdapter = providerEntry?["api"] as? String ?? "openai-completions"
@@ -867,7 +903,7 @@ final class DesktopClientModel {
 
     func applyProviderPreset() {
         let preset = self.settingsDraft.providerPreset
-        self.settingsDraft.providerId = preset.defaultProviderID
+        self.settingsDraft.providerId = Self.canonicalProviderID(preset.defaultProviderID)
         self.settingsDraft.apiAdapter = preset.apiAdapter
         self.settingsDraft.baseURL = preset.defaultBaseURL
         self.settingsDraft.modelID = preset.defaultModelID
@@ -891,7 +927,7 @@ final class DesktopClientModel {
         self.settingsDraft.remoteIdentity = self.appState.remoteIdentity
 
         if self.settingsDraft.providerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            self.settingsDraft.providerId = self.settingsDraft.providerPreset.defaultProviderID
+            self.settingsDraft.providerId = Self.canonicalProviderID(self.settingsDraft.providerPreset.defaultProviderID)
         }
         if self.settingsDraft.apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             self.settingsDraft.apiAdapter = self.settingsDraft.providerPreset.apiAdapter
@@ -939,7 +975,7 @@ final class DesktopClientModel {
             return nil
         }
 
-        if let preferred = self.extractLastSavedProviderSelection(from: root),
+        if let preferred = self.extractLastSavedProviderSelection(),
            let preferredDraft = self.extractSavedProviderDraft(
                providers: providers,
                providerID: preferred.providerID,
@@ -972,7 +1008,8 @@ final class DesktopClientModel {
         apiAdapter: String,
         modelID: String
     )? {
-        guard let providerEntry = providers[providerID] as? [String: Any] else { return nil }
+        guard let match = self.providerEntry(in: providers, providerID: providerID) else { return nil }
+        let providerEntry = match.entry
         let baseURL = (providerEntry["baseUrl"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let apiKey = (providerEntry["apiKey"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let apiAdapter = (providerEntry["api"] as? String ?? "openai-completions").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -981,65 +1018,103 @@ final class DesktopClientModel {
         let trimmedPreferredModelID = preferredModelID.trimmingCharacters(in: .whitespacesAndNewlines)
         let modelID = trimmedPreferredModelID.isEmpty ? fallbackModelID : trimmedPreferredModelID
         if !baseURL.isEmpty || !apiKey.isEmpty || !modelID.isEmpty {
-            return (providerID, baseURL, apiKey, apiAdapter.isEmpty ? "openai-completions" : apiAdapter, modelID)
+            return (
+                match.providerID,
+                baseURL,
+                apiKey,
+                apiAdapter.isEmpty ? "openai-completions" : apiAdapter,
+                modelID)
         }
         return nil
     }
 
     private static func persistLastSavedProviderSelection(
-        in root: inout [String: Any],
         providerID: String,
         modelID: String)
     {
-        var desktop = root["desktop"] as? [String: Any] ?? [:]
-        var modelSettings = desktop["modelSettings"] as? [String: Any] ?? [:]
-        modelSettings["selectedProviderId"] = providerID
+        UserDefaults.standard.set(providerID, forKey: Self.lastSavedProviderIDDefaultsKey)
         let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedModelID.isEmpty {
-            modelSettings.removeValue(forKey: "selectedModelId")
+            UserDefaults.standard.removeObject(forKey: Self.lastSavedModelIDDefaultsKey)
         } else {
-            modelSettings["selectedModelId"] = trimmedModelID
+            UserDefaults.standard.set(trimmedModelID, forKey: Self.lastSavedModelIDDefaultsKey)
         }
-        desktop["modelSettings"] = modelSettings
-        root["desktop"] = desktop
     }
 
     private static func extractLastSavedProviderSelection(
-        from root: [String: Any]) -> (providerID: String, modelID: String)?
+    ) -> (providerID: String, modelID: String)?
     {
-        guard let desktop = root["desktop"] as? [String: Any],
-              let modelSettings = desktop["modelSettings"] as? [String: Any]
-        else {
-            return nil
-        }
-
-        let providerID = (modelSettings["selectedProviderId"] as? String ?? "")
+        let providerID = (UserDefaults.standard.string(forKey: Self.lastSavedProviderIDDefaultsKey) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !providerID.isEmpty else { return nil }
-        let modelID = (modelSettings["selectedModelId"] as? String ?? "")
+        let modelID = (UserDefaults.standard.string(forKey: Self.lastSavedModelIDDefaultsKey) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (providerID, modelID)
     }
 
     private func loadModelCatalog() async {
+        var gatewayModels: [ModelChoice] = []
+        var localModels: [ModelChoice] = []
+
         do {
             let result: ModelsListResult = try await GatewayConnection.shared.requestDecoded(
                 method: .modelsList,
                 params: nil,
                 timeoutMs: 6000)
-            self.runtimeModels = result.models.map {
+            gatewayModels = result.models.map {
                 ModelChoice(
                     id: $0.id,
                     name: $0.name,
                     provider: $0.provider,
                     contextWindow: $0.contextwindow)
             }
-        } catch {
-            do {
-                self.runtimeModels = try await ModelCatalogLoader.load(from: ModelCatalogLoader.defaultPath)
-            } catch {
-                self.runtimeModels = []
+        } catch {}
+
+        do {
+            localModels = try await ModelCatalogLoader.load(from: ModelCatalogLoader.defaultPath)
+        } catch {}
+
+        self.runtimeModels = Self.mergeModelChoices(
+            gatewayModels,
+            localModels,
+            currentModelRef: self.selectedSessionModelRef)
+    }
+
+    private func discoverProviderModels(
+        providerID: String,
+        preset: DesktopProviderPreset,
+        baseURL: String,
+        apiKey: String,
+        apiAdapter: String) async -> [ModelChoice]
+    {
+        guard preset.supportsModelDiscovery else { return [] }
+        let trimmedBaseURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedBaseURL.isEmpty else { return [] }
+        let normalizedAdapter = apiAdapter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard normalizedAdapter == "openai-completions" || normalizedAdapter == "openai-responses" else {
+            return []
+        }
+        guard let url = Self.modelsDiscoveryURL(from: trimmedBaseURL) else { return [] }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 12
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedAPIKey.isEmpty {
+            request.setValue("Bearer \(trimmedAPIKey)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  (200 ... 299).contains(http.statusCode)
+            else {
+                return []
             }
+            return Self.parseDiscoveredModels(data: data, providerID: providerID)
+        } catch {
+            return []
         }
     }
 
@@ -1084,7 +1159,7 @@ final class DesktopClientModel {
 
         var root = HaoclawConfigFile.loadDict()
         var modelsRoot = root["models"] as? [String: Any] ?? [:]
-        var providers = modelsRoot["providers"] as? [String: Any] ?? [:]
+        var providers = Self.normalizedProviderEntries(modelsRoot["providers"] as? [String: Any] ?? [:])
         var providerEntry = providers[trimmedProviderID] as? [String: Any] ?? [:]
         var providerModels = Self.extractProviderModels(from: providerEntry)
         let nextModelEntry: [String: Any] = [
@@ -1119,7 +1194,7 @@ final class DesktopClientModel {
         HaoclawConfigFile.saveDict(root)
         self.configuredModels = Self.extractConfiguredModels(from: root)
         self.currentModelRef = primaryRef
-        self.settingsDraft.providerId = trimmedProviderID
+        self.settingsDraft.providerId = Self.canonicalProviderID(trimmedProviderID)
         self.settingsDraft.apiAdapter = trimmedApiAdapter
         self.settingsDraft.modelID = trimmedModelID
         try? await GatewayConnection.shared.patchSessionModel(
@@ -1184,6 +1259,159 @@ final class DesktopClientModel {
     private static func extractProviderModels(from providerEntry: [String: Any]) -> [[String: Any]] {
         guard let rawModels = providerEntry["models"] as? [Any] else { return [] }
         return rawModels.compactMap { $0 as? [String: Any] }
+    }
+
+    private static let lastSavedProviderIDDefaultsKey = "desktop.modelSettings.selectedProviderId"
+    private static let lastSavedModelIDDefaultsKey = "desktop.modelSettings.selectedModelId"
+
+    private static func providerEntry(
+        in providers: [String: Any],
+        providerID: String) -> (providerID: String, entry: [String: Any])?
+    {
+        let canonical = self.canonicalProviderID(providerID)
+        for (rawKey, rawValue) in providers {
+            guard self.canonicalProviderID(rawKey) == canonical,
+                  let entry = rawValue as? [String: Any]
+            else {
+                continue
+            }
+            return (self.canonicalProviderID(rawKey), entry)
+        }
+        return nil
+    }
+
+    private static func normalizedProviderEntries(_ providers: [String: Any]) -> [String: Any] {
+        var normalized: [String: Any] = [:]
+        for (rawKey, rawValue) in providers {
+            let key = self.canonicalProviderID(rawKey)
+            guard let entry = rawValue as? [String: Any] else { continue }
+            if let existing = normalized[key] as? [String: Any] {
+                normalized[key] = self.mergeProviderEntries(existing, entry)
+            } else {
+                normalized[key] = entry
+            }
+        }
+        return normalized
+    }
+
+    private static func mergeProviderEntries(
+        _ existing: [String: Any],
+        _ incoming: [String: Any]) -> [String: Any]
+    {
+        var merged = existing
+        for (key, value) in incoming {
+            if key == "models" {
+                let existingModels = self.extractProviderModels(from: merged)
+                let incomingModels = self.extractProviderModels(from: incoming)
+                merged["models"] = self.mergeProviderModels(existingModels, incomingModels)
+                continue
+            }
+
+            if merged[key] == nil {
+                merged[key] = value
+                continue
+            }
+
+            if let string = value as? String,
+               !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               ((merged[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            {
+                merged[key] = string
+                continue
+            }
+
+            if let boolValue = value as? Bool, boolValue {
+                merged[key] = true
+            }
+        }
+        return merged
+    }
+
+    private static func mergeProviderModels(
+        _ existing: [[String: Any]],
+        _ incoming: [[String: Any]]) -> [[String: Any]]
+    {
+        var merged = existing
+        var indexByID: [String: Int] = [:]
+        for (index, item) in merged.enumerated() {
+            let id = ((item["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !id.isEmpty {
+                indexByID[id.lowercased()] = index
+            }
+        }
+
+        for item in incoming {
+            let id = ((item["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !id.isEmpty else { continue }
+            let key = id.lowercased()
+            if let index = indexByID[key] {
+                merged[index] = item
+            } else {
+                indexByID[key] = merged.count
+                merged.append(item)
+            }
+        }
+        return merged
+    }
+
+    private static func mergeDiscoveredProviderModels(
+        _ existing: [[String: Any]],
+        _ discovered: [ModelChoice],
+        apiAdapter: String) -> [[String: Any]]
+    {
+        let incoming = discovered.map {
+            [
+                "id": $0.id,
+                "name": $0.name,
+                "api": apiAdapter,
+            ] as [String: Any]
+        }
+        return self.mergeProviderModels(existing, incoming)
+    }
+
+    private static func modelsDiscoveryURL(from baseURL: String) -> URL? {
+        let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
+        if url.path.hasSuffix("/models") {
+            return url
+        }
+        return url.appendingPathComponent("models", isDirectory: false)
+    }
+
+    private static func parseDiscoveredModels(data: Data, providerID: String) -> [ModelChoice] {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return []
+        }
+        let rows = (object["data"] as? [Any]) ?? (object["models"] as? [Any]) ?? []
+        let models = rows.compactMap { row -> ModelChoice? in
+            guard let dict = row as? [String: Any] else { return nil }
+            let id = (dict["id"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !id.isEmpty else { return nil }
+            let name = (dict["name"] as? String ?? id).trimmingCharacters(in: .whitespacesAndNewlines)
+            let contextWindow = dict["context_window"] as? Int ?? dict["contextWindow"] as? Int
+            return ModelChoice(
+                id: id,
+                name: name.isEmpty ? id : name,
+                provider: providerID,
+                contextWindow: contextWindow)
+        }
+        return self.mergeModelChoices(models)
+    }
+
+    private static func canonicalProviderID(_ raw: String) -> String {
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "z.ai", "z-ai":
+            return "zai"
+        case "qwen":
+            return "qwen-portal"
+        case "gemini":
+            return "google"
+        case "bytedance", "doubao":
+            return "volcengine"
+        default:
+            return normalized
+        }
     }
 
     private static func mergeModelChoices(

@@ -255,8 +255,21 @@ private struct DesktopControlModelsPane: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    TextField("接口名称", text: self.$model.settingsDraft.providerId)
-                        .textFieldStyle(.roundedBorder)
+                    if self.model.usesCustomProviderIdentity {
+                        TextField("接口名称", text: self.$model.settingsDraft.providerId)
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        DesktopInfoSection(
+                            title: "接口身份",
+                            rows: [
+                                ("服务商 ID", self.model.settingsResolvedProviderID),
+                                ("协议", self.model.settingsResolvedApiAdapter),
+                            ])
+
+                        Text("这个预设会自动带出内部接口 ID，你只需要填写 API 地址、密钥和模型即可。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                     TextField("API 接口地址", text: self.$model.settingsDraft.baseURL)
                         .textFieldStyle(.roundedBorder)
                     SecureField("API 密钥", text: self.$model.settingsDraft.apiKey)

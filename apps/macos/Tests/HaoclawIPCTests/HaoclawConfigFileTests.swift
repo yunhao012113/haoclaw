@@ -135,4 +135,85 @@ struct HaoclawConfigFileTests {
             #expect(auditRoot?["configPath"] as? String == configPath.path)
         }
     }
+
+    @MainActor
+    @Test
+    func `load dict repairs legacy desktop block and duplicate provider keys`() async throws {
+        let override = self.makeConfigOverridePath()
+        let configURL = URL(fileURLWithPath: override)
+        try FileManager.default.createDirectory(
+            at: configURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true)
+
+        let legacy = """
+        {
+          "desktop": {
+            "modelSettings": {
+              "selectedProviderId": "NVIDIA"
+            }
+          },
+          "models": {
+            "providers": {
+              "nvidia": {
+                "api": "openai-completions",
+                "baseUrl": "https://integrate.api.nvidia.com/v1",
+                "models": [
+                  {
+                    "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+                    "name": "nvidia/llama-3.1-nemotron-70b-instruct"
+                  }
+                ]
+              },
+              "NVIDIA": {
+                "apiKey": "test-key"
+              }
+            }
+          }
+        }
+        """
+        try Data(legacy.utf8).write(to: configURL)
+
+        await TestIsolation.withEnvValues(["HAOCLAW_CONFIG_PATH": override]) {
+            let root = HaoclawConfigFile.loadDict()
+            #expect(root["desktop"] == nil)
+
+            let providers = ((root["models"] as? [String: Any])?["providers"] as? [String: Any]) ?? [:]
+            #expect(providers["NVIDIA"] == nil)
+            let nvidia = providers["nvidia"] as? [String: Any]
+            #expect(nvidia?["apiKey"] as? String == "test-key")
+            let models = nvidia?["models"] as? [[String: Any]]
+            #expect(models?.count == 1)
+
+            let repaired = HaoclawConfigFile.loadDict()
+            let repairedProviders = ((repaired["models"] as? [String: Any])?["providers"] as? [String: Any]) ?? [:]
+            #expect(repaired["desktop"] == nil)
+            #expect(repairedProviders["nvidia"] is [String: Any])
+        }
+    }
+
+    @MainActor
+    @Test
+    func `save dict fills missing provider models array for configured provider`() async {
+        let override = self.makeConfigOverridePath()
+
+        await TestIsolation.withEnvValues(["HAOCLAW_CONFIG_PATH": override]) {
+            HaoclawConfigFile.saveDict([
+                "models": [
+                    "providers": [
+                        "NVIDIA": [
+                            "api": "openai-completions",
+                            "apiKey": "test-key",
+                            "baseUrl": "https://integrate.api.nvidia.com/v1",
+                        ],
+                    ],
+                ],
+            ])
+
+            let root = HaoclawConfigFile.loadDict()
+            let providers = ((root["models"] as? [String: Any])?["providers"] as? [String: Any]) ?? [:]
+            #expect(providers["NVIDIA"] == nil)
+            let nvidia = providers["nvidia"] as? [String: Any]
+            #expect((nvidia?["models"] as? [Any]) != nil)
+        }
+    }
 }

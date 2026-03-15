@@ -26,7 +26,12 @@ enum HaoclawConfigFile {
                 self.logger.warning("config JSON root invalid")
                 return [:]
             }
-            return root
+            let sanitized = self.sanitizeRoot(root)
+            if sanitized.changed {
+                self.logger.notice("config sanitized during load")
+                self.persistSanitizedRootIfNeeded(sanitized.root, originalData: data, to: url)
+            }
+            return sanitized.root
         } catch {
             self.logger.warning("config read failed: \(error.localizedDescription)")
             return [:]
@@ -43,7 +48,7 @@ enum HaoclawConfigFile {
         let hadMetaBefore = self.hasMeta(previousRoot)
         let gatewayModeBefore = self.gatewayMode(previousRoot)
 
-        var output = dict
+        var output = self.sanitizeRoot(dict).root
         self.stampMeta(&output)
 
         do {
@@ -254,6 +259,230 @@ enum HaoclawConfigFile {
             return decoded.mapValues { $0.foundationValue }
         }
         return nil
+    }
+
+    private static func persistSanitizedRootIfNeeded(
+        _ root: [String: Any],
+        originalData: Data,
+        to url: URL)
+    {
+        if ProcessInfo.processInfo.isNixMode, !ProcessInfo.processInfo.isRunningTests { return }
+
+        var output = root
+        self.stampMeta(&output)
+        guard let data = try? JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted, .sortedKeys]),
+              data != originalData
+        else {
+            return
+        }
+
+        do {
+            try FileManager().createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            self.logger.warning("config sanitize write failed: \(error.localizedDescription)")
+        }
+    }
+
+    private static func sanitizeRoot(_ root: [String: Any]) -> (root: [String: Any], changed: Bool) {
+        var output = root
+        var changed = false
+
+        if output.removeValue(forKey: "desktop") != nil {
+            changed = true
+        }
+
+        if let modelsRoot = output["models"] as? [String: Any] {
+            let sanitized = self.sanitizeModelsRoot(modelsRoot)
+            if sanitized.changed {
+                output["models"] = sanitized.root
+                changed = true
+            }
+        }
+
+        return (output, changed)
+    }
+
+    private static func sanitizeModelsRoot(_ root: [String: Any]) -> (root: [String: Any], changed: Bool) {
+        var output = root
+        guard let providers = output["providers"] as? [String: Any] else {
+            return (output, false)
+        }
+
+        let sanitized = self.sanitizeProviders(providers)
+        guard sanitized.changed else {
+            return (output, false)
+        }
+        output["providers"] = sanitized.providers
+        return (output, true)
+    }
+
+    private static func sanitizeProviders(_ providers: [String: Any]) -> (providers: [String: Any], changed: Bool) {
+        var merged: [String: Any] = [:]
+        var changed = false
+
+        for (rawKey, rawValue) in providers {
+            guard let entry = rawValue as? [String: Any] else {
+                changed = true
+                continue
+            }
+            let canonicalKey = self.canonicalProviderID(rawKey)
+            let sanitizedEntry = self.sanitizeProviderEntry(entry)
+            if canonicalKey != rawKey || sanitizedEntry.changed {
+                changed = true
+            }
+
+            if let existing = merged[canonicalKey] as? [String: Any] {
+                let combined = self.mergeProviderEntries(existing, sanitizedEntry.entry)
+                if NSDictionary(dictionary: existing).isEqual(to: combined) == false {
+                    changed = true
+                }
+                merged[canonicalKey] = combined
+            } else {
+                merged[canonicalKey] = sanitizedEntry.entry
+            }
+        }
+
+        if merged.count != providers.count {
+            changed = true
+        }
+
+        return (merged, changed)
+    }
+
+    private static func sanitizeProviderEntry(_ entry: [String: Any]) -> (entry: [String: Any], changed: Bool) {
+        var output = entry
+        var changed = false
+
+        if let rawModels = output["models"] {
+            if let models = rawModels as? [Any] {
+                let sanitizedModels = models.compactMap { $0 as? [String: Any] }
+                if sanitizedModels.count != models.count {
+                    changed = true
+                }
+                output["models"] = self.mergeProviderModels([], sanitizedModels)
+            } else {
+                output["models"] = []
+                changed = true
+            }
+        } else if self.providerEntryNeedsModels(entry) {
+            output["models"] = []
+            changed = true
+        }
+
+        return (output, changed)
+    }
+
+    private static func providerEntryNeedsModels(_ entry: [String: Any]) -> Bool {
+        let scalarKeys = ["api", "apiKey", "baseUrl", "authHeader", "headers", "discovery"]
+        return scalarKeys.contains(where: { entry[$0] != nil })
+    }
+
+    private static func mergeProviderEntries(
+        _ existing: [String: Any],
+        _ incoming: [String: Any]) -> [String: Any]
+    {
+        var merged = existing
+        for (key, value) in incoming {
+            if key == "models" {
+                let existingModels = (merged[key] as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
+                let incomingModels = (value as? [Any])?.compactMap { $0 as? [String: Any] } ?? []
+                merged[key] = self.mergeProviderModels(existingModels, incomingModels)
+                continue
+            }
+
+            if merged[key] == nil {
+                merged[key] = value
+                continue
+            }
+
+            let existingString = (merged[key] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if let string = value as? String,
+               !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               !existingString.isEmpty
+            {
+                continue
+            }
+
+            if let string = value as? String, !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                merged[key] = string
+            } else if let boolValue = value as? Bool, boolValue {
+                merged[key] = true
+            } else if merged[key] == nil {
+                merged[key] = value
+            }
+        }
+
+        if merged["models"] == nil, self.providerEntryNeedsModels(merged) {
+            merged["models"] = []
+        }
+        return merged
+    }
+
+    private static func mergeProviderModels(
+        _ existing: [[String: Any]],
+        _ incoming: [[String: Any]]) -> [[String: Any]]
+    {
+        var merged = existing
+        var indexByID: [String: Int] = [:]
+        for (index, item) in merged.enumerated() {
+            let id = ((item["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !id.isEmpty {
+                indexByID[id.lowercased()] = index
+            }
+        }
+
+        for item in incoming {
+            let id = ((item["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !id.isEmpty else { continue }
+            let key = id.lowercased()
+            if let index = indexByID[key] {
+                merged[index] = self.mergeModelEntries(merged[index], item)
+            } else {
+                indexByID[key] = merged.count
+                merged.append(item)
+            }
+        }
+
+        return merged
+    }
+
+    private static func mergeModelEntries(
+        _ existing: [String: Any],
+        _ incoming: [String: Any]) -> [String: Any]
+    {
+        var merged = existing
+        for (key, value) in incoming {
+            if merged[key] == nil {
+                merged[key] = value
+                continue
+            }
+            if let string = value as? String,
+               !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            {
+                merged[key] = string
+            }
+        }
+        return merged
+    }
+
+    private static func canonicalProviderID(_ raw: String) -> String {
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "z.ai", "z-ai":
+            return "zai"
+        case "qwen":
+            return "qwen-portal"
+        case "gemini":
+            return "google"
+        case "bytedance", "doubao":
+            return "volcengine"
+        default:
+            return normalized
+        }
     }
 
     private static func stampMeta(_ root: inout [String: Any]) {
