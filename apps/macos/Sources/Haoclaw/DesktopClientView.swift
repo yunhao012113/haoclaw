@@ -4,6 +4,9 @@ import HaoclawProtocol
 import Observation
 import SwiftUI
 
+private let nvidiaLegacyDefaultModelID = "nvidia/llama-3.1-nemotron-70b-instruct"
+private let nvidiaPreferredDefaultModelID = "meta/llama-3.3-70b-instruct"
+
 enum DesktopSidebarSection: String, CaseIterable, Identifiable {
     case conversations
     case channels
@@ -185,7 +188,7 @@ enum DesktopProviderPreset: String, CaseIterable, Identifiable {
         case .minimax: "MiniMax-M2.5"
         case .qwenPortal: "coder-model"
         case .qianfan: "deepseek-v3.2"
-        case .nvidia: "nvidia/llama-3.1-nemotron-70b-instruct"
+        case .nvidia: nvidiaPreferredDefaultModelID
         case .zhipu: "glm-4.5"
         case .deepseek: "deepseek-chat"
         case .moonshot: "kimi-k2-0905-preview"
@@ -850,7 +853,6 @@ final class DesktopClientModel {
         let modelRef = Self.extractPrimaryModelRef(from: root)
         let providers = ((root["models"] as? [String: Any])?["providers"] as? [String: Any]) ?? [:]
         if let modelRef, !modelRef.isEmpty {
-            self.currentModelRef = modelRef
             let parts = modelRef.split(separator: "/", maxSplits: 1).map(String.init)
             let providerID = Self.canonicalProviderID(parts.first ?? "haoclaw-desktop")
             let providerMatch = Self.providerEntry(in: providers, providerID: providerID)
@@ -869,7 +871,10 @@ final class DesktopClientModel {
             self.settingsDraft.baseURL = baseURL
             self.settingsDraft.apiKey = apiKey
             if parts.count == 2 {
-                self.settingsDraft.modelID = parts[1]
+                self.settingsDraft.modelID = Self.preferredModelID(providerID: providerID, modelID: parts[1])
+                self.currentModelRef = "\(providerID)/\(self.settingsDraft.modelID)"
+            } else {
+                self.currentModelRef = modelRef
             }
         } else {
             self.currentModelRef = "未配置"
@@ -883,9 +888,11 @@ final class DesktopClientModel {
                 self.settingsDraft.apiAdapter = savedProvider.apiAdapter
                 self.settingsDraft.baseURL = savedProvider.baseURL
                 self.settingsDraft.apiKey = savedProvider.apiKey
-                self.settingsDraft.modelID = savedProvider.modelID
-                if !savedProvider.modelID.isEmpty {
-                    self.currentModelRef = "\(savedProvider.providerID)/\(savedProvider.modelID)"
+                self.settingsDraft.modelID = Self.preferredModelID(
+                    providerID: savedProvider.providerID,
+                    modelID: savedProvider.modelID)
+                if !self.settingsDraft.modelID.isEmpty {
+                    self.currentModelRef = "\(savedProvider.providerID)/\(self.settingsDraft.modelID)"
                 }
             }
         }
@@ -906,7 +913,9 @@ final class DesktopClientModel {
         self.settingsDraft.providerId = Self.canonicalProviderID(preset.defaultProviderID)
         self.settingsDraft.apiAdapter = preset.apiAdapter
         self.settingsDraft.baseURL = preset.defaultBaseURL
-        self.settingsDraft.modelID = preset.defaultModelID
+        self.settingsDraft.modelID = Self.preferredModelID(
+            providerID: self.settingsDraft.providerId,
+            modelID: preset.defaultModelID)
     }
 
     func restoreSettingsDraftFromApplied() {
@@ -915,7 +924,9 @@ final class DesktopClientModel {
         self.settingsDraft.apiAdapter = self.appliedModelSettings.apiAdapter
         self.settingsDraft.baseURL = self.appliedModelSettings.baseURL
         self.settingsDraft.apiKey = self.appliedModelSettings.apiKey
-        self.settingsDraft.modelID = self.appliedModelSettings.modelID
+        self.settingsDraft.modelID = Self.preferredModelID(
+            providerID: self.appliedModelSettings.providerId,
+            modelID: self.appliedModelSettings.modelID)
     }
 
     private func refreshSettingsDraftFromState() {
@@ -946,18 +957,18 @@ final class DesktopClientModel {
         preset: DesktopProviderPreset) -> String
     {
         if !explicitModelID.isEmpty {
-            return explicitModelID
+            return Self.preferredModelID(providerID: providerID, modelID: explicitModelID)
         }
         if let current = Self.modelID(from: self.selectedSessionModelRef, providerID: providerID), !current.isEmpty {
-            return current
+            return Self.preferredModelID(providerID: providerID, modelID: current)
         }
         if let current = Self.modelID(from: self.currentModelRef, providerID: providerID), !current.isEmpty {
-            return current
+            return Self.preferredModelID(providerID: providerID, modelID: current)
         }
         if let existing = self.availableModels.first(where: { $0.provider.caseInsensitiveCompare(providerID) == .orderedSame })?.id,
            !existing.isEmpty
         {
-            return existing
+            return Self.preferredModelID(providerID: providerID, modelID: existing)
         }
         return ""
     }
@@ -990,7 +1001,9 @@ final class DesktopClientModel {
             let apiKey = (providerEntry["apiKey"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let apiAdapter = (providerEntry["api"] as? String ?? "openai-completions").trimmingCharacters(in: .whitespacesAndNewlines)
             let models = Self.extractProviderModels(from: providerEntry)
-            let modelID = ((models.first?["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let modelID = self.preferredModelID(
+                providerID: providerID,
+                modelID: ((models.first?["id"] as? String) ?? ""))
             if !baseURL.isEmpty || !apiKey.isEmpty || !modelID.isEmpty {
                 return (providerID, baseURL, apiKey, apiAdapter.isEmpty ? "openai-completions" : apiAdapter, modelID)
             }
@@ -1016,7 +1029,9 @@ final class DesktopClientModel {
         let models = Self.extractProviderModels(from: providerEntry)
         let fallbackModelID = ((models.first?["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedPreferredModelID = preferredModelID.trimmingCharacters(in: .whitespacesAndNewlines)
-        let modelID = trimmedPreferredModelID.isEmpty ? fallbackModelID : trimmedPreferredModelID
+        let modelID = self.preferredModelID(
+            providerID: match.providerID,
+            modelID: trimmedPreferredModelID.isEmpty ? fallbackModelID : trimmedPreferredModelID)
         if !baseURL.isEmpty || !apiKey.isEmpty || !modelID.isEmpty {
             return (
                 match.providerID,
@@ -1033,7 +1048,7 @@ final class DesktopClientModel {
         modelID: String)
     {
         UserDefaults.standard.set(providerID, forKey: Self.lastSavedProviderIDDefaultsKey)
-        let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedModelID = self.preferredModelID(providerID: providerID, modelID: modelID)
         if trimmedModelID.isEmpty {
             UserDefaults.standard.removeObject(forKey: Self.lastSavedModelIDDefaultsKey)
         } else {
@@ -1047,8 +1062,9 @@ final class DesktopClientModel {
         let providerID = (UserDefaults.standard.string(forKey: Self.lastSavedProviderIDDefaultsKey) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !providerID.isEmpty else { return nil }
-        let modelID = (UserDefaults.standard.string(forKey: Self.lastSavedModelIDDefaultsKey) ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelID = self.preferredModelID(
+            providerID: providerID,
+            modelID: (UserDefaults.standard.string(forKey: Self.lastSavedModelIDDefaultsKey) ?? ""))
         return (providerID, modelID)
     }
 
@@ -1412,6 +1428,17 @@ final class DesktopClientModel {
         default:
             return normalized
         }
+    }
+
+    private static func preferredModelID(providerID: String, modelID: String) -> String {
+        let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedModelID.isEmpty else { return "" }
+        if self.canonicalProviderID(providerID) == "nvidia",
+           trimmedModelID == nvidiaLegacyDefaultModelID
+        {
+            return nvidiaPreferredDefaultModelID
+        }
+        return trimmedModelID
     }
 
     private static func mergeModelChoices(

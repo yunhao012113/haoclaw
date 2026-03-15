@@ -193,6 +193,54 @@ struct HaoclawConfigFileTests {
 
     @MainActor
     @Test
+    func `load dict migrates legacy nvidia default model`() async throws {
+        let override = self.makeConfigOverridePath()
+        let configURL = URL(fileURLWithPath: override)
+        try FileManager.default.createDirectory(
+            at: configURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true)
+
+        let legacy = """
+        {
+          "agents": {
+            "defaults": {
+              "model": {
+                "primary": "nvidia/nvidia/llama-3.1-nemotron-70b-instruct"
+              }
+            }
+          },
+          "models": {
+            "providers": {
+              "nvidia": {
+                "api": "openai-completions",
+                "baseUrl": "https://integrate.api.nvidia.com/v1",
+                "models": [
+                  {
+                    "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+                    "name": "nvidia/llama-3.1-nemotron-70b-instruct"
+                  }
+                ]
+              }
+            }
+          }
+        }
+        """
+        try Data(legacy.utf8).write(to: configURL)
+
+        await TestIsolation.withEnvValues(["HAOCLAW_CONFIG_PATH": override]) {
+            let root = HaoclawConfigFile.loadDict()
+            let primary = ((((root["agents"] as? [String: Any])?["defaults"] as? [String: Any])?["model"] as? [String: Any])?["primary"] as? String)
+            #expect(primary == "nvidia/meta/llama-3.3-70b-instruct")
+
+            let providers = ((root["models"] as? [String: Any])?["providers"] as? [String: Any]) ?? [:]
+            let nvidia = providers["nvidia"] as? [String: Any]
+            let models = (nvidia?["models"] as? [[String: Any]]) ?? []
+            #expect(models.first?["id"] as? String == "meta/llama-3.3-70b-instruct")
+        }
+    }
+
+    @MainActor
+    @Test
     func `save dict fills missing provider models array for configured provider`() async {
         let override = self.makeConfigOverridePath()
 

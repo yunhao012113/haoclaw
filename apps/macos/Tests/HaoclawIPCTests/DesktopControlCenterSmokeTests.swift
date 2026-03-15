@@ -81,7 +81,7 @@ struct DesktopControlCenterSmokeTests {
 
         #expect(model.settingsDraft.providerId == "nvidia")
         #expect(model.settingsDraft.baseURL == "https://integrate.api.nvidia.com/v1")
-        #expect(model.settingsDraft.modelID == "nvidia/llama-3.1-nemotron-70b-instruct")
+        #expect(model.settingsDraft.modelID == "meta/llama-3.3-70b-instruct")
         #expect(model.settingsDraft.apiAdapter == "openai-completions")
         #expect(
             DesktopProviderPreset.infer(
@@ -126,7 +126,7 @@ struct DesktopControlCenterSmokeTests {
         model.appliedModelSettings.apiAdapter = "openai-completions"
         model.appliedModelSettings.baseURL = "https://integrate.api.nvidia.com/v1"
         model.appliedModelSettings.apiKey = "saved-key"
-        model.appliedModelSettings.modelID = "nvidia/llama-3.1-nemotron-70b-instruct"
+        model.appliedModelSettings.modelID = "meta/llama-3.3-70b-instruct"
 
         model.settingsDraft.providerPreset = .openAICompatible
         model.settingsDraft.providerId = "custom-openai"
@@ -140,7 +140,7 @@ struct DesktopControlCenterSmokeTests {
         #expect(model.settingsDraft.providerId == "nvidia")
         #expect(model.settingsDraft.baseURL == "https://integrate.api.nvidia.com/v1")
         #expect(model.settingsDraft.apiKey == "saved-key")
-        #expect(model.settingsDraft.modelID == "nvidia/llama-3.1-nemotron-70b-instruct")
+        #expect(model.settingsDraft.modelID == "meta/llama-3.3-70b-instruct")
     }
 
     @Test func `openai compatible preset shows actionable base url guidance`() async {

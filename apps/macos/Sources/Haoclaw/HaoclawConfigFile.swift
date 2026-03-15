@@ -4,6 +4,8 @@ import HaoclawProtocol
 enum HaoclawConfigFile {
     private static let logger = Logger(subsystem: "ai.haoclaw", category: "config")
     private static let configAuditFileName = "config-audit.jsonl"
+    private static let legacyNvidiaDefaultModelID = "nvidia/llama-3.1-nemotron-70b-instruct"
+    private static let preferredNvidiaDefaultModelID = "meta/llama-3.3-70b-instruct"
 
     static func url() -> URL {
         HaoclawPaths.configURL
@@ -302,6 +304,12 @@ enum HaoclawConfigFile {
             }
         }
 
+        let primarySanitized = self.sanitizePrimaryModelRefs(output)
+        if primarySanitized.changed {
+            output = primarySanitized.root
+            changed = true
+        }
+
         return (output, changed)
     }
 
@@ -329,7 +337,7 @@ enum HaoclawConfigFile {
                 continue
             }
             let canonicalKey = self.canonicalProviderID(rawKey)
-            let sanitizedEntry = self.sanitizeProviderEntry(entry)
+            let sanitizedEntry = self.sanitizeProviderEntry(entry, providerID: canonicalKey)
             if canonicalKey != rawKey || sanitizedEntry.changed {
                 changed = true
             }
@@ -352,14 +360,24 @@ enum HaoclawConfigFile {
         return (merged, changed)
     }
 
-    private static func sanitizeProviderEntry(_ entry: [String: Any]) -> (entry: [String: Any], changed: Bool) {
+    private static func sanitizeProviderEntry(
+        _ entry: [String: Any],
+        providerID: String) -> (entry: [String: Any], changed: Bool)
+    {
         var output = entry
         var changed = false
 
         if let rawModels = output["models"] {
             if let models = rawModels as? [Any] {
-                let sanitizedModels = models.compactMap { $0 as? [String: Any] }
+                var sanitizedModels = models.compactMap { $0 as? [String: Any] }
                 if sanitizedModels.count != models.count {
+                    changed = true
+                }
+                let normalizedModels = self.sanitizeProviderModels(
+                    sanitizedModels,
+                    providerID: providerID)
+                if normalizedModels.changed {
+                    sanitizedModels = normalizedModels.models
                     changed = true
                 }
                 output["models"] = self.mergeProviderModels([], sanitizedModels)
@@ -373,6 +391,35 @@ enum HaoclawConfigFile {
         }
 
         return (output, changed)
+    }
+
+    private static func sanitizeProviderModels(
+        _ models: [[String: Any]],
+        providerID: String) -> (models: [[String: Any]], changed: Bool)
+    {
+        guard providerID == "nvidia" else {
+            return (models, false)
+        }
+
+        var output = models
+        guard let index = output.firstIndex(where: {
+            (($0["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == self.legacyNvidiaDefaultModelID
+        }) else {
+            return (output, false)
+        }
+
+        let alreadyHasPreferred = output.contains(where: {
+            (($0["id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == self.preferredNvidiaDefaultModelID
+        })
+        guard !alreadyHasPreferred else {
+            return (output, false)
+        }
+
+        var preferred = output[index]
+        preferred["id"] = self.preferredNvidiaDefaultModelID
+        preferred["name"] = "Meta Llama 3.3 70B Instruct"
+        output[index] = preferred
+        return (output, true)
     }
 
     private static func providerEntryNeedsModels(_ entry: [String: Any]) -> Bool {
@@ -483,6 +530,67 @@ enum HaoclawConfigFile {
         default:
             return normalized
         }
+    }
+
+    private static func sanitizePrimaryModelRefs(_ root: [String: Any]) -> (root: [String: Any], changed: Bool) {
+        var output = root
+        var changed = false
+
+        if let agents = output["agents"] as? [String: Any] {
+            let sanitized = self.sanitizePrimaryModelRef(in: agents)
+            if sanitized.changed {
+                output["agents"] = sanitized.root
+                changed = true
+            }
+        }
+
+        if let agent = output["agent"] as? [String: Any] {
+            let sanitized = self.sanitizePrimaryModelRef(in: agent)
+            if sanitized.changed {
+                output["agent"] = sanitized.root
+                changed = true
+            }
+        }
+
+        return (output, changed)
+    }
+
+    private static func sanitizePrimaryModelRef(in root: [String: Any]) -> (root: [String: Any], changed: Bool) {
+        var output = root
+        var changed = false
+
+        if let defaults = output["defaults"] as? [String: Any] {
+            let sanitized = self.sanitizeModelContainer(defaults)
+            if sanitized.changed {
+                output["defaults"] = sanitized.root
+                changed = true
+            }
+        }
+
+        let directSanitized = self.sanitizeModelContainer(output)
+        if directSanitized.changed {
+            output = directSanitized.root
+            changed = true
+        }
+
+        return (output, changed)
+    }
+
+    private static func sanitizeModelContainer(_ root: [String: Any]) -> (root: [String: Any], changed: Bool) {
+        var output = root
+        guard var model = output["model"] as? [String: Any] else {
+            return (output, false)
+        }
+
+        let primary = (model["primary"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let legacyPrimary = "nvidia/\(self.legacyNvidiaDefaultModelID)"
+        guard primary == legacyPrimary else {
+            return (output, false)
+        }
+
+        model["primary"] = "nvidia/\(self.preferredNvidiaDefaultModelID)"
+        output["model"] = model
+        return (output, true)
     }
 
     private static func stampMeta(_ root: inout [String: Any]) {
