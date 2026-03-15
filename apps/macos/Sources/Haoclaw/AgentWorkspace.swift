@@ -271,8 +271,9 @@ enum AgentWorkspace {
             self.logger.info("Updated IDENTITY.md with direct-use defaults at \(identityURL.path, privacy: .public)")
         }
 
-        let bootstrapContents = (try? String(contentsOf: bootstrapURL, encoding: .utf8))
-            ?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let bootstrapRawContents = try? String(contentsOf: bootstrapURL, encoding: .utf8)
+        let bootstrapContents = bootstrapRawContents?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let defaultBootstrap = self.defaultBootstrapTemplate().trimmingCharacters(in: .whitespacesAndNewlines)
         if bootstrapContents.isEmpty || bootstrapContents == defaultBootstrap || self.isTemplateOnlyWorkspace(workspaceURL: workspaceURL) {
             try? FileManager().removeItem(at: bootstrapURL)
