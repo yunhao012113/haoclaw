@@ -27,7 +27,7 @@ struct ChatSessionsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Sessions")
+            .navigationTitle("会话列表")
             .toolbar {
                 #if os(macOS)
                 ToolbarItem(placement: .automatic) {

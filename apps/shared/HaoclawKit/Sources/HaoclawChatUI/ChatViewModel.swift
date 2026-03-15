@@ -181,7 +181,7 @@ public final class HaoclawChatViewModel {
             await self.fetchSessions(limit: 50)
             self.errorText = nil
         } catch {
-            self.errorText = error.localizedDescription
+            self.errorText = ChatDisplayLocalizer.localize(error.localizedDescription)
             chatUILogger.error("bootstrap failed \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -322,14 +322,14 @@ public final class HaoclawChatViewModel {
         guard !trimmed.isEmpty || !self.attachments.isEmpty else { return }
 
         guard self.healthOK else {
-            self.errorText = "Gateway health not OK; cannot send"
+            self.errorText = ChatDisplayLocalizer.localize("Gateway health not OK; cannot send")
             return
         }
 
         self.isSending = true
         self.errorText = nil
         let runId = UUID().uuidString
-        let messageText = trimmed.isEmpty && !self.attachments.isEmpty ? "See attached." : trimmed
+        let messageText = trimmed.isEmpty && !self.attachments.isEmpty ? "请查看附件。" : trimmed
         self.pendingRuns.insert(runId)
         self.armPendingRunTimeout(runId: runId)
         self.pendingToolCallsById = [:]
@@ -395,7 +395,7 @@ public final class HaoclawChatViewModel {
             }
         } catch {
             self.clearPendingRun(runId)
-            self.errorText = error.localizedDescription
+            self.errorText = ChatDisplayLocalizer.localize(error.localizedDescription)
             chatUILogger.error("chat.send failed \(error.localizedDescription, privacy: .public)")
         }
 
@@ -506,7 +506,7 @@ public final class HaoclawChatViewModel {
         switch chat.state {
         case "final", "aborted", "error":
             if chat.state == "error" {
-                self.errorText = chat.errorMessage ?? "Chat failed"
+                self.errorText = ChatDisplayLocalizer.localize(chat.errorMessage ?? "Chat failed")
             }
             if let runId = chat.runId {
                 self.clearPendingRun(runId)
@@ -590,7 +590,7 @@ public final class HaoclawChatViewModel {
                 guard let self else { return }
                 guard self.pendingRuns.contains(runId) else { return }
                 self.clearPendingRun(runId)
-                self.errorText = "Timed out waiting for a reply; try again or refresh."
+                self.errorText = ChatDisplayLocalizer.localize("Timed out waiting for a reply; try again or refresh.")
             }
         }
     }
@@ -608,7 +608,7 @@ public final class HaoclawChatViewModel {
         self.pendingRunTimeoutTasks.removeAll()
         self.pendingRuns.removeAll()
         if let reason, !reason.isEmpty {
-            self.errorText = reason
+            self.errorText = ChatDisplayLocalizer.localize(reason)
         }
     }
 
@@ -635,7 +635,7 @@ public final class HaoclawChatViewModel {
                     fileName: url.lastPathComponent,
                     mimeType: Self.mimeType(for: url) ?? "application/octet-stream")
             } catch {
-                await MainActor.run { self.errorText = error.localizedDescription }
+                await MainActor.run { self.errorText = ChatDisplayLocalizer.localize(error.localizedDescription) }
             }
         }
     }
@@ -648,7 +648,7 @@ public final class HaoclawChatViewModel {
 
     private func addImageAttachment(url: URL?, data: Data, fileName: String, mimeType: String) async {
         if data.count > 5_000_000 {
-            self.errorText = "Attachment \(fileName) exceeds 5 MB limit"
+            self.errorText = ChatDisplayLocalizer.localize("Attachment \(fileName) exceeds 5 MB limit")
             return
         }
 
@@ -659,7 +659,7 @@ public final class HaoclawChatViewModel {
             return UTType(mimeType: mimeType) ?? .data
         }()
         guard uti.conforms(to: .image) else {
-            self.errorText = "Only image attachments are supported right now"
+            self.errorText = ChatDisplayLocalizer.localize("Only image attachments are supported right now")
             return
         }
 

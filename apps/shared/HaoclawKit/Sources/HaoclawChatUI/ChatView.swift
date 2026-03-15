@@ -265,7 +265,7 @@ public struct HaoclawChatView: View {
                     title: presentation.title,
                     message: error,
                     tint: presentation.tint,
-                    actionTitle: "Refresh",
+                    actionTitle: "刷新",
                     action: { self.viewModel.refresh() })
                     .padding(.horizontal, 24)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -290,7 +290,7 @@ public struct HaoclawChatView: View {
         else {
             return nil
         }
-        return text
+        return ChatDisplayLocalizer.localize(text)
     }
 
     private var hasVisibleMessageListContent: Bool {
@@ -322,29 +322,29 @@ public struct HaoclawChatView: View {
 
     private var emptyStateTitle: String {
         #if os(macOS)
-        "Web Chat"
+        "桌面对话"
         #else
-        "Chat"
+        "对话"
         #endif
     }
 
     private var emptyStateMessage: String {
         #if os(macOS)
-        "Type a message below to start.\nReturn sends • Shift-Return adds a line break."
+        "在下方输入消息即可开始。\n回车发送，Shift + 回车换行。"
         #else
-        "Type a message below to start."
+        "在下方输入消息即可开始。"
         #endif
     }
 
     private func errorPresentation(for error: String) -> (title: String, systemImage: String, tint: Color) {
         let lower = error.lowercased()
         if lower.contains("not connected") || lower.contains("socket") {
-            return ("Disconnected", "wifi.slash", .orange)
+            return ("连接已断开", "wifi.slash", .orange)
         }
         if lower.contains("timed out") {
-            return ("Timed out", "clock.badge.exclamationmark", .orange)
+            return ("请求超时", "clock.badge.exclamationmark", .orange)
         }
-        return ("Error", "exclamationmark.triangle.fill", .orange)
+        return ("发生错误", "exclamationmark.triangle.fill", .orange)
     }
 
     private func mergeToolResults(in messages: [HaoclawChatMessage]) -> [HaoclawChatMessage] {
@@ -573,14 +573,14 @@ private struct ChatNoticeBanner: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .help("Refresh")
+            .help("刷新")
 
             Button(action: self.dismiss) {
                 Image(systemName: "xmark")
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            .help("Dismiss")
+            .help("关闭")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

@@ -84,11 +84,11 @@ struct HaoclawChatComposer: View {
     }
 
     private var thinkingPicker: some View {
-        Picker("Thinking", selection: self.$viewModel.thinkingLevel) {
-            Text("Off").tag("off")
-            Text("Low").tag("low")
-            Text("Medium").tag("medium")
-            Text("High").tag("high")
+        Picker("思考强度", selection: self.$viewModel.thinkingLevel) {
+            Text("关闭").tag("off")
+            Text("低").tag("low")
+            Text("中").tag("medium")
+            Text("高").tag("high")
         }
         .labelsHidden()
         .pickerStyle(.menu)
@@ -98,7 +98,7 @@ struct HaoclawChatComposer: View {
 
     private var sessionPicker: some View {
         Picker(
-            "Session",
+            "会话",
             selection: Binding(
                 get: { self.viewModel.sessionKey },
                 set: { next in self.viewModel.switchSession(to: next) }))
@@ -113,7 +113,7 @@ struct HaoclawChatComposer: View {
         .pickerStyle(.menu)
         .controlSize(.small)
         .frame(maxWidth: 160, alignment: .leading)
-        .help("Session")
+        .help("会话")
     }
 
     @ViewBuilder
@@ -124,14 +124,14 @@ struct HaoclawChatComposer: View {
         } label: {
             Image(systemName: "paperclip")
         }
-        .help("Add Image")
+        .help("添加图片")
         .buttonStyle(.bordered)
         .controlSize(.small)
         #else
         PhotosPicker(selection: self.$pickerItems, maxSelectionCount: 8, matching: .images) {
             Image(systemName: "paperclip")
         }
-        .help("Add Image")
+        .help("添加图片")
         .buttonStyle(.bordered)
         .controlSize(.small)
         .onChange(of: self.pickerItems) { _, newItems in
@@ -217,7 +217,7 @@ struct HaoclawChatComposer: View {
                 .frame(width: 7, height: 7)
             Text(self.activeSessionLabel)
                 .font(.caption2.weight(.semibold))
-            Text(self.viewModel.healthOK ? "Connected" : "Connecting…")
+            Text(self.viewModel.healthOK ? "已连接" : "连接中…")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -236,7 +236,7 @@ struct HaoclawChatComposer: View {
     private var editorOverlay: some View {
         ZStack(alignment: .topLeading) {
             if self.viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text("Message Haoclaw…")
+                Text("给 Haoclaw 发送消息…")
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 4)
@@ -316,7 +316,7 @@ struct HaoclawChatComposer: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
-        .help("Refresh")
+        .help("刷新")
     }
 
     private var showsToolbar: Bool {
@@ -358,7 +358,7 @@ struct HaoclawChatComposer: View {
     #if os(macOS)
     private func pickFilesMac() {
         let panel = NSOpenPanel()
-        panel.title = "Select image attachments"
+        panel.title = "选择图片附件"
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.image]
@@ -394,7 +394,7 @@ struct HaoclawChatComposer: View {
                 let name = "photo-\(UUID().uuidString.prefix(8)).\(ext)"
                 self.viewModel.addImageAttachment(data: data, fileName: name, mimeType: mime)
             } catch {
-                self.viewModel.errorText = error.localizedDescription
+                self.viewModel.errorText = ChatDisplayLocalizer.localize(error.localizedDescription)
             }
         }
         self.pickerItems = []

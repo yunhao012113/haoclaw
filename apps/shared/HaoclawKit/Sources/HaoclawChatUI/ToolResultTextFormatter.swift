@@ -26,8 +26,8 @@ enum ToolResultTextFormatter {
             return self.renderDictionary(dict, toolName: toolName)
         }
         if let array = json as? [Any] {
-            if array.isEmpty { return "No items." }
-            return "\(array.count) item\(array.count == 1 ? "" : "s")."
+            if array.isEmpty { return "没有结果。" }
+            return "共 \(array.count) 项。"
         }
         return ""
     }
@@ -39,12 +39,12 @@ enum ToolResultTextFormatter {
 
         if status?.lowercased() == "error" || errorText != nil {
             if let errorText {
-                return "Error: \(self.sanitizeError(errorText))"
+                return "错误：\(ChatDisplayLocalizer.localize(self.sanitizeError(errorText)))"
             }
             if let messageText {
-                return "Error: \(self.sanitizeError(messageText))"
+                return "错误：\(ChatDisplayLocalizer.localize(self.sanitizeError(messageText)))"
             }
-            return "Error"
+            return "错误"
         }
 
         if toolName == "nodes", let summary = self.renderNodesSummary(dict) {
@@ -56,7 +56,7 @@ enum ToolResultTextFormatter {
         }
 
         if let status, !status.isEmpty {
-            return "Status: \(status)"
+            return "状态：\(status)"
         }
 
         return ""
@@ -64,16 +64,16 @@ enum ToolResultTextFormatter {
 
     private static func renderNodesSummary(_ dict: [String: Any]) -> String? {
         if let nodes = dict["nodes"] as? [[String: Any]] {
-            if nodes.isEmpty { return "No nodes found." }
+            if nodes.isEmpty { return "未发现设备。" }
             var lines: [String] = []
-            lines.append("\(nodes.count) node\(nodes.count == 1 ? "" : "s") found.")
+            lines.append("发现 \(nodes.count) 台设备。")
 
             for node in nodes.prefix(3) {
-                let label = self.firstString(in: node, keys: ["displayName", "name", "nodeId"]) ?? "Node"
+                let label = self.firstString(in: node, keys: ["displayName", "name", "nodeId"]) ?? "设备"
                 var details: [String] = []
 
                 if let connected = node["connected"] as? Bool {
-                    details.append(connected ? "connected" : "offline")
+                    details.append(connected ? "在线" : "离线")
                 }
                 if let platform = self.firstString(in: node, keys: ["platform"]) {
                     details.append(platform)
@@ -88,24 +88,24 @@ enum ToolResultTextFormatter {
                 if details.isEmpty {
                     lines.append("• \(label)")
                 } else {
-                    lines.append("• \(label) - \(details.joined(separator: ", "))")
+                    lines.append("• \(label) - \(details.joined(separator: "，"))")
                 }
             }
 
             let extra = nodes.count - 3
             if extra > 0 {
-                lines.append("... +\(extra) more")
+                lines.append("…… 还有 \(extra) 台")
             }
             return lines.joined(separator: "\n")
         }
 
         if let pending = dict["pending"] as? [Any], let paired = dict["paired"] as? [Any] {
-            return "Pairing requests: \(pending.count) pending, \(paired.count) paired."
+            return "配对请求：待处理 \(pending.count) 个，已配对 \(paired.count) 个。"
         }
 
         if let pending = dict["pending"] as? [Any] {
-            if pending.isEmpty { return "No pending pairing requests." }
-            return "\(pending.count) pending pairing request\(pending.count == 1 ? "" : "s")."
+            if pending.isEmpty { return "没有待处理的配对请求。" }
+            return "有 \(pending.count) 个待处理配对请求。"
         }
 
         return nil
@@ -113,12 +113,12 @@ enum ToolResultTextFormatter {
 
     private static func pairingDetail(_ node: [String: Any]) -> String? {
         if let paired = node["paired"] as? Bool, !paired {
-            return "pairing required"
+            return "需要配对"
         }
 
         for key in ["status", "state", "deviceStatus"] {
             if let raw = node[key] as? String, raw.lowercased().contains("pairing required") {
-                return "pairing required"
+                return "需要配对"
             }
         }
         return nil

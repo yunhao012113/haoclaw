@@ -38,7 +38,7 @@ struct ChatMarkdownPreprocessorTests {
 
         let result = ChatMarkdownPreprocessor.preprocess(markdown: markdown)
 
-        #expect(result.cleaned == "image")
+        #expect(result.cleaned == "图片")
         #expect(result.images.isEmpty)
     }
 
@@ -148,6 +148,23 @@ struct ChatMarkdownPreprocessorTests {
         let result = ChatMarkdownPreprocessor.preprocess(markdown: markdown)
 
         #expect(result.cleaned == "Hello there\nActual message")
+    }
+
+    @Test func localizesSystemLinesAndKnownGatewayErrors() {
+        let markdown = """
+        System: [2026-03-15 10:29:37 GMT+8] Node: yunhao's MacBook Pro · app 2026.3.67 · mode local · reason launch
+
+        ⚠️ Agent failed before reply: No API key found for provider "anthropic". Auth store: /tmp/auth-profiles.json (agentDir: /tmp/agent). Configure auth for this agent (haoclaw agents add <id>) or copy auth-profiles.json from the main agentDir. Logs: haoclaw logs --follow
+        """
+
+        let result = ChatMarkdownPreprocessor.preprocess(markdown: markdown)
+
+        #expect(result.cleaned.contains("系统："))
+        #expect(result.cleaned.contains("设备："))
+        #expect(result.cleaned.contains("应用 2026.3.67"))
+        #expect(result.cleaned.contains("本地模式"))
+        #expect(result.cleaned.contains("助手在回复前失败"))
+        #expect(result.cleaned.contains("未找到提供商“anthropic”的 API Key"))
     }
 
     @Test func stripsTrailingUntrustedContextSuffix() {

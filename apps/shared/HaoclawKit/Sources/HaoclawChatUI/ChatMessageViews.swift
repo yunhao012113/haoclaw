@@ -241,7 +241,7 @@ private struct ChatMessageBody: View {
             guard kind == "text" || kind.isEmpty else { return nil }
             return content.text
         }
-        return parts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return ChatDisplayLocalizer.localize(parts.joined(separator: "\n"))
     }
 
     private var inlineAttachments: [HaoclawChatMessageContent] {
@@ -357,7 +357,7 @@ private struct AttachmentRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "paperclip")
-            Text(self.att.fileName ?? "Attachment")
+            Text(self.att.fileName ?? "附件")
                 .font(.footnote)
                 .lineLimit(1)
                 .foregroundStyle(self.isUser ? HaoclawChatTheme.userText : HaoclawChatTheme.assistantText)
@@ -432,7 +432,7 @@ private struct ToolResultCard: View {
                     .lineLimit(self.expanded ? nil : Self.previewLineLimit)
 
                 if self.shouldShowToggle {
-                    Button(self.expanded ? "Show less" : "Show full output") {
+                    Button(self.expanded ? "收起" : "展开完整输出") {
                         self.expanded.toggle()
                     }
                     .buttonStyle(.plain)
@@ -530,7 +530,7 @@ struct ChatPendingToolsBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Running tools…", systemImage: "hammer")
+            Label("工具运行中…", systemImage: "hammer")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

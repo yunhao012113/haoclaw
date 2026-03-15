@@ -95,7 +95,7 @@ enum ChatMarkdownPreprocessor {
 
     private static func fallbackImageLabel(_ label: String) -> String {
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "image" : trimmed
+        return trimmed.isEmpty ? "图片" : trimmed
     }
 
     private static func stripEnvelope(_ raw: String) -> String {
@@ -217,6 +217,6 @@ enum ChatMarkdownPreprocessor {
         output = output.replacingOccurrences(of: "\r\n", with: "\n")
         output = output.replacingOccurrences(of: "\n\n\n", with: "\n\n")
         output = output.replacingOccurrences(of: "\n\n\n", with: "\n\n")
-        return output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ChatDisplayLocalizer.localize(output)
     }
 }
