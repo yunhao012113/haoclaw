@@ -1493,7 +1493,7 @@ final class DesktopClientModel {
         case .ok:
             return nil
         case .missingNode:
-            return "缺少本地运行时。点“一键修复”会自动安装 Node.js 22 和 Haoclaw CLI。"
+            return "缺少本地运行时。点“一键修复”会尝试自动修复；如果需要管理员权限，会直接打开统一下载页引导你安装最新版 PKG。"
         case .missingGateway:
             return "缺少 Haoclaw CLI。点“一键修复”后，桌面端会自动把本地 Gateway 拉起来。"
         case let .incompatible(found, required):
