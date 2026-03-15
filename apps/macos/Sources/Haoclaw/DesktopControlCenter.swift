@@ -186,6 +186,17 @@ private struct DesktopControlGeneralPane: View {
 
             DesktopControlCard(title: "启动指引", subtitle: "按这三步走，就能知道先做什么、后做什么，以及当前卡在什么地方。") {
                 VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("如果想重新看一遍，会以分步弹窗方式出现，看完当前步骤点“我知道了”就会自动继续。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("重新查看指引") {
+                            self.model.presentStartupGuideIfNeeded(force: true)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
                     ForEach(self.model.startupGuideSteps) { step in
                         DesktopGuideStepRow(step: step)
                     }

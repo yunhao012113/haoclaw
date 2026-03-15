@@ -155,6 +155,27 @@ struct DesktopControlCenterSmokeTests {
         #expect(model.isConversationOnlyLayout == false)
     }
 
+    @Test func `startup guide advances step by step and then dismisses`() {
+        let state = AppState(preview: true)
+        let chatViewModel = HaoclawChatViewModel(sessionKey: "main", transport: TestTransport())
+        let model = DesktopClientModel(appState: state, chatViewModel: chatViewModel)
+
+        model.presentStartupGuideIfNeeded(force: true)
+        #expect(model.shouldShowStartupGuideOverlay)
+        #expect(model.startupGuideOverlayStepIndex == 0)
+
+        model.advanceStartupGuideOverlay()
+        #expect(model.shouldShowStartupGuideOverlay)
+        #expect(model.startupGuideOverlayStepIndex == 1)
+
+        model.advanceStartupGuideOverlay()
+        #expect(model.shouldShowStartupGuideOverlay)
+        #expect(model.startupGuideOverlayStepIndex == 2)
+
+        model.advanceStartupGuideOverlay()
+        #expect(model.shouldShowStartupGuideOverlay == false)
+    }
+
     @Test func `openai compatible preset shows actionable base url guidance`() async {
         let state = AppState(preview: true)
         let chatViewModel = HaoclawChatViewModel(sessionKey: "main", transport: TestTransport())

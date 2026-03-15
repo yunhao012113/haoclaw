@@ -434,6 +434,8 @@ final class DesktopClientModel {
     var appliedModelSettings = DesktopModelSettingsDraft()
     var isShowingControlCenter = false
     var controlSection: DesktopControlSection = .general
+    var isShowingStartupGuideOverlay = false
+    var startupGuideOverlayStepIndex = 0
 
     @ObservationIgnored private var endpointTask: Task<Void, Never>?
     private static let autoDiagnosticsDefaultsKey = "desktop.autoDiagnosticsEnabled"
@@ -533,9 +535,21 @@ final class DesktopClientModel {
         return "自动查错已完成：发现 \(warningCount) 个提醒项。"
     }
 
-    var shouldShowStartupGuide: Bool {
-        self.startupGuideSteps.contains(where: { $0.state != .done }) ||
-            self.diagnostics.contains(where: { $0.severity == .error || $0.severity == .warning })
+    var startupGuideCurrentStep: DesktopGuideStep? {
+        guard self.startupGuideOverlayStepIndex >= 0, self.startupGuideOverlayStepIndex < self.startupGuideSteps.count else {
+            return nil
+        }
+        return self.startupGuideSteps[self.startupGuideOverlayStepIndex]
+    }
+
+    var shouldShowStartupGuideOverlay: Bool {
+        self.isShowingStartupGuideOverlay && self.startupGuideCurrentStep != nil
+    }
+
+    var startupGuideProgressText: String {
+        let total = max(self.startupGuideSteps.count, 1)
+        let current = min(self.startupGuideOverlayStepIndex + 1, total)
+        return "\(current)/\(total)"
     }
 
     var startupGuideSteps: [DesktopGuideStep] {
@@ -601,6 +615,7 @@ final class DesktopClientModel {
         self.chatViewModel.load()
         self.chatViewModel.refreshSessions(limit: 50)
         self.startEndpointObserverIfNeeded()
+        self.presentStartupGuideIfNeeded()
         Task { await self.refreshSupportData() }
     }
 
@@ -671,6 +686,7 @@ final class DesktopClientModel {
     func createConversation() {
         let next = "desktop-\(UUID().uuidString.prefix(8))"
         self.chatViewModel.switchSession(to: next)
+        self.presentStartupGuideIfNeeded(force: true)
     }
 
     func selectSession(_ key: String) {
@@ -697,6 +713,37 @@ final class DesktopClientModel {
         }
         self.controlSection = section
         self.isShowingControlCenter = true
+    }
+
+    func presentStartupGuideIfNeeded(force: Bool = false) {
+        guard !self.startupGuideSteps.isEmpty else {
+            self.isShowingStartupGuideOverlay = false
+            self.startupGuideOverlayStepIndex = 0
+            return
+        }
+        guard force || self.chatViewModel.messages.isEmpty else {
+            self.isShowingStartupGuideOverlay = false
+            return
+        }
+        self.startupGuideOverlayStepIndex = 0
+        self.isShowingStartupGuideOverlay = true
+    }
+
+    func advanceStartupGuideOverlay() {
+        let total = self.startupGuideSteps.count
+        guard total > 0 else {
+            self.dismissStartupGuideOverlay()
+            return
+        }
+        if self.startupGuideOverlayStepIndex + 1 < total {
+            self.startupGuideOverlayStepIndex += 1
+        } else {
+            self.dismissStartupGuideOverlay()
+        }
+    }
+
+    func dismissStartupGuideOverlay() {
+        self.isShowingStartupGuideOverlay = false
     }
 
     func runDiagnostics(manual: Bool = true) async {
@@ -2031,87 +2078,97 @@ private struct DesktopConversationCenter: View {
     @Bindable var chatViewModel: HaoclawChatViewModel
 
     var body: some View {
-        VStack(spacing: 18) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(self.model.currentSessionTitle)
-                        .font(.title2.weight(.semibold))
-                    Text(self.model.currentSessionSummary)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button {
-                    self.model.toggleConversationOnlyLayout()
-                } label: {
-                    Label(
-                        self.model.isConversationOnlyLayout ? "展开侧栏" : "专注对话",
-                        systemImage: "arrow.left.and.right.circle")
-                }
-                .buttonStyle(.bordered)
-                Button("文件") {}
-                    .buttonStyle(.bordered)
-                    .disabled(true)
-                Button("助手") {}
-                    .buttonStyle(.bordered)
-                    .disabled(true)
-            }
-
-            if self.chatViewModel.messages.isEmpty && self.chatViewModel.pendingRunCount == 0 {
-                VStack(spacing: 16) {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.orange.opacity(0.9), Color.pink.opacity(0.9)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing))
-                        .frame(width: 76, height: 76)
-                        .overlay(Text("🐙").font(.system(size: 30)))
-
-                    Text("Haoclaw")
-                        .font(.system(size: 34, weight: .semibold))
-
-                    Text("直接连接你的模型 API，本地运行，保留桌面客户端体验。")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 14) {
-                        DesktopActionCard(
-                            title: "可视化配置",
-                            description: "直接在桌面端设置连接方式、Gateway、API Key 和模型，无需手改配置文件。",
-                            action: { self.model.openModelSettings() })
-
-                        DesktopActionCard(
-                            title: self.model.connectionHint == nil ? "刷新连接" : "一键修复",
-                            description: self.model.connectionHint ?? "重新检查 Gateway 状态、模型列表和当前配置。",
-                            action: {
-                                Task {
-                                    if self.model.connectionHint == nil {
-                                        await self.model.refreshSupportData()
-                                    } else {
-                                        await self.model.repairConnection()
-                                    }
-                                }
-                            })
+        ZStack {
+            VStack(spacing: 18) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(self.model.currentSessionTitle)
+                            .font(.title2.weight(.semibold))
+                        Text(self.model.currentSessionSummary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                    Spacer()
+                    Button {
+                        self.model.presentStartupGuideIfNeeded(force: true)
+                    } label: {
+                        Label("启动指引", systemImage: "list.clipboard")
+                    }
+                    .buttonStyle(.bordered)
+                    Button {
+                        self.model.toggleConversationOnlyLayout()
+                    } label: {
+                        Label(
+                            self.model.isConversationOnlyLayout ? "展开侧栏" : "专注对话",
+                            systemImage: "arrow.left.and.right.circle")
+                    }
+                    .buttonStyle(.bordered)
+                    Button("文件") {}
+                        .buttonStyle(.bordered)
+                        .disabled(true)
+                    Button("助手") {}
+                        .buttonStyle(.bordered)
+                        .disabled(true)
                 }
-                .padding(.top, 36)
+
+                if self.chatViewModel.messages.isEmpty && self.chatViewModel.pendingRunCount == 0 {
+                    VStack(spacing: 16) {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.orange.opacity(0.9), Color.pink.opacity(0.9)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing))
+                            .frame(width: 76, height: 76)
+                            .overlay(Text("🐙").font(.system(size: 30)))
+
+                        Text("Haoclaw")
+                            .font(.system(size: 34, weight: .semibold))
+
+                        Text("直接连接你的模型 API，本地运行，保留桌面客户端体验。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: 14) {
+                            DesktopActionCard(
+                                title: "可视化配置",
+                                description: "直接在桌面端设置连接方式、Gateway、API Key 和模型，无需手改配置文件。",
+                                action: { self.model.openModelSettings() })
+
+                            DesktopActionCard(
+                                title: self.model.connectionHint == nil ? "刷新连接" : "一键修复",
+                                description: self.model.connectionHint ?? "重新检查 Gateway 状态、模型列表和当前配置。",
+                                action: {
+                                    Task {
+                                        if self.model.connectionHint == nil {
+                                            await self.model.refreshSupportData()
+                                        } else {
+                                            await self.model.repairConnection()
+                                        }
+                                    }
+                                })
+                        }
+                    }
+                    .padding(.top, 36)
+                }
+
+                HaoclawChatView(
+                    viewModel: self.chatViewModel,
+                    showsSessionSwitcher: false,
+                    style: .standard,
+                    userAccent: Color(nsColor: .controlAccentColor),
+                    composerAccessory: AnyView(DesktopComposerModelPicker(model: self.model)))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .strokeBorder(Color.black.opacity(0.05), lineWidth: 1))
             }
 
-            if self.model.shouldShowStartupGuide {
+            if self.model.shouldShowStartupGuideOverlay {
                 DesktopStartupGuideCard(model: self.model)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .zIndex(10)
             }
-
-            HaoclawChatView(
-                viewModel: self.chatViewModel,
-                showsSessionSwitcher: false,
-                style: .standard,
-                userAccent: Color(nsColor: .controlAccentColor),
-                composerAccessory: AnyView(DesktopComposerModelPicker(model: self.model)))
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1))
         }
         .padding(22)
         .background(Color(nsColor: .underPageBackgroundColor))
@@ -2530,91 +2587,111 @@ private struct DesktopStartupGuideCard: View {
     @Bindable var model: DesktopClientModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("启动指引")
-                        .font(.headline)
-                    Text(self.model.diagnosticsSummaryText)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button(self.model.isRunningDiagnostics ? "查错中…" : "自动查错") {
-                    Task { await self.model.runDiagnostics() }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(self.model.isRunningDiagnostics)
-            }
+        ZStack {
+            Color.black.opacity(0.10)
+                .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(self.model.startupGuideSteps) { step in
-                    HStack(alignment: .top, spacing: 10) {
+            if let step = self.model.startupGuideCurrentStep {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("启动指引")
+                                .font(.headline)
+                            Text("第 \(self.model.startupGuideProgressText) 步，看完当前说明后点“我知道了”即可。")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("稍后再看") {
+                            self.model.dismissStartupGuideOverlay()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
+                    HStack(alignment: .top, spacing: 12) {
                         Circle()
                             .fill(self.tint(for: step.state).opacity(0.18))
-                            .frame(width: 28, height: 28)
+                            .frame(width: 36, height: 36)
                             .overlay(
                                 Image(systemName: self.symbol(for: step.state))
-                                    .font(.caption.weight(.semibold))
+                                    .font(.body.weight(.semibold))
                                     .foregroundStyle(self.tint(for: step.state)))
-                        VStack(alignment: .leading, spacing: 3) {
+
+                        VStack(alignment: .leading, spacing: 8) {
                             Text(step.title)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                             Text(step.detail)
-                                .font(.footnote)
+                                .font(.body)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                }
-            }
 
-            if let firstIssue = self.model.diagnostics.first(where: { $0.severity == .error || $0.severity == .warning }) {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: firstIssue.severity == .error ? "exclamationmark.triangle.fill" : "info.circle.fill")
-                        .foregroundStyle(firstIssue.severity == .error ? Color.orange : Color.blue)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(firstIssue.title)
-                            .font(.subheadline.weight(.semibold))
-                        Text(firstIssue.detail)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    if let firstIssue = self.model.diagnostics.first(where: { $0.severity == .error || $0.severity == .warning }) {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: firstIssue.severity == .error ? "exclamationmark.triangle.fill" : "info.circle.fill")
+                                .foregroundStyle(firstIssue.severity == .error ? Color.orange : Color.blue)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(firstIssue.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(firstIssue.detail)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.orange.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+
+                    HStack(spacing: 10) {
+                        if step.id == "runtime", self.model.appState.connectionMode == .local {
+                            Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
+                                Task { await self.model.repairConnection() }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(self.model.isRepairingConnection)
+                        }
+
+                        if step.id == "model" {
+                            Button("模型与 API") {
+                                self.model.openControlCenter(.models)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        if step.id == "test" {
+                            Button(self.model.isRunningDiagnostics ? "自动查错中…" : "自动查错") {
+                                Task { await self.model.runDiagnostics() }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(self.model.isRunningDiagnostics)
+                        }
+
+                        Spacer()
+
+                        Button(self.isLastStep ? "我知道了" : "我知道了，下一步") {
+                            self.model.advanceStartupGuideOverlay()
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
                 }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-
-            HStack(spacing: 10) {
-                if self.model.appState.connectionMode == .local {
-                    Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
-                        Task { await self.model.repairConnection() }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(self.model.isRepairingConnection)
-                }
-
-                Button("模型与 API") {
-                    self.model.openControlCenter(.models)
-                }
-                .buttonStyle(.bordered)
-
-                Button("打开运行台") {
-                    self.model.openControlCenter(.general)
-                }
-                .buttonStyle(.bordered)
+                .padding(22)
+                .frame(width: 700)
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(Color.black.opacity(0.08), lineWidth: 1))
+                .shadow(color: .black.opacity(0.12), radius: 26, y: 14)
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.82))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.06), lineWidth: 1))
+    }
+
+    private var isLastStep: Bool {
+        self.model.startupGuideOverlayStepIndex + 1 >= self.model.startupGuideSteps.count
     }
 
     private func symbol(for state: DesktopGuideStepState) -> String {
