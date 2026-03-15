@@ -408,9 +408,9 @@ private struct ManualChannelConfigForm: View {
         case .toggle:
             Toggle(isOn: self.boolBinding(field)) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(field.label)
+                    Text(self.localized(field.label))
                     if let help = field.help {
-                        Text(help)
+                        Text(self.localized(help))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -418,25 +418,25 @@ private struct ManualChannelConfigForm: View {
             }
         case let .select(options):
             VStack(alignment: .leading, spacing: 6) {
-                Text(field.label).font(.callout.weight(.semibold))
+                Text(self.localized(field.label)).font(.callout.weight(.semibold))
                 if let help = field.help {
-                    Text(help)
+                    Text(self.localized(help))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Picker("", selection: self.selectBinding(field)) {
                     Text("请选择").tag("")
                     ForEach(options, id: \.value) { option in
-                        Text(option.label).tag(option.value)
+                        Text(self.localized(option.label)).tag(option.value)
                     }
                 }
                 .pickerStyle(.menu)
             }
         case .multiline:
             VStack(alignment: .leading, spacing: 6) {
-                Text(field.label).font(.callout.weight(.semibold))
+                Text(self.localized(field.label)).font(.callout.weight(.semibold))
                 if let help = field.help {
-                    Text(help)
+                    Text(self.localized(help))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -449,38 +449,68 @@ private struct ManualChannelConfigForm: View {
             }
         case .number:
             VStack(alignment: .leading, spacing: 6) {
-                Text(field.label).font(.callout.weight(.semibold))
+                Text(self.localized(field.label)).font(.callout.weight(.semibold))
                 if let help = field.help {
-                    Text(help)
+                    Text(self.localized(help))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                TextField(field.placeholder, text: self.numberBinding(field))
+                TextField(self.localized(field.placeholder), text: self.numberBinding(field))
                     .textFieldStyle(.roundedBorder)
             }
         case .secret:
             VStack(alignment: .leading, spacing: 6) {
-                Text(field.label).font(.callout.weight(.semibold))
+                Text(self.localized(field.label)).font(.callout.weight(.semibold))
                 if let help = field.help {
-                    Text(help)
+                    Text(self.localized(help))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                SecureField(field.placeholder, text: self.textBinding(field))
+                SecureField(self.localized(field.placeholder), text: self.textBinding(field))
                     .textFieldStyle(.roundedBorder)
             }
         case .text:
             VStack(alignment: .leading, spacing: 6) {
-                Text(field.label).font(.callout.weight(.semibold))
+                Text(self.localized(field.label)).font(.callout.weight(.semibold))
                 if let help = field.help {
-                    Text(help)
+                    Text(self.localized(help))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                TextField(field.placeholder, text: self.textBinding(field))
+                TextField(self.localized(field.placeholder), text: self.textBinding(field))
                     .textFieldStyle(.roundedBorder)
             }
         }
+    }
+
+    private func localized(_ raw: String?) -> String {
+        guard let raw else { return "" }
+        var text = raw
+        let replacements: [(String, String)] = [
+            ("Bot Token", "机器人 Token"),
+            ("App Token", "应用 Token"),
+            ("User Token", "用户 Token"),
+            ("Webhook Secret", "Webhook 密钥"),
+            ("Webhook URL", "Webhook 地址"),
+            ("Signing Secret", "签名密钥"),
+            ("Channel Access Token", "频道访问 Token"),
+            ("Channel Secret", "频道密钥"),
+            ("Client ID", "客户端 ID"),
+            ("Client Secret", "客户端密钥"),
+            ("Refresh Token", "刷新 Token"),
+            ("OAuth Token", "OAuth Token"),
+            ("user id", "用户 ID"),
+            ("Slack user id", "Slack 用户 ID"),
+            ("Discord user id", "Discord 用户 ID"),
+            ("LINE user id", "LINE 用户 ID"),
+            ("Mattermost 用户名或 ID", "Mattermost 用户名或 ID"),
+            ("/path/to/token.txt", "/路径/到/token.txt"),
+            ("/path/to/service-account.json", "/路径/到/service-account.json"),
+        ]
+        for (source, target) in replacements {
+            text = text.replacingOccurrences(of: source, with: target)
+        }
+        return text
     }
 
     private func fullPath(for field: ManualChannelField) -> ConfigPath {

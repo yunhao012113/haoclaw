@@ -28,7 +28,7 @@ extension ChannelsStore {
                 params: nil,
                 timeoutMs: 10000)
             self.configStatus = snap.valid == false
-                ? "Config invalid; fix it in ~/.haoclaw/haoclaw.json."
+                ? "配置无效，请在 ~/.haoclaw/haoclaw.json 中修正。"
                 : nil
             self.configRoot = snap.config?.mapValues { $0.foundationValue } ?? [:]
             self.configDraft = cloneConfigValue(self.configRoot) as? [String: Any] ?? self.configRoot
@@ -69,9 +69,12 @@ extension ChannelsStore {
         setValue(&root, path: path, value: value)
         self.configDraft = root as? [String: Any] ?? self.configDraft
         self.configDirty = true
+        if let channelId = self.channelId(from: path) {
+            self.scheduleChannelAutoSave(for: channelId)
+        }
     }
 
-    func saveConfigDraft() async {
+    func saveConfigDraft(autoTriggeredChannelId: String? = nil) async {
         guard !self.isSavingConfig else { return }
         self.isSavingConfig = true
         defer { self.isSavingConfig = false }
@@ -81,9 +84,14 @@ extension ChannelsStore {
             try await ConfigStore.save(self.configDraft)
             await self.loadConfig()
             await self.refresh(probe: true)
-            self.configStatus = "渠道配置已保存并刷新。"
+            if let channelId = autoTriggeredChannelId {
+                let summary = self.channelSetupSummary(for: channelId)
+                self.configStatus = "已自动保存并验证 \(self.resolveChannelLabel(channelId))：\(summary.detail)"
+            } else {
+                self.configStatus = "渠道配置已保存并刷新。"
+            }
         } catch {
-            self.configStatus = error.localizedDescription
+            self.configStatus = self.localizeChannelTechnicalText(error.localizedDescription)
         }
     }
 
@@ -179,6 +187,32 @@ extension ChannelsStore {
         root["channels"] = channels
         self.configDraft = root
         self.configDirty = true
+    }
+
+    private func channelId(from path: ConfigPath) -> String? {
+        guard path.count >= 2 else { return nil }
+        guard case .key("channels") = path[0] else { return nil }
+        guard case let .key(channelId) = path[1] else { return nil }
+        return channelId
+    }
+
+    private func scheduleChannelAutoSave(for channelId: String) {
+        self.channelAutoSaveTask?.cancel()
+        self.channelAutoSaveTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            guard !Task.isCancelled else { return }
+            guard self.configDirty else { return }
+
+            let missing = self.channelMissingRequiredFields(for: channelId)
+            if !missing.isEmpty {
+                self.configStatus = "已暂存 \(self.resolveChannelLabel(channelId)) 配置，补全 \(missing.joined(separator: "、")) 后会自动验证。"
+                return
+            }
+
+            self.configStatus = "正在自动保存并验证 \(self.resolveChannelLabel(channelId))…"
+            await self.saveConfigDraft(autoTriggeredChannelId: channelId)
+        }
     }
 }
 

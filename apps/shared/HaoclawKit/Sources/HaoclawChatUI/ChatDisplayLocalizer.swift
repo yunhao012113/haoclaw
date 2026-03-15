@@ -17,13 +17,19 @@ enum ChatDisplayLocalizer {
             ("System:", "系统："),
             ("Node:", "设备："),
             ("Agent failed before reply:", "助手在回复前失败："),
+            ("agentDir:", "助手目录："),
             ("Logs: haoclaw logs --follow", "排查日志：haoclaw logs --follow"),
+            ("logs: haoclaw logs --follow", "排查日志：haoclaw logs --follow"),
             ("Auth store:", "认证配置："),
             ("Configure auth for this agent", "请为这个助手配置认证"),
             ("copy auth-profiles.json from the main agentDir", "把主助手目录里的 auth-profiles.json 复制过来"),
             ("mode local", "本地模式"),
             ("reason launch", "原因：启动"),
             ("reason connect", "原因：已连接"),
+            ("Off", "关闭"),
+            ("Low", "低"),
+            ("Medium", "中"),
+            ("High", "高"),
             ("Connected", "已连接"),
             ("Connecting…", "连接中…"),
             ("Could not connect to the server.", "无法连接到服务器。"),
@@ -57,6 +63,14 @@ enum ChatDisplayLocalizer {
             text,
             pattern: #"\bor copy auth-profiles\.json from the main agentDir\b"#,
             template: "或把主助手目录里的 auth-profiles.json 复制过来")
+        text = self.replace(
+            text,
+            pattern: #"Auth store:\s*([^\n]+)"#,
+            template: "认证配置：$1")
+        text = self.replace(
+            text,
+            pattern: #"agentDir:\s*([^\)\n]+)"#,
+            template: "助手目录：$1")
         text = self.replace(
             text,
             pattern: #"Only image attachments are supported right now"#,

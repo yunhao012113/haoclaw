@@ -109,11 +109,11 @@ extension ChannelsStore {
                 params: params,
                 timeoutMs: 15000)
             self.whatsappLoginMessage = result.cleared
-                ? "Logged out and cleared credentials."
-                : "No WhatsApp session found."
+                ? "已退出登录，并清除了凭据。"
+                : "当前没有找到 WhatsApp 会话。"
             self.whatsappLoginQrDataUrl = nil
         } catch {
-            self.whatsappLoginMessage = error.localizedDescription
+            self.whatsappLoginMessage = self.localizeChannelTechnicalText(error.localizedDescription)
         }
         await self.refresh(probe: true)
     }
@@ -131,15 +131,15 @@ extension ChannelsStore {
                 params: params,
                 timeoutMs: 15000)
             if result.envToken == true {
-                self.configStatus = "Telegram token still set via env; config cleared."
+                self.configStatus = "Telegram Token 仍然通过环境变量提供，已清除本地配置。"
             } else {
                 self.configStatus = result.cleared
-                    ? "Telegram token cleared."
-                    : "No Telegram token configured."
+                    ? "已清除 Telegram Token。"
+                    : "当前没有配置 Telegram Token。"
             }
             await self.loadConfig()
         } catch {
-            self.configStatus = error.localizedDescription
+            self.configStatus = self.localizeChannelTechnicalText(error.localizedDescription)
         }
         await self.refresh(probe: true)
     }

@@ -607,7 +607,8 @@ private struct DesktopControlChannelsPane: View {
     }
 
     private func channelLastError(_ id: String) -> String? {
-        self.channelStatus(id)?["lastError"]?.stringValue
+        guard let raw = self.channelStatus(id)?["lastError"]?.stringValue else { return nil }
+        return self.store.localizeChannelTechnicalText(raw)
     }
 
     @ViewBuilder

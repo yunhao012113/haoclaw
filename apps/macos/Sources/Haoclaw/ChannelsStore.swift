@@ -242,6 +242,7 @@ final class ChannelsStore {
     var configUiHints: [String: ConfigUiHint] = [:]
     var configDraft: [String: Any] = [:]
     var configDirty = false
+    var channelAutoSaveTask: Task<Void, Never>?
 
     let interval: TimeInterval = 45
     let isPreview: Bool

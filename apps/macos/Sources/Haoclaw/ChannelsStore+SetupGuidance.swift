@@ -77,7 +77,7 @@ extension ChannelsStore {
             ]
         case "mattermost":
             return [
-                "确认 Bot Token 对应的 bot 已加入目标 Team / Channel。",
+                "确认机器人 Token 对应的 bot 已加入目标团队或频道。",
                 "如果验证失败，优先检查服务地址是否包含正确的协议和域名。",
             ]
         case "nostr":
@@ -106,14 +106,14 @@ extension ChannelsStore {
                 ? "Webhook 模式下先填 App ID、App Secret 和校验 Token，其他路径默认值会自动补齐。"
                 : "先填 App ID 和 App Secret 就能开始验证，默认按 WebSocket 模式接入。"
         case "telegram":
-            return "先填 Bot Token 就够了。保存后 Haoclaw 会自动探测 bot 信息和 webhook 状态。"
+            return "先填机器人 Token 就够了。填完后 Haoclaw 会自动保存，并探测 bot 信息和 webhook 状态。"
         case "slack":
             let mode = self.channelDraftText(channelId, path: ["mode"]).lowercased()
             return mode == "http"
-                ? "HTTP 模式下填 Bot Token 和 Signing Secret 即可，Webhook 路径会沿用默认值。"
-                : "Socket 模式下填 Bot Token 和 App Token 就能验证，最省事。"
+                ? "HTTP 模式下填机器人 Token 和签名密钥即可，Webhook 路径会沿用默认值。"
+                : "Socket 模式下填机器人 Token 和应用 Token 就能验证，最省事。"
         case "discord":
-            return "Discord 只需要 Bot Token。保存后会自动验证机器人身份。"
+            return "Discord 只需要机器人 Token。填完后会自动验证机器人身份。"
         case "googlechat":
             return "贴入服务账号 JSON 或文件路径即可。保存后会自动检查 Google Chat 凭据是否可用。"
         case "signal":
@@ -129,7 +129,7 @@ extension ChannelsStore {
         case "nostr":
             return "Nostr 先填私钥和至少一个 relay 地址，保存后验证连接。"
         case "mattermost":
-            return "Mattermost 先填服务地址和 Bot Token，保存后自动探测。"
+            return "Mattermost 先填服务地址和机器人 Token，填完后会自动探测。"
         default:
             return "先填最少必填项，保存后 Haoclaw 会自动检查当前渠道。"
         }
@@ -141,12 +141,12 @@ extension ChannelsStore {
             let mode = self.channelDraftText(channelId, path: ["connectionMode"]).lowercased()
             return mode == "webhook" ? "App ID、App Secret、校验 Token" : "App ID、App Secret"
         case "telegram":
-            return "Bot Token 或 Token 文件"
+            return "机器人 Token 或 Token 文件"
         case "slack":
             let mode = self.channelDraftText(channelId, path: ["mode"]).lowercased()
-            return mode == "http" ? "Bot Token、Signing Secret" : "Bot Token、App Token"
+            return mode == "http" ? "机器人 Token、签名密钥" : "机器人 Token、应用 Token"
         case "discord":
-            return "Bot Token"
+            return "机器人 Token"
         case "googlechat":
             return "服务账号 JSON、服务账号文件 或 Webhook URL"
         case "signal":
@@ -162,7 +162,7 @@ extension ChannelsStore {
         case "nostr":
             return "Relay 列表、私钥"
         case "mattermost":
-            return "服务地址、Bot Token"
+            return "服务地址、机器人 Token"
         default:
             return "按当前渠道最少必填项填写"
         }
@@ -181,7 +181,7 @@ extension ChannelsStore {
             return ChannelSetupSummary(
                 state: .ready,
                 title: "可以开始验证",
-                detail: "最少必填已经齐了。点击“保存并验证”后，Haoclaw 会自动检查这个渠道。")
+                detail: "最少必填已经齐了。Haoclaw 会自动保存并检查这个渠道。")
         }
 
         if channelId == "whatsapp" {
@@ -200,7 +200,7 @@ extension ChannelsStore {
             return ChannelSetupSummary(
                 state: .attention,
                 title: "验证异常",
-                detail: self.appendLastChecked("最近错误：\(lastError)", status: status))
+                detail: self.appendLastChecked("最近错误：\(self.localizeChannelTechnicalText(lastError))", status: status))
         }
 
         let configured = status["configured"]?.boolValue ?? false
@@ -222,7 +222,7 @@ extension ChannelsStore {
         return ChannelSetupSummary(
             state: .ready,
             title: "可以开始验证",
-            detail: "点击“保存并验证”后，Haoclaw 会自动检查当前渠道。")
+            detail: "Haoclaw 会自动保存并检查当前渠道。")
     }
 
     private func whatsAppSetupSummary(status: [String: AnyCodable]) -> ChannelSetupSummary {
@@ -291,7 +291,7 @@ extension ChannelsStore {
         let statusCode = probe["status"]?.intValue
         let detail: String
         if let error, !error.isEmpty {
-            detail = "自动验证失败：\(error)"
+            detail = "自动验证失败：\(self.localizeChannelTechnicalText(error))"
         } else if let statusCode {
             detail = "自动验证失败，返回状态码 \(statusCode)。"
         } else {
@@ -324,7 +324,35 @@ extension ChannelsStore {
         return nil
     }
 
-    private func channelMissingRequiredFields(for channelId: String) -> [String] {
+    func localizeChannelTechnicalText(_ raw: String) -> String {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return text }
+
+        let replacements: [(String, String)] = [
+            ("not configured", "尚未配置"),
+            ("configured", "已配置"),
+            ("connected", "已连接"),
+            ("disconnected", "已断开"),
+            ("running", "运行中"),
+            ("invalid auth", "认证无效"),
+            ("invalid payload", "请求内容无效"),
+            ("expired request", "请求已过期"),
+            ("timeout", "超时"),
+            ("timed out", "超时"),
+            ("forbidden", "无权限"),
+            ("unauthorized", "未授权"),
+            ("network error", "网络错误"),
+            ("connection refused", "连接被拒绝"),
+            ("not found", "未找到"),
+        ]
+
+        for (source, target) in replacements {
+            text = text.replacingOccurrences(of: source, with: target, options: .caseInsensitive)
+        }
+        return text
+    }
+
+    func channelMissingRequiredFields(for channelId: String) -> [String] {
         func anyText(_ labelsAndPaths: [(String, [[String]])]) -> [String] {
             labelsAndPaths.compactMap { label, paths in
                 self.channelHasValue(channelId, paths: paths) ? nil : label
@@ -347,23 +375,23 @@ extension ChannelsStore {
             ])
         case "telegram":
             return anyText([
-                ("Bot Token 或 Token 文件", [["botToken"], ["tokenFile"]]),
+                ("机器人 Token 或 Token 文件", [["botToken"], ["tokenFile"]]),
             ])
         case "slack":
             let mode = self.channelDraftText(channelId, path: ["mode"]).lowercased()
             if mode == "http" {
                 return anyText([
-                    ("Bot Token", [["botToken"]]),
-                    ("Signing Secret", [["signingSecret"]]),
+                    ("机器人 Token", [["botToken"]]),
+                    ("签名密钥", [["signingSecret"]]),
                 ])
             }
             return anyText([
-                ("Bot Token", [["botToken"]]),
-                ("App Token", [["appToken"]]),
+                ("机器人 Token", [["botToken"]]),
+                ("应用 Token", [["appToken"]]),
             ])
         case "discord":
             return anyText([
-                ("Bot Token", [["token"]]),
+                ("机器人 Token", [["token"]]),
             ])
         case "googlechat":
             return anyText([
@@ -397,7 +425,7 @@ extension ChannelsStore {
         case "mattermost":
             return anyText([
                 ("服务地址", [["baseUrl"]]),
-                ("Bot Token", [["botToken"]]),
+                ("机器人 Token", [["botToken"]]),
             ])
         default:
             return []
