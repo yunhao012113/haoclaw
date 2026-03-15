@@ -385,6 +385,7 @@ final class DesktopClientModel {
     let chatViewModel: HaoclawChatViewModel
 
     var sidebarSection: DesktopSidebarSection = .conversations
+    var isConversationOnlyLayout = false
     var isShowingModelSettings = false
     var isSavingModelSettings = false
     var isRefreshing = false
@@ -559,6 +560,12 @@ final class DesktopClientModel {
 
     func selectSession(_ key: String) {
         self.chatViewModel.switchSession(to: key)
+    }
+
+    func toggleConversationOnlyLayout() {
+        withAnimation(.easeInOut(duration: 0.18)) {
+            self.isConversationOnlyLayout.toggle()
+        }
     }
 
     func openModelSettings() {
@@ -1514,7 +1521,6 @@ struct DesktopClientRootView: View {
     let updater: UpdaterProviding?
     @State private var chatViewModel: HaoclawChatViewModel
     @State private var model: DesktopClientModel
-    @State private var visibility: NavigationSplitViewVisibility = .all
 
     init(state: AppState, updater: UpdaterProviding? = nil, sessionKey: String = "main") {
         self._state = Bindable(wrappedValue: state)
@@ -1525,17 +1531,25 @@ struct DesktopClientRootView: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: self.$visibility) {
-            DesktopConversationSidebar(model: self.model, chatViewModel: self.chatViewModel)
-                .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 320)
-        } content: {
+        HStack(spacing: 0) {
+            if !self.model.isConversationOnlyLayout {
+                DesktopConversationSidebar(model: self.model, chatViewModel: self.chatViewModel)
+                    .frame(minWidth: 250, idealWidth: 280, maxWidth: 320, maxHeight: .infinity)
+
+                Divider()
+            }
+
             DesktopConversationCenter(model: self.model, chatViewModel: self.chatViewModel)
-                .navigationSplitViewColumnWidth(min: 700, ideal: 840)
-        } detail: {
-            DesktopAgentInspector(model: self.model, chatViewModel: self.chatViewModel, updater: self.updater)
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
+                .frame(minWidth: 700, maxWidth: .infinity, maxHeight: .infinity)
+
+            if !self.model.isConversationOnlyLayout {
+                Divider()
+
+                DesktopAgentInspector(model: self.model, chatViewModel: self.chatViewModel, updater: self.updater)
+                    .frame(minWidth: 280, idealWidth: 320, maxWidth: 360, maxHeight: .infinity)
+            }
         }
-        .frame(minWidth: 1280, minHeight: 820)
+        .frame(minWidth: self.model.isConversationOnlyLayout ? 820 : 1280, minHeight: 820)
         .sheet(isPresented: self.$model.isShowingControlCenter) {
             DesktopControlCenterSheet(state: self.state, model: self.model, updater: self.updater)
         }
@@ -1632,6 +1646,14 @@ private struct DesktopConversationCenter: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                Button {
+                    self.model.toggleConversationOnlyLayout()
+                } label: {
+                    Label(
+                        self.model.isConversationOnlyLayout ? "展开侧栏" : "专注对话",
+                        systemImage: "arrow.left.and.right.circle")
+                }
+                .buttonStyle(.bordered)
                 Button("文件") {}
                     .buttonStyle(.bordered)
                     .disabled(true)

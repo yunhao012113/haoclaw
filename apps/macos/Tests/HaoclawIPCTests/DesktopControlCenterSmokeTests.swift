@@ -143,6 +143,18 @@ struct DesktopControlCenterSmokeTests {
         #expect(model.settingsDraft.modelID == "meta/llama-3.3-70b-instruct")
     }
 
+    @Test func `conversation only layout toggle flips state`() {
+        let state = AppState(preview: true)
+        let chatViewModel = HaoclawChatViewModel(sessionKey: "main", transport: TestTransport())
+        let model = DesktopClientModel(appState: state, chatViewModel: chatViewModel)
+
+        #expect(model.isConversationOnlyLayout == false)
+        model.toggleConversationOnlyLayout()
+        #expect(model.isConversationOnlyLayout == true)
+        model.toggleConversationOnlyLayout()
+        #expect(model.isConversationOnlyLayout == false)
+    }
+
     @Test func `openai compatible preset shows actionable base url guidance`() async {
         let state = AppState(preview: true)
         let chatViewModel = HaoclawChatViewModel(sessionKey: "main", transport: TestTransport())
