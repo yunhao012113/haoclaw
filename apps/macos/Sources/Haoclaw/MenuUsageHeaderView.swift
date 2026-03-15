@@ -5,12 +5,12 @@ struct MenuUsageHeaderView: View {
 
     var body: some View {
         MenuHeaderCard(
-            title: "Usage",
+            title: "用量",
             subtitle: self.subtitle)
     }
 
     private var subtitle: String {
-        if self.count == 1 { return "1 provider" }
-        return "\(self.count) providers"
+        if self.count == 1 { return "1 个提供商" }
+        return "\(self.count) 个提供商"
     }
 }

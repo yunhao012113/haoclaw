@@ -21,14 +21,14 @@ extension ChannelsSettings {
         SettingsSidebarScroll {
             LazyVStack(alignment: .leading, spacing: 8) {
                 if !self.enabledChannels.isEmpty {
-                    self.sidebarSectionHeader("Configured")
+                    self.sidebarSectionHeader("已配置")
                     ForEach(self.enabledChannels) { channel in
                         self.sidebarRow(channel)
                     }
                 }
 
                 if !self.availableChannels.isEmpty {
-                    self.sidebarSectionHeader("Available")
+                    self.sidebarSectionHeader("可接入")
                     ForEach(self.availableChannels) { channel in
                         self.sidebarRow(channel)
                     }
@@ -50,9 +50,9 @@ extension ChannelsSettings {
 
     private var emptyDetail: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Channels")
+            Text("渠道")
                 .font(.title3.weight(.semibold))
-            Text("Select a channel to view status and settings.")
+            Text("选择一个渠道后，可以查看状态和配置。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -125,11 +125,11 @@ extension ChannelsSettings {
             }
 
             HStack(spacing: 10) {
-                Text("Last check \(self.channelLastCheckText(channel))")
+                Text("最近检查 \(self.channelLastCheckText(channel))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if self.channelHasError(channel) {
-                    Text("Error")
+                    Text("异常")
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)

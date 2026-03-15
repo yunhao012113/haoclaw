@@ -6,13 +6,13 @@ struct MenuSessionsHeaderView: View {
 
     var body: some View {
         MenuHeaderCard(
-            title: "Context",
+            title: "上下文",
             subtitle: self.subtitle,
             statusText: self.statusText)
     }
 
     private var subtitle: String {
-        if self.count == 1 { return "1 session · 24h" }
-        return "\(self.count) sessions · 24h"
+        if self.count == 1 { return "1 个会话 · 24 小时" }
+        return "\(self.count) 个会话 · 24 小时"
     }
 }

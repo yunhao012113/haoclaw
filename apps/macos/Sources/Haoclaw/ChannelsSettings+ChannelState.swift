@@ -18,9 +18,9 @@ extension ChannelsSettings {
     }
 
     private func configuredChannelSummary(configured: Bool, running: Bool) -> String {
-        if !configured { return "Not configured" }
-        if running { return "Running" }
-        return "Configured"
+        if !configured { return "未配置" }
+        if running { return "运行中" }
+        return "已配置"
     }
 
     private func appendProbeDetails(
@@ -36,23 +36,23 @@ extension ChannelsSettings {
         if let probeOk {
             if probeOk {
                 if let version = probeVersion, !version.isEmpty {
-                    lines.append("Version \(version)")
+                    lines.append("版本 \(version)")
                 }
                 if let elapsed = probeElapsedMs {
-                    lines.append("Probe \(Int(elapsed))ms")
+                    lines.append("探测耗时 \(Int(elapsed))ms")
                 }
             } else if let probeError, !probeError.isEmpty {
-                lines.append("Probe error: \(probeError)")
+                lines.append("探测异常：\(probeError)")
             } else {
-                let code = probeStatus.map { String($0) } ?? "unknown"
-                lines.append("Probe failed (\(code))")
+                let code = probeStatus.map { String($0) } ?? "未知"
+                lines.append("探测失败（\(code)）")
             }
         }
         if let last = self.date(fromMs: lastProbeAtMs) {
-            lines.append("Last probe \(relativeAge(from: last))")
+            lines.append("最近探测 \(relativeAge(from: last))")
         }
         if let lastError, !lastError.isEmpty {
-            lines.append("Error: \(lastError)")
+            lines.append("异常：\(lastError)")
         }
     }
 
@@ -156,40 +156,40 @@ extension ChannelsSettings {
 
     var whatsAppSummary: String {
         guard let status = self.channelStatus("whatsapp", as: ChannelsStatusSnapshot.WhatsAppStatus.self)
-        else { return "Checking…" }
-        if !status.linked { return "Not linked" }
-        if status.connected { return "Connected" }
-        if status.running { return "Running" }
-        return "Linked"
+        else { return "检查中…" }
+        if !status.linked { return "未绑定" }
+        if status.connected { return "已连接" }
+        if status.running { return "运行中" }
+        return "已绑定"
     }
 
     var telegramSummary: String {
         guard let status = self.channelStatus("telegram", as: ChannelsStatusSnapshot.TelegramStatus.self)
-        else { return "Checking…" }
+        else { return "检查中…" }
         return self.configuredChannelSummary(configured: status.configured, running: status.running)
     }
 
     var discordSummary: String {
         guard let status = self.channelStatus("discord", as: ChannelsStatusSnapshot.DiscordStatus.self)
-        else { return "Checking…" }
+        else { return "检查中…" }
         return self.configuredChannelSummary(configured: status.configured, running: status.running)
     }
 
     var googlechatSummary: String {
         guard let status = self.channelStatus("googlechat", as: ChannelsStatusSnapshot.GoogleChatStatus.self)
-        else { return "Checking…" }
+        else { return "检查中…" }
         return self.configuredChannelSummary(configured: status.configured, running: status.running)
     }
 
     var signalSummary: String {
         guard let status = self.channelStatus("signal", as: ChannelsStatusSnapshot.SignalStatus.self)
-        else { return "Checking…" }
+        else { return "检查中…" }
         return self.configuredChannelSummary(configured: status.configured, running: status.running)
     }
 
     var imessageSummary: String {
         guard let status = self.channelStatus("imessage", as: ChannelsStatusSnapshot.IMessageStatus.self)
-        else { return "Checking…" }
+        else { return "检查中…" }
         return self.configuredChannelSummary(configured: status.configured, running: status.running)
     }
 
@@ -198,28 +198,28 @@ extension ChannelsSettings {
         else { return nil }
         var lines: [String] = []
         if let e164 = status.`self`?.e164 ?? status.`self`?.jid {
-            lines.append("Linked as \(e164)")
+            lines.append("当前账号 \(e164)")
         }
         if let age = status.authAgeMs {
-            lines.append("Auth age \(msToAge(age))")
+            lines.append("认证有效期 \(msToAge(age))")
         }
         if let last = self.date(fromMs: status.lastConnectedAt) {
-            lines.append("Last connect \(relativeAge(from: last))")
+            lines.append("最近连接 \(relativeAge(from: last))")
         }
         if let disconnect = status.lastDisconnect {
-            let when = self.date(fromMs: disconnect.at).map { relativeAge(from: $0) } ?? "unknown"
-            let code = disconnect.status.map { "status \($0)" } ?? "status unknown"
-            let err = disconnect.error ?? "disconnect"
-            lines.append("Last disconnect \(code) · \(err) · \(when)")
+            let when = self.date(fromMs: disconnect.at).map { relativeAge(from: $0) } ?? "未知时间"
+            let code = disconnect.status.map { "状态码 \($0)" } ?? "状态码未知"
+            let err = disconnect.error ?? "连接中断"
+            lines.append("最近断开 \(code) · \(err) · \(when)")
         }
         if status.reconnectAttempts > 0 {
-            lines.append("Reconnect attempts \(status.reconnectAttempts)")
+            lines.append("重连次数 \(status.reconnectAttempts)")
         }
         if let msgAt = self.date(fromMs: status.lastMessageAt) {
-            lines.append("Last message \(relativeAge(from: msgAt))")
+            lines.append("最近消息 \(relativeAge(from: msgAt))")
         }
         if let err = status.lastError, !err.isEmpty {
-            lines.append("Error: \(err)")
+            lines.append("异常：\(err)")
         }
         return lines.isEmpty ? nil : lines.joined(separator: " · ")
     }
@@ -426,9 +426,9 @@ extension ChannelsSettings {
         case "imessage":
             return self.imessageSummary
         default:
-            if self.channelHasError(channel) { return "Error" }
-            if self.channelEnabled(channel) { return "Active" }
-            return "Not configured"
+            if self.channelHasError(channel) { return "异常" }
+            if self.channelEnabled(channel) { return "已启用" }
+            return "未配置"
         }
     }
 
@@ -455,14 +455,14 @@ extension ChannelsSettings {
         default:
             let status = self.channelStatusDictionary(channel.id)
             if let err = status?["lastError"]?.stringValue, !err.isEmpty {
-                return "Error: \(err)"
+                return "异常：\(err)"
             }
             return nil
         }
     }
 
     func channelLastCheckText(_ channel: ChannelItem) -> String {
-        guard let date = self.channelLastCheck(channel) else { return "never" }
+        guard let date = self.channelLastCheck(channel) else { return "尚未检查" }
         return relativeAge(from: date)
     }
 

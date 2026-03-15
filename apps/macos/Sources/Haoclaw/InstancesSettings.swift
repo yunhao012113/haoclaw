@@ -12,14 +12,14 @@ struct InstancesSettings: View {
         VStack(alignment: .leading, spacing: 12) {
             self.header
             if let err = store.lastError {
-                Text("Error: \(err)")
+                Text("错误：\(err)")
                     .foregroundStyle(.red)
             } else if let info = store.statusMessage {
                 Text(info)
-                    .foregroundStyle(.secondary)
+                .foregroundStyle(.secondary)
             }
             if self.store.instances.isEmpty {
-                Text("No instances reported yet.")
+                Text("暂时还没有发现实例。")
                     .foregroundStyle(.secondary)
             } else {
                 List(self.store.instances) { inst in
@@ -36,9 +36,9 @@ struct InstancesSettings: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Connected Instances")
+                Text("在线实例")
                     .font(.headline)
-                Text("Latest presence beacons from Haoclaw nodes. Updated periodically.")
+                Text("这里显示 Haoclaw 节点最近一次上报的在线信息，会定期自动刷新。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -64,7 +64,7 @@ struct InstancesSettings: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(inst.host ?? "unknown host").font(.subheadline.bold())
+                    Text(inst.host ?? "未知主机").font(.subheadline.bold())
                     self.presenceIndicator(inst)
                     if let ip = inst.ip { Text("(") + Text(ip).monospaced() + Text(")") }
                 }
@@ -101,7 +101,7 @@ struct InstancesSettings: View {
 
                         // Last local input is helpful for interactive nodes, but noisy/meaningless for the gateway.
                         if let secs = inst.lastInputSeconds {
-                            self.label(icon: "clock", text: "\(secs)s ago")
+                            self.label(icon: "clock", text: "\(secs) 秒前")
                         }
 
                         if let update = self.updateSummaryText(inst, isGateway: isGateway) {
@@ -116,7 +116,7 @@ struct InstancesSettings: View {
         .padding(.vertical, 6)
         .help(inst.text)
         .contextMenu {
-            Button("Copy Debug Summary") {
+            Button("复制调试摘要") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(inst.text, forType: .string)
             }
@@ -150,16 +150,16 @@ struct InstancesSettings: View {
                 .foregroundStyle(.secondary)
         }
         .font(.caption)
-        .help("Presence updated \(inst.ageDescription).")
-        .accessibilityLabel("\(status.label) presence")
+        .help("在线状态更新于 \(inst.ageDescription)。")
+        .accessibilityLabel("\(status.label) 状态")
     }
 
     private func presenceStatus(for inst: InstanceInfo) -> (label: String, color: Color) {
         let nowMs = Date().timeIntervalSince1970 * 1000
         let ageSeconds = max(0, Int((nowMs - inst.ts) / 1000))
-        if ageSeconds <= 120 { return ("Active", .green) }
-        if ageSeconds <= 300 { return ("Idle", .yellow) }
-        return ("Stale", .gray)
+        if ageSeconds <= 120 { return ("活跃", .green) }
+        if ageSeconds <= 300 { return ("空闲", .yellow) }
+        return ("过期", .gray)
     }
 
     @ViewBuilder

@@ -265,11 +265,11 @@ struct MenuContent: View {
                 Button {
                     Task { _ = await DebugActions.toggleVerboseLoggingMain() }
                 } label: {
-                    Label(
-                        DebugActions.verboseLoggingEnabledMain
-                            ? "Verbose Logging (Main): On"
-                            : "Verbose Logging (Main): Off",
-                        systemImage: "text.alignleft")
+                        Label(
+                            DebugActions.verboseLoggingEnabledMain
+                            ? "详细日志（主进程）：开启"
+                            : "详细日志（主进程）：关闭",
+                            systemImage: "text.alignleft")
                 }
                 Menu {
                     Picker("日志级别", selection: self.$appLogLevelRaw) {
@@ -280,8 +280,8 @@ struct MenuContent: View {
                     Toggle(isOn: self.$appFileLoggingEnabled) {
                         Label(
                             self.appFileLoggingEnabled
-                                ? "File Logging: On"
-                                : "File Logging: Off",
+                                ? "文件日志：开启"
+                                : "文件日志：关闭",
                             systemImage: "doc.text.magnifyingglass")
                     }
                 } label: {

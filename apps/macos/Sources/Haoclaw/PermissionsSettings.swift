@@ -13,7 +13,7 @@ struct PermissionsSettings: View {
             VStack(alignment: .leading, spacing: 14) {
                 SystemRunSettingsView()
 
-                Text("Allow these so Haoclaw can notify and capture when needed.")
+                Text("建议开启这些权限，方便 Haoclaw 在需要时发送通知、采集信息和执行操作。")
                     .padding(.top, 4)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -23,7 +23,7 @@ struct PermissionsSettings: View {
 
                 LocationAccessSettings()
 
-                Button("Restart onboarding") { self.showOnboarding() }
+                Button("重新开始引导") { self.showOnboarding() }
                     .buttonStyle(.bordered)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -41,21 +41,21 @@ private struct LocationAccessSettings: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Location Access")
+            Text("位置权限")
                 .font(.body)
 
             Picker("", selection: self.$locationModeRaw) {
-                Text("Off").tag(HaoclawLocationMode.off.rawValue)
-                Text("While Using").tag(HaoclawLocationMode.whileUsing.rawValue)
-                Text("Always").tag(HaoclawLocationMode.always.rawValue)
+                Text("关闭").tag(HaoclawLocationMode.off.rawValue)
+                Text("使用时允许").tag(HaoclawLocationMode.whileUsing.rawValue)
+                Text("始终允许").tag(HaoclawLocationMode.always.rawValue)
             }
             .labelsHidden()
             .pickerStyle(.menu)
 
-            Toggle("Precise Location", isOn: self.$locationPreciseEnabled)
+            Toggle("精确位置", isOn: self.$locationPreciseEnabled)
                 .disabled(self.locationMode == .off)
 
-            Text("Always may require System Settings to approve background location.")
+            Text("选择“始终允许”后，可能还需要到系统设置里批准后台定位。")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -119,13 +119,13 @@ struct PermissionStatusList: View {
             Button {
                 Task { await self.refresh() }
             } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
+                Label("刷新", systemImage: "arrow.clockwise")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
             .font(.footnote)
             .padding(.top, 2)
-            .help("Refresh status")
+            .help("刷新权限状态")
         }
     }
 
@@ -191,32 +191,32 @@ struct PermissionRow: View {
             .layoutPriority(1)
             VStack(alignment: .trailing, spacing: 4) {
                 if self.status {
-                    Label("Granted", systemImage: "checkmark.circle.fill")
+                    Label("已授权", systemImage: "checkmark.circle.fill")
                         .labelStyle(.iconOnly)
                         .foregroundStyle(.green)
                         .font(.title3)
-                        .help("Granted")
+                        .help("已授权")
                 } else if self.isPending {
                     ProgressView()
                         .controlSize(.small)
                         .frame(width: 78)
                 } else {
-                    Button("Grant") { self.action() }
+                    Button("授权") { self.action() }
                         .buttonStyle(.bordered)
                         .controlSize(self.compact ? .small : .regular)
                         .frame(minWidth: self.compact ? 68 : 78, alignment: .trailing)
                 }
 
                 if self.status {
-                    Text("Granted")
+                    Text("已授权")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.green)
                 } else if self.isPending {
-                    Text("Checking…")
+                    Text("检查中…")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Request access")
+                    Text("等待授权")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -234,28 +234,28 @@ struct PermissionRow: View {
 
     private var title: String {
         switch self.capability {
-        case .appleScript: "Automation (AppleScript)"
-        case .notifications: "Notifications"
-        case .accessibility: "Accessibility"
-        case .screenRecording: "Screen Recording"
-        case .microphone: "Microphone"
-        case .speechRecognition: "Speech Recognition"
-        case .camera: "Camera"
-        case .location: "Location"
+        case .appleScript: "自动化控制（AppleScript）"
+        case .notifications: "通知"
+        case .accessibility: "辅助功能"
+        case .screenRecording: "屏幕录制"
+        case .microphone: "麦克风"
+        case .speechRecognition: "语音识别"
+        case .camera: "相机"
+        case .location: "位置"
         }
     }
 
     private var subtitle: String {
         switch self.capability {
         case .appleScript:
-            "Control other apps (e.g. Terminal) for automation actions"
-        case .notifications: "Show desktop alerts for agent activity"
-        case .accessibility: "Control UI elements when an action requires it"
-        case .screenRecording: "Capture the screen for context or screenshots"
-        case .microphone: "Allow Voice Wake and audio capture"
-        case .speechRecognition: "Transcribe Voice Wake trigger phrases on-device"
-        case .camera: "Capture photos and video from the camera"
-        case .location: "Share location when requested by the agent"
+            "允许 Haoclaw 控制其他应用，例如 Terminal。"
+        case .notifications: "允许 Haoclaw 发送桌面通知。"
+        case .accessibility: "在需要操作界面元素时允许辅助控制。"
+        case .screenRecording: "允许截取屏幕内容，用于上下文理解或截图。"
+        case .microphone: "允许语音唤醒和音频采集。"
+        case .speechRecognition: "允许在本机识别语音唤醒词。"
+        case .camera: "允许调用摄像头拍照或录制短视频。"
+        case .location: "在助手需要时提供位置信息。"
         }
     }
 

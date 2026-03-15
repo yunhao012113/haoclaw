@@ -9,10 +9,10 @@ struct SettingsRefreshButton: View {
             ProgressView()
         } else {
             Button(action: self.action) {
-                Label("Refresh", systemImage: "arrow.clockwise")
+                Label("刷新", systemImage: "arrow.clockwise")
             }
             .buttonStyle(.bordered)
-            .help("Refresh")
+            .help("刷新")
         }
     }
 }

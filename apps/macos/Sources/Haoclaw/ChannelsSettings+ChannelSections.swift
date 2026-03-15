@@ -13,7 +13,7 @@ extension ChannelsSettings {
     func channelHeaderActions(_ channel: ChannelItem) -> some View {
         HStack(spacing: 8) {
             if channel.id == "whatsapp" {
-                Button("Logout") {
+                Button("退出登录") {
                     Task { await self.store.logoutWhatsApp() }
                 }
                 .buttonStyle(.bordered)
@@ -21,7 +21,7 @@ extension ChannelsSettings {
             }
 
             if channel.id == "telegram" {
-                Button("Logout") {
+                Button("退出登录") {
                     Task { await self.store.logoutTelegram() }
                 }
                 .buttonStyle(.bordered)
@@ -34,7 +34,7 @@ extension ChannelsSettings {
                 if self.store.isRefreshing {
                     ProgressView().controlSize(.small)
                 } else {
-                    Text("Refresh")
+                    Text("刷新")
                 }
             }
             .buttonStyle(.bordered)
@@ -45,7 +45,7 @@ extension ChannelsSettings {
 
     var whatsAppSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            self.formSection("Linking") {
+            self.formSection("连接") {
                 if let message = self.store.whatsappLoginMessage {
                     Text(message)
                         .font(.caption)
@@ -68,13 +68,13 @@ extension ChannelsSettings {
                         if self.store.whatsappBusy {
                             ProgressView().controlSize(.small)
                         } else {
-                            Text("Show QR")
+                            Text("显示二维码")
                         }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(self.store.whatsappBusy)
 
-                    Button("Relink") {
+                    Button("重新绑定") {
                         Task { await self.store.startWhatsAppLogin(force: true) }
                     }
                     .buttonStyle(.bordered)
@@ -95,7 +95,7 @@ extension ChannelsSettings {
 
     @ViewBuilder
     private func configEditorSection(channelId: String) -> some View {
-        self.formSection("Configuration") {
+        self.formSection("配置")
             ChannelConfigForm(store: self.store, channelId: channelId)
         }
 
@@ -108,13 +108,13 @@ extension ChannelsSettings {
                 if self.store.isSavingConfig {
                     ProgressView().controlSize(.small)
                 } else {
-                    Text("Save")
+                    Text("保存")
                 }
             }
             .buttonStyle(.borderedProminent)
             .disabled(self.store.isSavingConfig || !self.store.configDirty)
 
-            Button("Reload") {
+            Button("重新加载") {
                 Task { await self.store.reloadConfigDraft() }
             }
             .buttonStyle(.bordered)
