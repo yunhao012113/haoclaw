@@ -24,14 +24,14 @@ struct CostUsageHistoryMenuView: View {
 
         return HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Today")
+                Text("今天")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text(todayCost)
                     .font(.system(size: 14, weight: .semibold))
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text("Last \(self.summary.days)d")
+                Text("最近 \(self.summary.days) 天")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text(totalCost)
@@ -74,7 +74,7 @@ struct CostUsageHistoryMenuView: View {
             return AnyView(EmptyView())
         }
         return AnyView(
-            Text("Partial: \(self.summary.totals.missingCostEntries) entries missing cost")
+            Text("部分数据缺少费用：共有 \(self.summary.totals.missingCostEntries) 条未计费记录")
                 .font(.caption2)
                 .foregroundStyle(.secondary))
     }

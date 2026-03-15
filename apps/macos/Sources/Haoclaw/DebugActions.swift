@@ -14,7 +14,7 @@ enum DebugActions {
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false)
-        window.title = "Agent Events"
+        window.title = "智能体事件"
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: AgentEventsWindow())
         window.center()
@@ -28,7 +28,7 @@ enum DebugActions {
         let url = URL(fileURLWithPath: path)
         guard FileManager().fileExists(atPath: path) else {
             let alert = NSAlert()
-            alert.messageText = "Log file not found"
+            alert.messageText = "未找到日志文件"
             alert.informativeText = path
             alert.runModal()
             return
@@ -46,8 +46,8 @@ enum DebugActions {
     static func openSessionStore() {
         if AppStateStore.shared.connectionMode == .remote {
             let alert = NSAlert()
-            alert.messageText = "Remote mode"
-            alert.informativeText = "Session store lives on the gateway host in remote mode."
+            alert.messageText = "当前为远程模式"
+            alert.informativeText = "远程模式下，会话存储位于网关所在主机。"
             alert.runModal()
             return
         }
@@ -61,21 +61,20 @@ enum DebugActions {
     }
 
     static func sendTestNotification() async {
-        _ = await NotificationManager().send(title: "Haoclaw", body: "Test notification", sound: nil)
+        _ = await NotificationManager().send(title: "Haoclaw", body: "测试通知", sound: nil)
     }
 
     static func sendDebugVoice() async -> Result<String, DebugActionError> {
         let message = """
-        This is a debug test from the Mac app. Reply with "Debug test works (and a funny pun)" \
-        if you received that.
+        这是一条来自 Mac 客户端的调试测试消息。如果你收到了，请回复“调试测试正常（顺便讲个冷笑话）”。
         """
         let result = await VoiceWakeForwarder.forward(transcript: message)
         switch result {
         case .success:
-            return .success("Sent. Await reply.")
+            return .success("已发送，等待回复。")
         case let .failure(error):
             let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-            return .failure(.message("Send failed: \(detail)"))
+            return .failure(.message("发送失败：\(detail)"))
         }
     }
 
@@ -117,7 +116,7 @@ enum DebugActions {
     static func resetGatewayTunnel() async -> Result<String, DebugActionError> {
         let mode = CommandResolver.connectionSettings().mode
         guard mode == .remote else {
-            return .failure(.message("Remote mode is not enabled."))
+            return .failure(.message("当前未启用远程模式。"))
         }
         await RemoteTunnelManager.shared.stopAll()
         await GatewayConnection.shared.shutdown()
@@ -128,7 +127,7 @@ enum DebugActions {
                 target: settings.target,
                 identity: settings.identity))
             await HealthStore.shared.refresh(onDemand: true)
-            return .success("SSH tunnel reset.")
+            return .success("SSH 隧道已重置。")
         } catch {
             Task { await HealthStore.shared.refresh(onDemand: true) }
             return .failure(.message(error.localizedDescription))

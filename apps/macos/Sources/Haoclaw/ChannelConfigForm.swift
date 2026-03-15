@@ -38,7 +38,7 @@ struct ConfigSchemaForm: View {
                                 options: literals,
                                 defaultValue: schema.explicitDefault))
                         {
-                            Text("Select…").tag(-1)
+                            Text("请选择…").tag(-1)
                             ForEach(literals.indices, id: \ .self) { index in
                                 Text(String(describing: literals[index])).tag(index)
                             }
@@ -82,7 +82,7 @@ struct ConfigSchemaForm: View {
         case "boolean":
             return AnyView(
                 Toggle(isOn: self.boolBinding(path, defaultValue: schema.explicitDefault as? Bool)) {
-                    if let label { Text(label) } else { Text("Enabled") }
+                    if let label { Text(label) } else { Text("已启用") }
                 }
                 .help(help ?? ""))
         case "number", "integer":
@@ -93,7 +93,7 @@ struct ConfigSchemaForm: View {
             return AnyView(
                 VStack(alignment: .leading, spacing: 6) {
                     if let label { Text(label).font(.callout.weight(.semibold)) }
-                    Text("Unsupported field type.")
+                    Text("暂不支持这种字段类型。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 })
@@ -120,7 +120,7 @@ struct ConfigSchemaForm: View {
             }
             if let options = schema.enumValues {
                 Picker("", selection: self.enumBinding(path, options: options, defaultValue: schema.explicitDefault)) {
-                    Text("Select…").tag(-1)
+                    Text("请选择…").tag(-1)
                     ForEach(options.indices, id: \ .self) { index in
                         Text(String(describing: options[index])).tag(index)
                     }
@@ -186,7 +186,7 @@ struct ConfigSchemaForm: View {
                     } else {
                         Text(String(describing: items[index]))
                     }
-                    Button("Remove") {
+                    Button("删除") {
                         var next = items
                         next.remove(at: index)
                         self.store.updateConfigValue(path: path, value: next)
@@ -195,7 +195,7 @@ struct ConfigSchemaForm: View {
                     .controlSize(.small)
                 }
             }
-            Button("Add") {
+            Button("添加") {
                 var next = items
                 if let itemSchema {
                     next.append(itemSchema.defaultValue)
@@ -221,21 +221,21 @@ struct ConfigSchemaForm: View {
             let extras = dict.keys.filter { !reserved.contains($0) }.sorted()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Extra entries")
+                Text("额外条目")
                     .font(.callout.weight(.semibold))
                 if extras.isEmpty {
-                    Text("No extra entries yet.")
+                    Text("暂时还没有额外条目。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(extras, id: \ .self) { key in
                         let itemPath: ConfigPath = path + [.key(key)]
                         HStack(alignment: .top, spacing: 8) {
-                            TextField("Key", text: self.mapKeyBinding(path: path, key: key))
+                            TextField("键名", text: self.mapKeyBinding(path: path, key: key))
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 160)
                             self.renderNode(additionalSchema, path: itemPath)
-                            Button("Remove") {
+                            Button("删除") {
                                 var next = dict
                                 next.removeValue(forKey: key)
                                 self.store.updateConfigValue(path: path, value: next)
@@ -245,7 +245,7 @@ struct ConfigSchemaForm: View {
                         }
                     }
                 }
-                Button("Add") {
+                Button("添加") {
                     var next = dict
                     var index = 1
                     var key = "new-\(index)"

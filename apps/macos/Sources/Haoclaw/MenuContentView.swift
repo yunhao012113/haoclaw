@@ -352,7 +352,7 @@ struct MenuContent: View {
             NSWorkspace.shared.open(url)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Dashboard unavailable"
+            alert.messageText = "面板暂时不可用"
             alert.informativeText = error.localizedDescription
             alert.runModal()
         }
@@ -361,7 +361,7 @@ struct MenuContent: View {
     private var healthStatus: (label: String, color: Color) {
         if let activity = self.activityStore.current {
             let color: Color = activity.role == .main ? .accentColor : .gray
-            let roleLabel = activity.role == .main ? "Main" : "Other"
+            let roleLabel = activity.role == .main ? "主实例" : "其他实例"
             let text = "\(roleLabel) · \(activity.label)"
             return (text, color)
         }
@@ -371,21 +371,21 @@ struct MenuContent: View {
         let lastAge = self.healthStore.lastSuccess.map { age(from: $0) }
 
         if isRefreshing {
-            return ("Health check running…", health.tint)
+            return ("健康检查进行中…", health.tint)
         }
 
         switch health {
         case .ok:
-            let ageText = lastAge.map { " · checked \($0)" } ?? ""
-            return ("Health ok\(ageText)", .green)
+            let ageText = lastAge.map { " · 检查于 \($0)" } ?? ""
+            return ("健康正常\(ageText)", .green)
         case .linkingNeeded:
-            return ("Health: login required", .red)
+            return ("健康状态：需要登录", .red)
         case let .degraded(reason):
             let detail = HealthStore.shared.degradedSummary ?? reason
-            let ageText = lastAge.map { " · checked \($0)" } ?? ""
+            let ageText = lastAge.map { " · 检查于 \($0)" } ?? ""
             return ("\(detail)\(ageText)", .orange)
         case .unknown:
-            return ("Health pending", .secondary)
+            return ("健康状态待确认", .secondary)
         }
     }
 

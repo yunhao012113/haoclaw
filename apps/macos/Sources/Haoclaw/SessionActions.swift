@@ -43,7 +43,7 @@ enum SessionActions {
         alert.messageText = title
         alert.informativeText = message
         alert.addButton(withTitle: action)
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "取消")
         alert.alertStyle = .warning
         return alert.runModal() == .alertFirstButtonReturn
     }
@@ -53,7 +53,7 @@ enum SessionActions {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "确定")
         alert.alertStyle = .warning
         alert.runModal()
     }
@@ -73,7 +73,7 @@ enum SessionActions {
         let existing = candidates.first(where: { FileManager().fileExists(atPath: $0.path) })
         guard let url = existing else {
             let alert = NSAlert()
-            alert.messageText = "Session log not found"
+            alert.messageText = "未找到会话日志"
             alert.informativeText = sessionId
             alert.runModal()
             return

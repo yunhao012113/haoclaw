@@ -8,10 +8,10 @@ struct AgentEventsWindow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Agent Events")
+                Text("智能体事件")
                     .font(.title3.weight(.semibold))
                 Spacer()
-                Button("Clear") { self.store.clear() }
+                Button("清空") { self.store.clear() }
                     .buttonStyle(.bordered)
             }
             .padding(.bottom, 4)
@@ -42,7 +42,7 @@ private struct EventRow: View {
                     .background(self.tint)
                     .foregroundStyle(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                Text("run " + self.event.runId)
+                Text("运行 " + self.event.runId)
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                 Spacer()

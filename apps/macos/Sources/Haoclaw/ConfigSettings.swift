@@ -75,7 +75,7 @@ extension ConfigSettings {
         SettingsSidebarScroll {
             LazyVStack(alignment: .leading, spacing: 8) {
                 if self.sections.isEmpty {
-                    Text("No config sections available.")
+                    Text("当前没有可用的配置分组。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6)
@@ -98,7 +98,7 @@ extension ConfigSettings {
             } else if self.store.configSchema != nil {
                 self.emptyDetail
             } else {
-                Text("Schema unavailable.")
+                Text("暂时无法获取配置结构。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -109,7 +109,7 @@ extension ConfigSettings {
     private var emptyDetail: some View {
         VStack(alignment: .leading, spacing: 8) {
             self.header
-            Text("Select a config section to view settings.")
+            Text("请选择左侧配置分组查看具体设置。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -131,7 +131,7 @@ extension ConfigSettings {
                 self.subsectionNav(section)
                 self.sectionForm(section)
                 if self.store.configDirty, !self.isNixMode {
-                    Text("Unsaved changes")
+                    Text("有未保存的修改")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -146,11 +146,11 @@ extension ConfigSettings {
 
     @ViewBuilder
     private var header: some View {
-        Text("Config")
+        Text("配置")
             .font(.title3.weight(.semibold))
         Text(self.isNixMode
-            ? "This tab is read-only in Nix mode. Edit config via Nix and rebuild."
-            : "Edit ~/.haoclaw/haoclaw.json using the schema-driven form.")
+            ? "当前处于 Nix 模式，这个页面只读。请通过 Nix 修改配置后重新构建。"
+            : "这里会用表单方式编辑 ~/.haoclaw/haoclaw.json。")
             .font(.callout)
             .foregroundStyle(.secondary)
     }
@@ -169,12 +169,12 @@ extension ConfigSettings {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
-            Button("Reload") {
+            Button("重新加载") {
                 Task { await self.store.reloadConfigDraft() }
             }
             .disabled(!self.store.configLoaded)
 
-            Button(self.store.isSavingConfig ? "Saving…" : "Save") {
+            Button(self.store.isSavingConfig ? "保存中…" : "保存") {
                 Task { await self.store.saveConfigDraft() }
             }
             .disabled(self.isNixMode || self.store.isSavingConfig || !self.store.configDirty)
@@ -218,7 +218,7 @@ extension ConfigSettings {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     self.subsectionButton(
-                        title: "All",
+                        title: "全部",
                         isSelected: self.activeSubsection == .all)
                     {
                         self.activeSubsection = .all

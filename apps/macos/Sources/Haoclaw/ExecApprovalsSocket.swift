@@ -217,13 +217,13 @@ enum ExecApprovalsPromptPresenter {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Allow this command?"
-        alert.informativeText = "Review the command details before allowing."
+        alert.messageText = "是否允许执行这条命令？"
+        alert.informativeText = "请先确认命令详情，再决定是否放行。"
         alert.accessoryView = self.buildAccessoryView(request)
 
-        alert.addButton(withTitle: "Allow Once")
-        alert.addButton(withTitle: "Always Allow")
-        alert.addButton(withTitle: "Don't Allow")
+        alert.addButton(withTitle: "允许一次")
+        alert.addButton(withTitle: "始终允许")
+        alert.addButton(withTitle: "不允许")
         if #available(macOS 11.0, *), alert.buttons.indices.contains(2) {
             alert.buttons[2].hasDestructiveAction = true
         }
@@ -247,7 +247,7 @@ enum ExecApprovalsPromptPresenter {
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.widthAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
 
-        let commandTitle = NSTextField(labelWithString: "Command")
+        let commandTitle = NSTextField(labelWithString: "命令内容")
         commandTitle.font = NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
         stack.addArrangedSubview(commandTitle)
 
@@ -277,7 +277,7 @@ enum ExecApprovalsPromptPresenter {
         commandScroll.heightAnchor.constraint(lessThanOrEqualToConstant: 120).isActive = true
         stack.addArrangedSubview(commandScroll)
 
-        let contextTitle = NSTextField(labelWithString: "Context")
+        let contextTitle = NSTextField(labelWithString: "上下文")
         contextTitle.font = NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
         stack.addArrangedSubview(contextTitle)
 
@@ -288,29 +288,29 @@ enum ExecApprovalsPromptPresenter {
 
         let trimmedCwd = request.cwd?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmedCwd.isEmpty {
-            self.addDetailRow(title: "Working directory", value: trimmedCwd, to: contextStack)
+            self.addDetailRow(title: "工作目录", value: trimmedCwd, to: contextStack)
         }
         let trimmedAgent = request.agentId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmedAgent.isEmpty {
-            self.addDetailRow(title: "Agent", value: trimmedAgent, to: contextStack)
+            self.addDetailRow(title: "智能体", value: trimmedAgent, to: contextStack)
         }
         let trimmedPath = request.resolvedPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmedPath.isEmpty {
-            self.addDetailRow(title: "Executable", value: trimmedPath, to: contextStack)
+            self.addDetailRow(title: "可执行文件", value: trimmedPath, to: contextStack)
         }
         let trimmedHost = request.host?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmedHost.isEmpty {
-            self.addDetailRow(title: "Host", value: trimmedHost, to: contextStack)
+            self.addDetailRow(title: "宿主环境", value: trimmedHost, to: contextStack)
         }
         if let security = request.security?.trimmingCharacters(in: .whitespacesAndNewlines), !security.isEmpty {
-            self.addDetailRow(title: "Security", value: security, to: contextStack)
+            self.addDetailRow(title: "安全级别", value: security, to: contextStack)
         }
         if let ask = request.ask?.trimmingCharacters(in: .whitespacesAndNewlines), !ask.isEmpty {
-            self.addDetailRow(title: "Ask mode", value: ask, to: contextStack)
+            self.addDetailRow(title: "询问模式", value: ask, to: contextStack)
         }
 
         if contextStack.arrangedSubviews.isEmpty {
-            let empty = NSTextField(labelWithString: "No additional context provided.")
+            let empty = NSTextField(labelWithString: "没有额外的上下文信息。")
             empty.textColor = NSColor.secondaryLabelColor
             empty.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
             contextStack.addArrangedSubview(empty)
@@ -318,7 +318,7 @@ enum ExecApprovalsPromptPresenter {
 
         stack.addArrangedSubview(contextStack)
 
-        let footer = NSTextField(labelWithString: "This runs on this machine.")
+        let footer = NSTextField(labelWithString: "这条命令会在当前设备上执行。")
         footer.textColor = NSColor.secondaryLabelColor
         footer.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         stack.addArrangedSubview(footer)

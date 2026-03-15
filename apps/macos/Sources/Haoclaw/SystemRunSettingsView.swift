@@ -10,10 +10,10 @@ struct SystemRunSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 12) {
-                Text("Exec approvals")
+                Text("命令执行授权")
                     .font(.body)
                 Spacer(minLength: 0)
-                Picker("Agent", selection: Binding(
+                Picker("智能体", selection: Binding(
                     get: { self.model.selectedAgentId },
                     set: { self.model.selectAgent($0) }))
                 {
@@ -74,7 +74,7 @@ struct SystemRunSettingsView: View {
                 set: { self.model.setAskFallback($0) }))
             {
                 ForEach(ExecSecurity.allCases) { mode in
-                    Text("Fallback: \(mode.title)").tag(mode)
+                    Text("兜底策略：\(mode.title)").tag(mode)
                 }
             }
             .labelsHidden()
@@ -89,25 +89,25 @@ struct SystemRunSettingsView: View {
 
     private var allowlistView: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle("Auto-allow skill CLIs", isOn: Binding(
+            Toggle("自动放行技能 CLI", isOn: Binding(
                 get: { self.model.autoAllowSkills },
                 set: { self.model.setAutoAllowSkills($0) }))
 
             if self.model.autoAllowSkills, !self.model.skillBins.isEmpty {
-                Text("Skill CLIs: \(self.model.skillBins.joined(separator: ", "))")
+                Text("技能 CLI：\(self.model.skillBins.joined(separator: ", "))")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
             if self.model.isDefaultsScope {
-                Text("Allowlists are per-agent. Select an agent to edit its allowlist.")
+                Text("允许名单按智能体分别保存。请选择一个智能体后再编辑它的允许名单。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 8) {
-                    TextField("Add allowlist path pattern (case-insensitive globs)", text: self.$newPattern)
+                    TextField("新增允许名单路径规则（不区分大小写，支持通配）", text: self.$newPattern)
                         .textFieldStyle(.roundedBorder)
-                    Button("Add") {
+                    Button("添加") {
                         if self.model.addEntry(self.newPattern) == nil {
                             self.newPattern = ""
                         }
@@ -116,7 +116,7 @@ struct SystemRunSettingsView: View {
                     .disabled(!self.model.isPathPattern(self.newPattern))
                 }
 
-                Text("Path patterns only. Basename entries like \"echo\" are ignored.")
+                Text("这里只支持路径规则，像“echo”这种仅文件名的写法会被忽略。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 if let validationMessage = self.model.allowlistValidationMessage {
@@ -126,7 +126,7 @@ struct SystemRunSettingsView: View {
                 }
 
                 if self.model.entries.isEmpty {
-                    Text("No allowlisted commands yet.")
+                    Text("当前还没有允许的命令规则。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else {
@@ -146,11 +146,11 @@ struct SystemRunSettingsView: View {
 
     private var scopeMessage: String {
         if self.model.isDefaultsScope {
-            return "Defaults apply when an agent has no overrides. " +
-                "Ask controls prompt behavior; fallback is used when no companion UI is reachable."
+            return "当智能体没有单独覆盖设置时，会使用这里的默认策略。" +
+                "询问模式决定是否弹窗确认；没有可用配套界面时会走兜底策略。"
         }
-        return "Security controls whether system.run can execute on this Mac when paired as a node. " +
-            "Ask controls prompt behavior; fallback is used when no companion UI is reachable."
+        return "安全级别决定配对为节点后，system.run 是否可以在这台 Mac 上执行。" +
+            "询问模式决定是否弹窗确认；没有可用配套界面时会走兜底策略。"
     }
 }
 
@@ -164,8 +164,8 @@ private enum ExecApprovalsSettingsTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .policy: "Access"
-        case .allowlist: "Allowlist"
+        case .policy: "访问策略"
+        case .allowlist: "允许名单"
         }
     }
 }
@@ -184,7 +184,7 @@ struct ExecAllowlistRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                TextField("Pattern", text: self.patternBinding)
+                TextField("规则", text: self.patternBinding)
                     .textFieldStyle(.roundedBorder)
 
                 Button(role: .destructive) {
@@ -197,19 +197,19 @@ struct ExecAllowlistRow: View {
 
             if let lastUsedAt = self.entry.lastUsedAt {
                 let date = Date(timeIntervalSince1970: lastUsedAt / 1000.0)
-                Text("Last used \(Self.relativeFormatter.localizedString(for: date, relativeTo: Date()))")
+                Text("最近使用：\(Self.relativeFormatter.localizedString(for: date, relativeTo: Date()))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             if let lastUsedCommand = self.entry.lastUsedCommand, !lastUsedCommand.isEmpty {
-                Text("Last command: \(lastUsedCommand)")
+                Text("最近命令：\(lastUsedCommand)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             if let lastResolvedPath = self.entry.lastResolvedPath, !lastResolvedPath.isEmpty {
-                Text("Resolved path: \(lastResolvedPath)")
+                Text("解析路径：\(lastResolvedPath)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -253,7 +253,7 @@ final class ExecApprovalsSettingsModel {
     }
 
     func label(for id: String) -> String {
-        if id == Self.defaultsScopeId { return "Defaults" }
+        if id == Self.defaultsScopeId { return "默认值" }
         return id
     }
 

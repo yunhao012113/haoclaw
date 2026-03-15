@@ -20,14 +20,14 @@ struct ContextMenuCardView: View {
 
     var body: some View {
         MenuHeaderCard(
-            title: "Context",
+            title: "上下文",
             subtitle: self.subtitle,
             statusText: self.statusText,
             paddingBottom: 8)
         {
             if self.statusText == nil {
                 if self.rows.isEmpty, !self.isLoading {
-                    Text("No active sessions")
+                    Text("当前没有活跃会话")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -49,8 +49,8 @@ struct ContextMenuCardView: View {
 
     private var subtitle: String {
         let count = self.rows.count
-        if count == 1 { return "1 session · 24h" }
-        return "\(count) sessions · 24h"
+        if count == 1 { return "1 个会话 · 24 小时" }
+        return "\(count) 个会话 · 24 小时"
     }
 
     private func sessionRow(_ row: SessionRow) -> some View {

@@ -8,12 +8,12 @@ struct VoiceWakeTestCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Test Voice Wake")
+                Text("测试语音唤醒")
                     .font(.callout.weight(.semibold))
                 Spacer()
                 Button(action: self.onToggle) {
                     Label(
-                        self.isTesting ? "Stop" : "Start test",
+                        self.isTesting ? "停止" : "开始测试",
                         systemImage: self.isTesting ? "stop.circle.fill" : "play.circle")
                 }
                 .buttonStyle(.borderedProminent)
@@ -27,7 +27,7 @@ struct VoiceWakeTestCard: View {
                         .font(.subheadline)
                         .frame(maxHeight: 22, alignment: .center)
                     if case let .detected(text) = testState {
-                        Text("Heard: \(text)")
+                        Text("识别到：\(text)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -71,22 +71,22 @@ struct VoiceWakeTestCard: View {
     private var statusText: String {
         switch self.testState {
         case .idle:
-            "Press start, say a trigger word, and wait for detection."
+            "点击开始后说出触发词，等待系统识别。"
 
         case .requesting:
-            "Requesting mic & speech permission…"
+            "正在请求麦克风和语音识别权限…"
 
         case .listening:
-            "Listening… say your trigger word."
+            "正在监听… 请说出你的触发词。"
 
         case let .hearing(text):
-            "Heard: \(text)"
+            "识别到：\(text)"
 
         case .finalizing:
-            "Finalizing…"
+            "正在收尾处理中…"
 
         case .detected:
-            "Voice wake detected!"
+            "已识别到语音唤醒。"
 
         case let .failed(reason):
             reason
