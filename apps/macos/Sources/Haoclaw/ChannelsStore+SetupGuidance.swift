@@ -197,6 +197,12 @@ extension ChannelsStore {
         if let lastError = status["lastError"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
            !lastError.isEmpty
         {
+            if self.isBenignDisconnectedState(lastError, status: status) {
+                return ChannelSetupSummary(
+                    state: .ready,
+                    title: "可以开始验证",
+                    detail: "填入最少必填项后，Haoclaw 会自动保存并检查当前渠道。")
+            }
             return ChannelSetupSummary(
                 state: .attention,
                 title: "验证异常",
@@ -333,6 +339,7 @@ extension ChannelsStore {
             ("configured", "已配置"),
             ("connected", "已连接"),
             ("disconnected", "已断开"),
+            ("logged out", "已退出登录"),
             ("running", "运行中"),
             ("invalid auth", "认证无效"),
             ("invalid payload", "请求内容无效"),
@@ -350,6 +357,15 @@ extension ChannelsStore {
             text = text.replacingOccurrences(of: source, with: target, options: .caseInsensitive)
         }
         return text
+    }
+
+    private func isBenignDisconnectedState(_ raw: String, status: [String: AnyCodable]) -> Bool {
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let configured = status["configured"]?.boolValue ?? false
+        if !configured, normalized == "logged out" {
+            return true
+        }
+        return false
     }
 
     func channelMissingRequiredFields(for channelId: String) -> [String] {

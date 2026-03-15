@@ -392,7 +392,7 @@ private struct ManualChannelConfigForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("当前使用渠道专用配置表单。即使后端 schema 没返回，也可以直接填写 Token、Secret、Webhook 和权限策略。")
+            Text("这里只保留最少必填项。你填完后，Haoclaw 会自动补全其余默认配置并立即验证。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -641,184 +641,66 @@ private func commonGroupPolicyOptions() -> [ManualChannelOption] {
 }
 
 private func manualChannelFields(for channelId: String) -> [ManualChannelField] {
+    minimalManualChannelFields(for: channelId)
+}
+
+private func minimalManualChannelFields(for channelId: String) -> [ManualChannelField] {
     switch channelId {
     case "feishu":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["appId"], label: "应用 App ID", kind: .text, placeholder: "cli_xxx", help: nil),
-            .init(path: ["appSecret"], label: "应用 App Secret", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["encryptKey"], label: "加密 Key", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["verificationToken"], label: "校验 Token", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["connectionMode"], label: "接入方式", kind: .select([
-                .init(label: "WebSocket", value: "websocket"),
-                .init(label: "Webhook", value: "webhook"),
-            ]), placeholder: "", help: nil),
-            .init(path: ["domain"], label: "服务域", kind: .select([
-                .init(label: "飞书", value: "feishu"),
-                .init(label: "Lark", value: "lark"),
-            ]), placeholder: "", help: nil),
-            .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/feishu", help: nil),
-            .init(path: ["webhookHost"], label: "Webhook 主机", kind: .text, placeholder: "0.0.0.0", help: nil),
-            .init(path: ["webhookPort"], label: "Webhook 端口", kind: .number, placeholder: "18789", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 open_id 或 user_id"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
-            .init(path: ["groupAllowFrom"], label: "允许群组", kind: .multiline, placeholder: "", help: "每行一个 chat_id"),
-            .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["requireMention"], label: "群聊必须 @", kind: .toggle, placeholder: "", help: nil),
+            .init(path: ["appId"], label: "应用 App ID", kind: .text, placeholder: "cli_xxx", help: "填入飞书应用的 App ID。"),
+            .init(path: ["appSecret"], label: "应用 App Secret", kind: .secret, placeholder: "", help: "填入飞书应用的 App Secret。"),
         ]
     case "telegram":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["botToken"], label: "Bot Token", kind: .secret, placeholder: "123456:ABC...", help: nil),
-            .init(path: ["tokenFile"], label: "Token 文件", kind: .text, placeholder: "/path/to/token.txt", help: nil),
-            .init(path: ["webhookUrl"], label: "Webhook 公网地址", kind: .text, placeholder: "https://example.com/telegram", help: nil),
-            .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/telegram", help: nil),
-            .init(path: ["webhookSecret"], label: "Webhook Secret", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["proxy"], label: "代理地址", kind: .text, placeholder: "socks5://127.0.0.1:7890", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 tg:userId"),
-            .init(path: ["groupAllowFrom"], label: "允许群组发送者", kind: .multiline, placeholder: "", help: "每行一个 tg:userId"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["streamMode"], label: "流式模式", kind: .select([
-                .init(label: "关闭", value: "off"),
-                .init(label: "草稿流", value: "partial"),
-                .init(label: "块流", value: "block"),
-            ]), placeholder: "", help: nil),
-            .init(path: ["replyToMode"], label: "回复模式", kind: .select([
-                .init(label: "关闭", value: "off"),
-                .init(label: "首条回复", value: "first"),
-                .init(label: "全部回复", value: "all"),
-            ]), placeholder: "", help: nil),
-            .init(path: ["requireMention"], label: "群聊必须 @", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "user:12345678 / group:-100...", help: nil),
+            .init(path: ["botToken"], label: "机器人 Token", kind: .secret, placeholder: "123456:ABC...", help: "只填这个就可以，其他 Telegram 默认项会由后台自动补齐。"),
         ]
     case "slack":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["mode"], label: "接入模式", kind: .select([
-                .init(label: "Socket 模式", value: "socket"),
-                .init(label: "HTTP 模式", value: "http"),
-            ]), placeholder: "", help: nil),
-            .init(path: ["botToken"], label: "Bot Token", kind: .secret, placeholder: "xoxb-...", help: nil),
-            .init(path: ["appToken"], label: "App Token", kind: .secret, placeholder: "xapp-...", help: nil),
-            .init(path: ["userToken"], label: "User Token", kind: .secret, placeholder: "xoxp-...", help: nil),
-            .init(path: ["signingSecret"], label: "Signing Secret", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/slack", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 Slack user id"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "频道策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["requireMention"], label: "频道必须 @", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "C12345678 / U12345678", help: nil),
-            .init(path: ["replyToMode"], label: "回复模式", kind: .select([
-                .init(label: "主频道", value: "off"),
-                .init(label: "线程回复", value: "thread"),
-            ]), placeholder: "", help: nil),
+            .init(path: ["botToken"], label: "机器人 Token", kind: .secret, placeholder: "xoxb-...", help: "必填。"),
+            .init(path: ["appToken"], label: "应用 Token", kind: .secret, placeholder: "xapp-...", help: "如果你走 Socket 模式，填这个即可自动识别。"),
+            .init(path: ["signingSecret"], label: "签名密钥", kind: .secret, placeholder: "", help: "如果你走 HTTP 模式，填这个即可自动识别。"),
         ]
     case "discord":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["token"], label: "Bot Token", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "channel:123 / user:456", help: nil),
-            .init(path: ["dm", "allowFrom"], label: "允许私聊用户", kind: .multiline, placeholder: "", help: "每行一个 Discord user id"),
-            .init(path: ["dm", "policy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "频道策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["replyToMode"], label: "回复模式", kind: .select([
-                .init(label: "关闭", value: "off"),
-                .init(label: "回复原消息", value: "reply"),
-                .init(label: "线程优先", value: "thread"),
-            ]), placeholder: "", help: nil),
+            .init(path: ["token"], label: "机器人 Token", kind: .secret, placeholder: "", help: "只填这个就够了。"),
         ]
     case "googlechat":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["serviceAccount"], label: "服务账号 JSON", kind: .multiline, placeholder: "{ ... }", help: "可直接粘贴 JSON 内容"),
-            .init(path: ["serviceAccountFile"], label: "服务账号文件", kind: .text, placeholder: "/path/to/service-account.json", help: nil),
-            .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/googlechat", help: nil),
-            .init(path: ["webhookUrl"], label: "Webhook URL", kind: .text, placeholder: "https://...", help: nil),
-            .init(path: ["botUser"], label: "Bot 用户", kind: .text, placeholder: "users/123456789", help: nil),
-            .init(path: ["audienceType"], label: "Audience 类型", kind: .text, placeholder: "chat-app / service-account", help: nil),
-            .init(path: ["audience"], label: "Audience 值", kind: .text, placeholder: "https://chat.googleapis.com/", help: nil),
-            .init(path: ["dm", "allowFrom"], label: "允许私聊用户", kind: .multiline, placeholder: "", help: "每行一个 users/xxx"),
-            .init(path: ["dm", "policy"], label: "私聊策略", kind: .select(commonPolicyOptions(includeDisabled: false)), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "空间策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "spaces/AAAA...", help: nil),
+            .init(path: ["serviceAccount"], label: "服务账号 JSON", kind: .multiline, placeholder: "{ ... }", help: "可以直接粘贴 JSON。"),
+            .init(path: ["serviceAccountFile"], label: "服务账号文件", kind: .text, placeholder: "/路径/到/service-account.json", help: "如果你不想直接粘贴 JSON，可以填文件路径。"),
+            .init(path: ["webhookUrl"], label: "Webhook 地址", kind: .text, placeholder: "https://...", help: "如果你走 webhook 模式，只填这个也可以。"),
         ]
     case "signal":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["baseUrl"], label: "Signal 服务地址", kind: .text, placeholder: "http://127.0.0.1:8080", help: nil),
-            .init(path: ["cliPath"], label: "signal-cli 路径", kind: .text, placeholder: "/usr/local/bin/signal-cli", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个号码或用户标识"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "+86138...", help: nil),
+            .init(path: ["baseUrl"], label: "Signal 服务地址", kind: .text, placeholder: "http://127.0.0.1:8080", help: "填入服务地址即可。"),
         ]
     case "imessage":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["cliPath"], label: "命令行路径", kind: .text, placeholder: "imessage / bluebubbles-cli", help: nil),
-            .init(path: ["dbPath"], label: "数据库路径", kind: .text, placeholder: "~/Library/Messages/chat.db", help: nil),
-            .init(path: ["remoteHost"], label: "远程主机", kind: .text, placeholder: "user@remote-mac", help: nil),
-            .init(path: ["service"], label: "发送服务", kind: .select([
-                .init(label: "自动", value: "auto"),
-                .init(label: "iMessage", value: "imessage"),
-                .init(label: "短信", value: "sms"),
-            ]), placeholder: "", help: nil),
-            .init(path: ["region"], label: "短信区域", kind: .text, placeholder: "CN / US", help: nil),
-            .init(path: ["allowFrom"], label: "允许联系人", kind: .multiline, placeholder: "", help: "每行一个手机号或邮箱"),
-            .init(path: ["groupAllowFrom"], label: "允许群组发送者", kind: .multiline, placeholder: "", help: "每行一个手机号或邮箱"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "+86138... / someone@example.com", help: nil),
+            .init(path: ["cliPath"], label: "命令行路径", kind: .text, placeholder: "imessage / bluebubbles-cli", help: "本机模式优先填这个。"),
+            .init(path: ["remoteHost"], label: "远程主机", kind: .text, placeholder: "user@remote-mac", help: "如果走远程 Mac，可直接填这里。"),
         ]
     case "whatsapp":
-        return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "+86138...", help: nil),
-            .init(path: ["allowFrom"], label: "允许联系人", kind: .multiline, placeholder: "", help: "每行一个号码或 jid"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-        ]
+        return []
     case "line":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["channelAccessToken"], label: "Channel Access Token", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["channelSecret"], label: "Channel Secret", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["webhookPath"], label: "Webhook 路径", kind: .text, placeholder: "/webhook/line", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 LINE user id"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "群组策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["groupAllowFrom"], label: "允许群组发送者", kind: .multiline, placeholder: "", help: "每行一个 LINE user id"),
+            .init(path: ["channelAccessToken"], label: "频道访问 Token", kind: .secret, placeholder: "", help: "必填。"),
+            .init(path: ["channelSecret"], label: "频道密钥", kind: .secret, placeholder: "", help: "必填。"),
         ]
     case "twitch":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["username"], label: "Bot 用户名", kind: .text, placeholder: "your_bot_name", help: nil),
-            .init(path: ["accessToken"], label: "OAuth Token", kind: .secret, placeholder: "oauth:...", help: nil),
-            .init(path: ["clientId"], label: "Client ID", kind: .text, placeholder: "", help: nil),
-            .init(path: ["clientSecret"], label: "Client Secret", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["refreshToken"], label: "Refresh Token", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 Twitch user id"),
+            .init(path: ["username"], label: "机器人用户名", kind: .text, placeholder: "your_bot_name", help: "必填。"),
+            .init(path: ["accessToken"], label: "OAuth Token", kind: .secret, placeholder: "oauth:...", help: "必填。"),
         ]
     case "nostr":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["relays"], label: "Relay 列表", kind: .multiline, placeholder: "wss://...", help: "每行一个 relay 地址"),
-            .init(path: ["privateKey"], label: "私钥", kind: .secret, placeholder: "", help: nil),
-            .init(path: ["publicKey"], label: "公钥", kind: .text, placeholder: "", help: nil),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 npub 或 hex 公钥"),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "npub...", help: nil),
+            .init(path: ["relays"], label: "Relay 列表", kind: .multiline, placeholder: "wss://...", help: "每行一个 relay 地址。"),
+            .init(path: ["privateKey"], label: "私钥", kind: .secret, placeholder: "", help: "必填。"),
         ]
     case "mattermost":
         return [
-            .init(path: ["enabled"], label: "启用渠道", kind: .toggle, placeholder: "", help: nil),
-            .init(path: ["baseUrl"], label: "服务地址", kind: .text, placeholder: "https://chat.example.com", help: nil),
-            .init(path: ["botToken"], label: "Bot Token", kind: .secret, placeholder: "mm-token", help: nil),
-            .init(path: ["defaultTo"], label: "默认发送目标", kind: .text, placeholder: "channel-id / @username", help: nil),
-            .init(path: ["allowFrom"], label: "允许用户", kind: .multiline, placeholder: "", help: "每行一个 Mattermost 用户名或 ID"),
-            .init(path: ["dmPolicy"], label: "私聊策略", kind: .select(commonPolicyOptions()), placeholder: "", help: nil),
-            .init(path: ["groupPolicy"], label: "频道策略", kind: .select(commonGroupPolicyOptions()), placeholder: "", help: nil),
+            .init(path: ["baseUrl"], label: "服务地址", kind: .text, placeholder: "https://chat.example.com", help: "必填。"),
+            .init(path: ["botToken"], label: "机器人 Token", kind: .secret, placeholder: "mm-token", help: "必填。"),
         ]
     default:
         return []

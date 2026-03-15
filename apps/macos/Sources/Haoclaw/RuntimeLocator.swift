@@ -110,6 +110,17 @@ enum RuntimeLocator {
         }
     }
 
+    static func userFacingFailure(_ error: RuntimeResolutionError) -> String {
+        switch error {
+        case .notFound:
+            return "未检测到可用的 Node.js 22 运行时。"
+        case .unsupported:
+            return "当前 Node.js 版本过低，需要 22 或更高版本。"
+        case .versionParse:
+            return "本机 Node.js 安装异常，暂时无法识别版本。"
+        }
+    }
+
     // MARK: - Internals
 
     private static func findExecutable(named name: String, searchPaths: [String]) -> String? {

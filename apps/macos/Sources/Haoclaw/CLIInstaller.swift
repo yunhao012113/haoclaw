@@ -134,7 +134,7 @@ enum CLIInstaller {
             return .installScript(version: version)
         case let .failure(error):
             if platform == .macOS {
-                return .desktopDownload(message: self.manualRepairMessage(detail: RuntimeLocator.describeFailure(error)))
+                return .desktopDownload(message: self.manualRepairMessage(detail: RuntimeLocator.userFacingFailure(error)))
             }
             return .installScript(version: version)
         }
@@ -178,8 +178,8 @@ enum CLIInstaller {
 
     private static func manualRepairMessage(detail: String) -> String {
         """
-        当前设备缺少可直接用于本地模式的运行时，桌面端在无终端模式下无法静默申请管理员权限。
-        已为你打开统一下载页，请安装最新版 PKG 后再点“一键修复”。
+        当前设备还不能直接启用本地模式。
+        已为你打开统一下载页，请先安装最新版 PKG，再回来点“一键修复”。
 
         \(detail)
         """

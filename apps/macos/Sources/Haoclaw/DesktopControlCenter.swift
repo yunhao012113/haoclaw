@@ -607,7 +607,12 @@ private struct DesktopControlChannelsPane: View {
     }
 
     private func channelLastError(_ id: String) -> String? {
-        guard let raw = self.channelStatus(id)?["lastError"]?.stringValue else { return nil }
+        guard let status = self.channelStatus(id) else { return nil }
+        guard let raw = status["lastError"]?.stringValue else { return nil }
+        let configured = status["configured"]?.boolValue ?? false
+        if !configured, raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "logged out" {
+            return nil
+        }
         return self.store.localizeChannelTechnicalText(raw)
     }
 

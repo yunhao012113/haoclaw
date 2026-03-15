@@ -56,8 +56,15 @@ final class CLIInstallPrompter {
         }
         if let message = await status.get() {
             let alert = NSAlert()
-            alert.messageText = success ? "安装完成" : "安装失败"
-            alert.informativeText = message
+            if success {
+                alert.messageText = "安装完成"
+            } else if message.contains("统一下载页") {
+                alert.messageText = "请先安装最新版"
+                alert.informativeText = "已为你打开统一下载页。先安装最新版 PKG，再回来点“一键修复”即可。"
+            } else {
+                alert.messageText = "安装失败"
+                alert.informativeText = message
+            }
             alert.runModal()
         }
     }
