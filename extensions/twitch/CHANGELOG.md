@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.3.67
+
+### Changes
+
+- Version alignment with core Haoclaw release numbers.
+
 ## 2026.3.9
 
 ### Changes

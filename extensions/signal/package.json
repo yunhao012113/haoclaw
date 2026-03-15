@@ -1,6 +1,6 @@
 {
   "name": "@haoclaw/signal",
-  "version": "2026.3.9",
+  "version": "2026.3.67",
   "private": true,
   "description": "Haoclaw Signal channel plugin",
   "type": "module",

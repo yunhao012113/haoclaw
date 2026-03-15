@@ -1,6 +1,6 @@
 {
   "name": "@haoclaw/feishu",
-  "version": "2026.3.9",
+  "version": "2026.3.67",
   "description": "Haoclaw Feishu/Lark channel plugin (community maintained by @m1heng)",
   "type": "module",
   "dependencies": {

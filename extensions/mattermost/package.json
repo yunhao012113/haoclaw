@@ -1,6 +1,6 @@
 {
   "name": "@haoclaw/mattermost",
-  "version": "2026.3.9",
+  "version": "2026.3.67",
   "description": "Haoclaw Mattermost channel plugin",
   "type": "module",
   "dependencies": {

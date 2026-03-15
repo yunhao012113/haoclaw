@@ -1,6 +1,6 @@
 {
   "name": "@haoclaw/memory-core",
-  "version": "2026.3.9",
+  "version": "2026.3.67",
   "private": true,
   "description": "Haoclaw core memory search plugin",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@haoclaw/synology-chat",
-  "version": "2026.3.9",
+  "version": "2026.3.67",
   "description": "Synology Chat channel plugin for Haoclaw",
   "type": "module",
   "dependencies": {

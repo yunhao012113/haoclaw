@@ -1,6 +1,6 @@
 {
   "name": "@haoclaw/matrix",
-  "version": "2026.3.9",
+  "version": "2026.3.67",
   "description": "Haoclaw Matrix channel plugin",
   "type": "module",
   "dependencies": {
