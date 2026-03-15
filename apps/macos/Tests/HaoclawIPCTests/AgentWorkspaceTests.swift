@@ -26,7 +26,7 @@ struct AgentWorkspaceTests {
     }
 
     @Test
-    func `bootstrap creates agents file when missing`() throws {
+    func `bootstrap creates direct-use workspace files when missing`() throws {
         let tmp = FileManager().temporaryDirectory
             .appendingPathComponent("haoclaw-ws-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager().removeItem(at: tmp) }
@@ -42,7 +42,10 @@ struct AgentWorkspaceTests {
         let bootstrapURL = tmp.appendingPathComponent(AgentWorkspace.bootstrapFilename)
         #expect(FileManager().fileExists(atPath: identityURL.path))
         #expect(FileManager().fileExists(atPath: userURL.path))
-        #expect(FileManager().fileExists(atPath: bootstrapURL.path))
+        #expect(!FileManager().fileExists(atPath: bootstrapURL.path))
+
+        let identityContents = try String(contentsOf: identityURL, encoding: .utf8)
+        #expect(identityContents.contains("Haoclaw"))
 
         let second = try AgentWorkspace.bootstrap(workspaceURL: tmp)
         #expect(second == agentsURL)
@@ -90,7 +93,7 @@ struct AgentWorkspaceTests {
     }
 
     @Test
-    func `needs bootstrap false when identity already set`() throws {
+    func `needs bootstrap is disabled for desktop direct use`() throws {
         let tmp = FileManager().temporaryDirectory
             .appendingPathComponent("haoclaw-ws-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager().removeItem(at: tmp) }
@@ -108,5 +111,33 @@ struct AgentWorkspaceTests {
         try "bootstrap".write(to: bootstrapURL, atomically: true, encoding: .utf8)
 
         #expect(!AgentWorkspace.needsBootstrap(workspaceURL: tmp))
+    }
+
+    @Test
+    func `bootstrap removes legacy bootstrap and seeds defaults for placeholder identity`() throws {
+        let tmp = FileManager().temporaryDirectory
+            .appendingPathComponent("haoclaw-ws-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager().removeItem(at: tmp) }
+        try FileManager().createDirectory(at: tmp, withIntermediateDirectories: true)
+
+        let identityURL = tmp.appendingPathComponent(AgentWorkspace.identityFilename)
+        try """
+        # IDENTITY.md - Agent Identity
+
+        - Name:
+        - Creature:
+        - Vibe:
+        - Emoji:
+        """.write(to: identityURL, atomically: true, encoding: .utf8)
+
+        let bootstrapURL = tmp.appendingPathComponent(AgentWorkspace.bootstrapFilename)
+        try AgentWorkspace.defaultBootstrapTemplate().write(to: bootstrapURL, atomically: true, encoding: .utf8)
+
+        _ = try AgentWorkspace.bootstrap(workspaceURL: tmp)
+
+        #expect(!FileManager().fileExists(atPath: bootstrapURL.path))
+        let identityContents = try String(contentsOf: identityURL, encoding: .utf8)
+        #expect(identityContents.contains("Haoclaw"))
+        #expect(identityContents.contains("🐙"))
     }
 }
