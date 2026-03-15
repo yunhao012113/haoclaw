@@ -378,6 +378,33 @@ struct DesktopModelSettingsDraft: Equatable {
     var modelID = ""
 }
 
+enum DesktopDiagnosticSeverity: String, Equatable {
+    case ok
+    case info
+    case warning
+    case error
+}
+
+struct DesktopDiagnosticItem: Identifiable, Equatable {
+    let id: String
+    let severity: DesktopDiagnosticSeverity
+    let title: String
+    let detail: String
+}
+
+enum DesktopGuideStepState: Equatable {
+    case done
+    case current
+    case pending
+}
+
+struct DesktopGuideStep: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let detail: String
+    let state: DesktopGuideStepState
+}
+
 @MainActor
 @Observable
 final class DesktopClientModel {
@@ -396,6 +423,9 @@ final class DesktopClientModel {
     var gatewayURL = "未连接"
     var gatewayStatus = "连接中"
     var isGatewayReady = false
+    var isRunningDiagnostics = false
+    var diagnostics: [DesktopDiagnosticItem] = []
+    var diagnosticsCheckedAt: Date?
     var stateDirectory = "未发现"
     var configPath = "未发现"
     var connectionHint: String?
@@ -406,6 +436,7 @@ final class DesktopClientModel {
     var controlSection: DesktopControlSection = .general
 
     @ObservationIgnored private var endpointTask: Task<Void, Never>?
+    private static let autoDiagnosticsDefaultsKey = "desktop.autoDiagnosticsEnabled"
 
     var availableModels: [ModelChoice] {
         Self.mergeModelChoices(self.configuredModels, self.runtimeModels, currentModelRef: self.selectedSessionModelRef)
@@ -480,6 +511,87 @@ final class DesktopClientModel {
         return !providerID.isEmpty && !modelID.isEmpty
     }
 
+    var selectedSessionModelDisplayRef: String {
+        Self.displayModelRef(self.selectedSessionModelRef)
+    }
+
+    var diagnosticsSummaryText: String {
+        if self.isRunningDiagnostics {
+            return "正在自动检查本地运行、网关和模型配置…"
+        }
+        guard !self.diagnostics.isEmpty else {
+            return "还没有自动查错结果。"
+        }
+        let errorCount = self.diagnostics.filter { $0.severity == .error }.count
+        let warningCount = self.diagnostics.filter { $0.severity == .warning }.count
+        if errorCount == 0, warningCount == 0 {
+            return "自动查错已完成：当前没有发现阻塞启动的问题。"
+        }
+        if errorCount > 0 {
+            return "自动查错已完成：发现 \(errorCount) 个阻塞项，\(warningCount) 个提醒项。"
+        }
+        return "自动查错已完成：发现 \(warningCount) 个提醒项。"
+    }
+
+    var shouldShowStartupGuide: Bool {
+        self.startupGuideSteps.contains(where: { $0.state != .done }) ||
+            self.diagnostics.contains(where: { $0.severity == .error || $0.severity == .warning })
+    }
+
+    var startupGuideSteps: [DesktopGuideStep] {
+        let localReady = self.appState.connectionMode == .remote || (self.connectionHint == nil && self.isGatewayReady)
+        let hasConfiguredModel = self.currentModelRef != "未配置" &&
+            !self.settingsDraft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !self.settingsDraft.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasAssistantReply = self.chatViewModel.messages.contains { message in
+            message.role.lowercased() == "assistant" &&
+                message.content.contains { content in
+                    let text = content.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    return !text.isEmpty
+                }
+        }
+
+        let stepOneState: DesktopGuideStepState = localReady ? .done : .current
+        let stepTwoState: DesktopGuideStepState = if hasConfiguredModel {
+            .done
+        } else if localReady {
+            .current
+        } else {
+            .pending
+        }
+        let stepThreeState: DesktopGuideStepState = if hasAssistantReply {
+            .done
+        } else if localReady && hasConfiguredModel {
+            .current
+        } else {
+            .pending
+        }
+
+        return [
+            DesktopGuideStep(
+                id: "runtime",
+                title: "第一步：检查本地运行与网关",
+                detail: localReady
+                    ? "本地网关已就绪，当前地址是 \(self.gatewayURL)。"
+                    : (self.connectionHint ?? "先点“一键修复”或“自动查错”，让本地运行时和网关恢复正常。"),
+                state: stepOneState),
+            DesktopGuideStep(
+                id: "model",
+                title: "第二步：配置模型与 API",
+                detail: hasConfiguredModel
+                    ? "默认模型已配置为 \(self.selectedSessionModelDisplayRef)。"
+                    : "进入“模型与 API”，填入 Base URL、API Key；模型会自动读取，能省掉手工配置。",
+                state: stepTwoState),
+            DesktopGuideStep(
+                id: "test",
+                title: "第三步：发送测试消息并看自动查错",
+                detail: hasAssistantReply
+                    ? "已经收到过助手回复，当前会话链路可用。"
+                    : "建议直接发一条“你好”。如果失败，点“自动查错”就能看到具体卡在哪一步。",
+                state: stepThreeState),
+        ]
+    }
+
     init(appState: AppState, chatViewModel: HaoclawChatViewModel) {
         self.appState = appState
         self.chatViewModel = chatViewModel
@@ -502,6 +614,9 @@ final class DesktopClientModel {
         await self.loadModelCatalog()
         await self.refreshEndpoint()
         self.chatViewModel.refreshSessions(limit: 50)
+        if Self.autoDiagnosticsEnabled {
+            await self.runDiagnostics(manual: false)
+        }
     }
 
     func repairConnection() async {
@@ -582,6 +697,144 @@ final class DesktopClientModel {
         }
         self.controlSection = section
         self.isShowingControlCenter = true
+    }
+
+    func runDiagnostics(manual: Bool = true) async {
+        guard !self.isRunningDiagnostics else { return }
+        self.isRunningDiagnostics = true
+        defer { self.isRunningDiagnostics = false }
+
+        if manual {
+            self.statusMessage = "正在自动查找错误项…"
+        }
+
+        var items: [DesktopDiagnosticItem] = []
+        let environment = await Task.detached(priority: .utility) {
+            GatewayEnvironment.check()
+        }.value
+
+        switch environment.kind {
+        case .ok:
+            items.append(.init(
+                id: "env-ok",
+                severity: .ok,
+                title: "本地运行环境正常",
+                detail: "Node 与 Haoclaw CLI 已准备好，可以直接拉起本地网关。"))
+        case .checking:
+            items.append(.init(
+                id: "env-checking",
+                severity: .info,
+                title: "正在检查本地运行环境",
+                detail: "请稍候，再点一次“自动查错”即可看到完整结果。"))
+        case .missingNode:
+            items.append(.init(
+                id: "env-node",
+                severity: .error,
+                title: "缺少本地运行时",
+                detail: "当前设备还没有可用的 Node 22 运行时。点“一键修复”或安装最新 PKG 后再试。"))
+        case .missingGateway:
+            items.append(.init(
+                id: "env-cli",
+                severity: .error,
+                title: "缺少 Haoclaw CLI",
+                detail: "桌面端没找到可用的 Haoclaw CLI，所以网关无法被正确拉起。"))
+        case let .incompatible(found, required):
+            items.append(.init(
+                id: "env-version",
+                severity: .error,
+                title: "本地 CLI 版本过旧",
+                detail: "当前是 \(found)，桌面端需要 \(required)。点“一键修复”或直接安装新版。"))
+        case let .error(message):
+            items.append(.init(
+                id: "env-error",
+                severity: .warning,
+                title: "本地运行检查失败",
+                detail: ChatDisplayLocalizer.localize(message)))
+        }
+
+        if self.appState.connectionMode == .local {
+            let gatewayJSON = await self.runCLIJSON(["gateway", "status", "--deep", "--json"])
+            if let entrypoint = Self.stringValue(in: gatewayJSON, path: ["service", "command", "programArguments", "1"]),
+               entrypoint.contains("/workspace/haoclaw/")
+            {
+                items.append(.init(
+                    id: "gateway-workspace",
+                    severity: .warning,
+                    title: "后台网关还在使用开发目录",
+                    detail: "当前后台服务仍指向开发目录构建产物，重新打包后容易出现文件缺失。建议重装正式包或点“一键修复”。"))
+            }
+
+            if let rpcOK = Self.boolValue(in: gatewayJSON, path: ["rpc", "ok"]) {
+                items.append(.init(
+                    id: "gateway-rpc-\(rpcOK)",
+                    severity: rpcOK ? .ok : .error,
+                    title: rpcOK ? "本地网关 RPC 正常" : "本地网关 RPC 不可用",
+                    detail: rpcOK
+                        ? "桌面端已经能访问本地网关。"
+                        : (Self.stringValue(in: gatewayJSON, path: ["rpc", "error"]) ?? "请先点“一键修复”或“重新连接”。")))
+            } else if !self.isGatewayReady {
+                items.append(.init(
+                    id: "gateway-missing",
+                    severity: .error,
+                    title: "本地网关没有就绪",
+                    detail: self.connectionHint ?? "当前桌面端还没连上本地网关。"))
+            }
+        }
+
+        let statusJSON = await self.runCLIJSON(["status", "--json"])
+        if let reachable = Self.boolValue(in: statusJSON, path: ["gateway", "reachable"]), !reachable {
+            let rawError = Self.stringValue(in: statusJSON, path: ["gateway", "error"]) ?? "网关探测失败"
+            items.append(.init(
+                id: "status-gateway",
+                severity: .warning,
+                title: "健康检查里的网关链路仍有抖动",
+                detail: ChatDisplayLocalizer.localize(rawError)))
+        }
+
+        let modelsJSON = await self.runCLIJSON(["models", "status", "--json"])
+        let defaultModel = Self.stringValue(in: modelsJSON, path: ["defaultModel"])?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if defaultModel.isEmpty {
+            items.append(.init(
+                id: "model-default-missing",
+                severity: .error,
+                title: "还没有默认模型",
+                detail: "进入“模型与 API”填入 Base URL 和 API Key 后，系统会自动读取模型并设为默认值。"))
+        } else {
+            items.append(.init(
+                id: "model-default-ok",
+                severity: .ok,
+                title: "默认模型已配置",
+                detail: "当前默认模型是 \(Self.displayModelRef(defaultModel))。"))
+        }
+
+        if let missingProviders = Self.stringArray(in: modelsJSON, path: ["auth", "missingProvidersInUse"]),
+           let firstMissing = missingProviders.first
+        {
+            items.append(.init(
+                id: "model-auth-missing",
+                severity: .error,
+                title: "当前会话缺少模型认证",
+                detail: "现在正在使用的提供商“\(firstMissing)”没有可用 API Key。请到“模型与 API”重新保存一次。"))
+        } else if self.settingsDraft.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            items.append(.init(
+                id: "model-key-missing",
+                severity: .warning,
+                title: "模型密钥还没填写",
+                detail: "当前模型配置里没有检测到 API Key，发送消息时会直接失败。"))
+        } else {
+            items.append(.init(
+                id: "model-auth-ok",
+                severity: .ok,
+                title: "模型密钥已就绪",
+                detail: "模型认证信息已经写入本地配置，可以直接发消息测试。"))
+        }
+
+        self.diagnostics = Self.deduplicateDiagnostics(items)
+        self.diagnosticsCheckedAt = Date()
+
+        if manual {
+            self.statusMessage = self.diagnosticsSummaryText
+        }
     }
 
     func selectSessionModel(_ modelRef: String) async {
@@ -852,6 +1105,48 @@ final class DesktopClientModel {
             self.gatewayStatus = self.connectionHint ?? "无法连接本地网关"
             self.isGatewayReady = false
         }
+    }
+
+    private func runCLIJSON(_ arguments: [String], timeout: Double = 12) async -> [String: Any]? {
+        guard let executable = self.preferredCLIExecutable() else { return nil }
+        let env = [
+            "PATH": CommandResolver.preferredPaths().joined(separator: ":"),
+            "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
+        ]
+        let result = await ShellExecutor.runDetailed(
+            command: [executable] + arguments,
+            cwd: nil,
+            env: env,
+            timeout: timeout)
+        guard result.success, !result.timedOut else { return nil }
+        let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? result.stderr
+            : result.stdout
+        guard let data = output.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+        return object
+    }
+
+    private func preferredCLIExecutable() -> String? {
+        if let resolved = CommandResolver.haoclawExecutable(),
+           FileManager.default.isExecutableFile(atPath: resolved)
+        {
+            return resolved
+        }
+
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let candidates = [
+            home.appendingPathComponent(".haoclaw/bin/haoclaw").path,
+            home.appendingPathComponent(".haoclaw/bin/haoclaw-stable").path,
+        ]
+
+        for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate) {
+            return candidate
+        }
+        return nil
     }
 
     private func loadCurrentConfig() async {
@@ -1440,7 +1735,13 @@ final class DesktopClientModel {
     private static func preferredModelID(providerID: String, modelID: String) -> String {
         let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedModelID.isEmpty else { return "" }
-        if self.canonicalProviderID(providerID) == "nvidia",
+        let canonicalProviderID = self.canonicalProviderID(providerID)
+        if let stripped = self.stripProviderPrefixIfNeeded(providerID: canonicalProviderID, modelID: trimmedModelID),
+           !stripped.isEmpty
+        {
+            return stripped
+        }
+        if canonicalProviderID == "nvidia",
            trimmedModelID == nvidiaLegacyDefaultModelID
         {
             return nvidiaPreferredDefaultModelID
@@ -1512,6 +1813,74 @@ final class DesktopClientModel {
             return sessionModel
         }
         return self.currentModelRef
+    }
+
+    private static var autoDiagnosticsEnabled: Bool {
+        if let value = UserDefaults.standard.object(forKey: self.autoDiagnosticsDefaultsKey) as? Bool {
+            return value
+        }
+        return true
+    }
+
+    private static func stripProviderPrefixIfNeeded(providerID: String, modelID: String) -> String? {
+        let prefix = "\(providerID)/"
+        guard modelID.lowercased().hasPrefix(prefix.lowercased()) else { return nil }
+        return String(modelID.dropFirst(prefix.count))
+    }
+
+    private static func displayModelRef(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return trimmed }
+        let parts = trimmed.split(separator: "/").map(String.init)
+        if parts.count >= 3,
+           self.canonicalProviderID(parts[0]) == self.canonicalProviderID(parts[1])
+        {
+            return ([parts[0]] + Array(parts.dropFirst(2))).joined(separator: "/")
+        }
+        return trimmed
+    }
+
+    private static func stringValue(in root: [String: Any]?, path: [String]) -> String? {
+        guard let value = self.value(in: root, path: path) else { return nil }
+        if let string = value as? String { return string }
+        if let number = value as? NSNumber { return number.stringValue }
+        return nil
+    }
+
+    private static func boolValue(in root: [String: Any]?, path: [String]) -> Bool? {
+        guard let value = self.value(in: root, path: path) else { return nil }
+        if let bool = value as? Bool { return bool }
+        if let number = value as? NSNumber { return number.boolValue }
+        return nil
+    }
+
+    private static func stringArray(in root: [String: Any]?, path: [String]) -> [String]? {
+        guard let value = self.value(in: root, path: path) else { return nil }
+        return value as? [String]
+    }
+
+    private static func value(in root: [String: Any]?, path: [String]) -> Any? {
+        guard let root else { return nil }
+        var current: Any = root
+        for component in path {
+            if let index = Int(component), let array = current as? [Any], array.indices.contains(index) {
+                current = array[index]
+                continue
+            }
+            guard let dict = current as? [String: Any], let next = dict[component] else {
+                return nil
+            }
+            current = next
+        }
+        return current
+    }
+
+    private static func deduplicateDiagnostics(_ items: [DesktopDiagnosticItem]) -> [DesktopDiagnosticItem] {
+        var seen = Set<String>()
+        return items.filter { item in
+            let key = "\(item.severity.rawValue)|\(item.title)|\(item.detail)"
+            return seen.insert(key).inserted
+        }
     }
 }
 
@@ -1703,6 +2072,10 @@ private struct DesktopConversationCenter: View {
                 .padding(.top, 36)
             }
 
+            if self.model.shouldShowStartupGuide {
+                DesktopStartupGuideCard(model: self.model)
+            }
+
             HaoclawChatView(
                 viewModel: self.chatViewModel,
                 showsSessionSwitcher: false,
@@ -1752,7 +2125,7 @@ private struct DesktopAgentInspector: View {
                     title: "当前状态",
                     rows: [
                         ("连接", self.model.gatewayStatus),
-                        ("模型", self.model.selectedSessionModelRef),
+                        ("模型", self.model.selectedSessionModelDisplayRef),
                         ("会话", self.chatViewModel.sessionKey),
                         ("更新", self.updater == nil ? "当前版本" : "可检查更新"),
                     ])
@@ -1789,6 +2162,12 @@ private struct DesktopAgentInspector: View {
                     }
 
                     if self.model.appState.connectionMode == .local {
+                        Button(self.model.isRunningDiagnostics ? "自动查错中…" : "自动查错") {
+                            Task { await self.model.runDiagnostics() }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(self.model.isRunningDiagnostics)
+
                         Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
                             Task { await self.model.repairConnection() }
                         }
@@ -2118,6 +2497,114 @@ private struct DesktopActionCard: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: 300)
+    }
+}
+
+private struct DesktopStartupGuideCard: View {
+    @Bindable var model: DesktopClientModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("启动指引")
+                        .font(.headline)
+                    Text(self.model.diagnosticsSummaryText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(self.model.isRunningDiagnostics ? "查错中…" : "自动查错") {
+                    Task { await self.model.runDiagnostics() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(self.model.isRunningDiagnostics)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(self.model.startupGuideSteps) { step in
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle()
+                            .fill(self.tint(for: step.state).opacity(0.18))
+                            .frame(width: 28, height: 28)
+                            .overlay(
+                                Image(systemName: self.symbol(for: step.state))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(self.tint(for: step.state)))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(step.title)
+                                .font(.subheadline.weight(.semibold))
+                            Text(step.detail)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+
+            if let firstIssue = self.model.diagnostics.first(where: { $0.severity == .error || $0.severity == .warning }) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: firstIssue.severity == .error ? "exclamationmark.triangle.fill" : "info.circle.fill")
+                        .foregroundStyle(firstIssue.severity == .error ? Color.orange : Color.blue)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(firstIssue.title)
+                            .font(.subheadline.weight(.semibold))
+                        Text(firstIssue.detail)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            HStack(spacing: 10) {
+                if self.model.appState.connectionMode == .local {
+                    Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
+                        Task { await self.model.repairConnection() }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(self.model.isRepairingConnection)
+                }
+
+                Button("模型与 API") {
+                    self.model.openControlCenter(.models)
+                }
+                .buttonStyle(.bordered)
+
+                Button("打开运行台") {
+                    self.model.openControlCenter(.general)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.82))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.06), lineWidth: 1))
+    }
+
+    private func symbol(for state: DesktopGuideStepState) -> String {
+        switch state {
+        case .done: "checkmark"
+        case .current: "arrow.right"
+        case .pending: "clock"
+        }
+    }
+
+    private func tint(for state: DesktopGuideStepState) -> Color {
+        switch state {
+        case .done: .green
+        case .current: .blue
+        case .pending: .orange
+        }
     }
 }
 

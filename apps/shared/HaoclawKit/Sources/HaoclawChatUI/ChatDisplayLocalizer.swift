@@ -75,6 +75,14 @@ enum ChatDisplayLocalizer {
             text,
             pattern: #"Only image attachments are supported right now"#,
             template: "目前只支持图片附件。")
+        text = self.replace(
+            text,
+            pattern: #"401 status code \(no body\)"#,
+            template: "401 鉴权失败：当前模型接口拒绝了请求，请检查 API Key、服务商和模型是否匹配。")
+        text = self.replace(
+            text,
+            pattern: #"([45][0-9]{2}) status code \(no body\)"#,
+            template: "请求失败：HTTP $1，服务端没有返回更多说明。")
 
         return text
     }

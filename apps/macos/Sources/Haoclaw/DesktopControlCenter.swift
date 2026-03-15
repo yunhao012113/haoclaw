@@ -106,7 +106,7 @@ struct DesktopControlCenterSheet: View {
                 HStack(spacing: 8) {
                     DesktopStatusChip(title: self.model.gatewayStatus, tint: self.model.isGatewayReady ? .green : .orange)
                     DesktopStatusChip(title: self.state.connectionMode == .local ? "本地运行" : "远程接入", tint: .blue)
-                    DesktopStatusChip(title: self.model.selectedSessionModelRef, tint: .purple)
+                    DesktopStatusChip(title: self.model.selectedSessionModelDisplayRef, tint: .purple)
                 }
             }
             Spacer()
@@ -130,6 +130,7 @@ private struct DesktopControlGeneralPane: View {
     @Bindable var state: AppState
     @Bindable var model: DesktopClientModel
     @Binding var showToolDetails: Bool
+    @AppStorage("desktop.autoDiagnosticsEnabled") private var autoDiagnosticsEnabled = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -139,6 +140,7 @@ private struct DesktopControlGeneralPane: View {
                     SettingsToggleRow(title: "在 Dock 中显示", subtitle: "保持桌面应用形态，不切回纯菜单栏模式。", binding: self.$state.showDockIcon)
                     SettingsToggleRow(title: "启用图标动效", subtitle: "状态图标保留呼吸感和轻微动画。", binding: self.$state.iconAnimationsEnabled)
                     SettingsToggleRow(title: "显示工具过程", subtitle: "在对话中显示工具调用过程与执行详情。", binding: self.$showToolDetails)
+                    SettingsToggleRow(title: "启动时自动查错", subtitle: "每次打开或刷新时自动检查本地运行、网关和模型配置，方便直接看到错误项。", binding: self.$autoDiagnosticsEnabled)
                 }
             }
 
@@ -165,12 +167,43 @@ private struct DesktopControlGeneralPane: View {
                         }
                         .buttonStyle(.bordered)
 
+                        Button(self.model.isRunningDiagnostics ? "自动查错中…" : "自动查错") {
+                            Task { await self.model.runDiagnostics() }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(self.model.isRunningDiagnostics)
+
                         if self.state.connectionMode == .local {
                             Button(self.model.isRepairingConnection ? "修复中…" : "一键修复") {
                                 Task { await self.model.repairConnection() }
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(self.model.isRepairingConnection)
+                        }
+                    }
+                }
+            }
+
+            DesktopControlCard(title: "启动指引", subtitle: "按这三步走，就能知道先做什么、后做什么，以及当前卡在什么地方。") {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(self.model.startupGuideSteps) { step in
+                        DesktopGuideStepRow(step: step)
+                    }
+                }
+            }
+
+            DesktopControlCard(title: "自动查错结果", subtitle: "这里会把当前能直接定位到的错误项列出来，不用再靠猜。") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(self.model.diagnosticsSummaryText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    if self.model.diagnostics.isEmpty {
+                        Text("还没有检查结果，点上面的“自动查错”即可开始。")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(self.model.diagnostics) { item in
+                            DesktopDiagnosticRow(item: item)
                         }
                     }
                 }
@@ -222,7 +255,7 @@ private struct DesktopControlModelsPane: View {
                         title: "当前状态",
                         rows: [
                             ("网关", self.model.gatewayStatus),
-                            ("当前模型", self.model.selectedSessionModelRef),
+                            ("当前模型", self.model.selectedSessionModelDisplayRef),
                             ("已发现", suggestedModels.isEmpty ? "0 个" : "\(suggestedModels.count) 个"),
                         ])
 
@@ -902,6 +935,92 @@ private struct DesktopStatusChip: View {
             .padding(.vertical, 6)
             .background(self.tint.opacity(0.10))
             .clipShape(Capsule())
+    }
+}
+
+private struct DesktopGuideStepRow: View {
+    let step: DesktopGuideStep
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Circle()
+                .fill(self.tint.opacity(0.16))
+                .frame(width: 28, height: 28)
+                .overlay(
+                    Image(systemName: self.symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(self.tint))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(self.step.title)
+                    .font(.subheadline.weight(.semibold))
+                Text(self.step.detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var symbol: String {
+        switch self.step.state {
+        case .done: "checkmark"
+        case .current: "arrow.right"
+        case .pending: "clock"
+        }
+    }
+
+    private var tint: Color {
+        switch self.step.state {
+        case .done: .green
+        case .current: .blue
+        case .pending: .orange
+        }
+    }
+}
+
+private struct DesktopDiagnosticRow: View {
+    let item: DesktopDiagnosticItem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: self.symbol)
+                .foregroundStyle(self.tint)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(self.item.title)
+                    .font(.subheadline.weight(.semibold))
+                Text(self.item.detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(self.tint.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var symbol: String {
+        switch self.item.severity {
+        case .ok: "checkmark.circle.fill"
+        case .info: "info.circle.fill"
+        case .warning: "exclamationmark.circle.fill"
+        case .error: "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var tint: Color {
+        switch self.item.severity {
+        case .ok: .green
+        case .info: .blue
+        case .warning: .orange
+        case .error: .red
+        }
     }
 }
 
