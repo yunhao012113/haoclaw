@@ -749,7 +749,7 @@ final class DesktopClientModel {
                 id: "env-error",
                 severity: .warning,
                 title: "本地运行检查失败",
-                detail: ChatDisplayLocalizer.localize(message)))
+                detail: Self.localizedDiagnosticText(message)))
         }
 
         if self.appState.connectionMode == .local {
@@ -788,7 +788,7 @@ final class DesktopClientModel {
                 id: "status-gateway",
                 severity: .warning,
                 title: "健康检查里的网关链路仍有抖动",
-                detail: ChatDisplayLocalizer.localize(rawError)))
+                detail: Self.localizedDiagnosticText(rawError)))
         }
 
         let modelsJSON = await self.runCLIJSON(["models", "status", "--json"])
@@ -1881,6 +1881,32 @@ final class DesktopClientModel {
             let key = "\(item.severity.rawValue)|\(item.title)|\(item.detail)"
             return seen.insert(key).inserted
         }
+    }
+
+    private static func localizedDiagnosticText(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return trimmed }
+
+        var text = trimmed
+        let replacements: [(String, String)] = [
+            ("timeout", "超时"),
+            ("not configured", "未配置"),
+            ("logged out", "未登录"),
+            ("Could not connect to the server.", "无法连接到服务器。"),
+            ("Gateway health not OK; cannot send", "网关状态异常，暂时无法发送消息。"),
+        ]
+        for (source, target) in replacements {
+            text = text.replacingOccurrences(of: source, with: target)
+        }
+        text = text.replacingOccurrences(
+            of: #"401 status code \(no body\)"#,
+            with: "401 鉴权失败：当前模型接口拒绝了请求，请检查 API Key、服务商和模型是否匹配。",
+            options: .regularExpression)
+        text = text.replacingOccurrences(
+            of: #"([45][0-9]{2}) status code \(no body\)"#,
+            with: "请求失败：HTTP $1，服务端没有返回更多说明。",
+            options: .regularExpression)
+        return text
     }
 }
 
