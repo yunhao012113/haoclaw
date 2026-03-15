@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
-    private struct ReleaseAsset: Decodable {
+    struct ReleaseAsset: Decodable {
         let name: String
         let browserDownloadURL: URL
 
@@ -13,19 +13,23 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
     }
 
-    private struct ReleasePayload: Decodable {
+    struct ReleasePayload: Decodable {
         let tagName: String
         let htmlURL: URL
         let assets: [ReleaseAsset]
+        let draft: Bool
+        let prerelease: Bool
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
             case htmlURL = "html_url"
             case assets
+            case draft
+            case prerelease
         }
     }
 
-    private struct AvailableUpdate {
+    struct AvailableUpdate {
         let version: String
         let asset: ReleaseAsset?
         let releaseURL: URL
@@ -34,6 +38,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
     var automaticallyChecksForUpdates: Bool {
         didSet {
             UserDefaults.standard.set(self.automaticallyChecksForUpdates, forKey: autoUpdateKey)
+            self.configureBackgroundChecks()
             if self.automaticallyChecksForUpdates {
                 Task { await self.checkForUpdatesInteractive(manual: false) }
             }
@@ -57,32 +62,52 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
     private var cachedUpdate: AvailableUpdate?
     private var isChecking = false
     private var isInstalling = false
+    private var backgroundCheckTask: Task<Void, Never>?
+    private var lastAutoInstallAttemptedVersion: String?
 
     init(savedAutoUpdate: Bool) {
         self.automaticallyChecksForUpdates = savedAutoUpdate
         self.automaticallyDownloadsUpdates = savedAutoUpdate
         super.init()
+        self.configureBackgroundChecks()
 
         if savedAutoUpdate {
             Task { await self.checkForUpdatesInteractive(manual: false) }
         }
     }
 
+    deinit {
+        self.backgroundCheckTask?.cancel()
+    }
+
     func checkForUpdates(_: Any?) {
+        if let cachedUpdate = self.cachedUpdate, self.updateStatus.isUpdateReady {
+            Task { await self.promptAndInstall(update: cachedUpdate) }
+            return
+        }
         Task { await self.checkForUpdatesInteractive(manual: true) }
     }
 
     private func checkForUpdatesInteractive(manual: Bool) async {
         guard !self.isChecking else { return }
         self.isChecking = true
-        defer { self.isChecking = false }
+        self.updateStatus.isChecking = true
+        if manual {
+            self.updateStatus.detail = "正在检查最新版本…"
+        }
+        defer {
+            self.isChecking = false
+            self.updateStatus.isChecking = false
+        }
 
         do {
             let update = try await self.fetchLatestUpdate()
             self.cachedUpdate = update
             self.updateStatus.isUpdateReady = update != nil
+            self.updateStatus.availableVersion = update?.version
 
             guard let update else {
+                self.updateStatus.detail = manual ? "当前桌面客户端已经是最新版本。" : "当前已经是最新版本。"
                 if manual {
                     self.presentMessage(
                         title: "已经是最新版本",
@@ -92,11 +117,18 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
                 return
             }
 
+            self.updateStatus.detail = "发现新版本 \(update.version)。"
+            if !manual, self.automaticallyDownloadsUpdates {
+                await self.installAutomaticallyIfPossible(update: update)
+                return
+            }
+
             if manual {
                 await self.promptAndInstall(update: update)
             }
         } catch {
             self.updateStatus.isUpdateReady = self.cachedUpdate != nil
+            self.updateStatus.detail = manual ? error.localizedDescription : "后台检查更新失败，可稍后重试。"
             if manual {
                 self.presentMessage(
                     title: "检查更新失败",
@@ -120,25 +152,28 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
 
         let releases = try JSONDecoder().decode([ReleasePayload].self, from: data)
-        guard let release = releases.first(where: Self.isUnifiedDesktopRelease) else {
+        guard let release = Self.preferredRelease(from: releases, currentVersion: self.currentVersion) else {
             return nil
         }
         let latestVersion = Self.normalizedVersion(release.tagName)
-        guard Self.compareVersion(latestVersion, to: self.currentVersion) == .orderedDescending else {
-            return nil
-        }
-
-        let preferredAsset = release.assets.first(where: { $0.name.hasSuffix(".pkg") }) ??
-            release.assets.first(where: { $0.name.hasSuffix(".dmg") })
+        let preferredAsset = Self.preferredMacAsset(in: release.assets)
 
         return AvailableUpdate(version: latestVersion, asset: preferredAsset, releaseURL: release.htmlURL)
     }
 
-    private static func isUnifiedDesktopRelease(_ release: ReleasePayload) -> Bool {
-        let assets = release.assets
-        let hasMacInstaller = assets.contains { $0.name.hasSuffix(".pkg") }
-        let hasWindowsInstaller = assets.contains { $0.name.hasSuffix("-setup.exe") }
-        return hasMacInstaller && hasWindowsInstaller
+    static func preferredRelease(from releases: [ReleasePayload], currentVersion: String) -> ReleasePayload? {
+        releases.first { release in
+            guard !release.draft, !release.prerelease else { return false }
+            guard Self.preferredMacAsset(in: release.assets) != nil else { return false }
+            let latestVersion = Self.normalizedVersion(release.tagName)
+            return Self.compareVersion(latestVersion, to: currentVersion) == .orderedDescending
+        }
+    }
+
+    static func preferredMacAsset(in assets: [ReleaseAsset]) -> ReleaseAsset? {
+        assets.first(where: { $0.name.hasSuffix(".pkg") }) ??
+            assets.first(where: { $0.name.hasSuffix(".dmg") }) ??
+            assets.first(where: { $0.name.hasSuffix(".zip") })
     }
 
     private func promptAndInstall(update: AvailableUpdate) async {
@@ -155,11 +190,13 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
 
         do {
             if let asset = update.asset {
-                try await self.downloadAndInstall(asset: asset)
+                try await self.downloadAndInstall(asset: asset, announcedVersion: update.version, showCompletionAlert: true)
             } else {
+                self.updateStatus.detail = "未找到可安装的更新包，已为你打开发布页。"
                 NSWorkspace.shared.open(update.releaseURL)
             }
         } catch {
+            self.updateStatus.detail = "升级失败：\(error.localizedDescription)"
             self.presentMessage(
                 title: "更新下载失败",
                 text: error.localizedDescription,
@@ -167,15 +204,41 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         }
     }
 
-    private func downloadAndInstall(asset: ReleaseAsset) async throws {
+    private func installAutomaticallyIfPossible(update: AvailableUpdate) async {
+        guard self.lastAutoInstallAttemptedVersion != update.version else { return }
+        self.lastAutoInstallAttemptedVersion = update.version
+
+        guard let asset = update.asset else {
+            self.updateStatus.detail = "发现新版本 \(update.version)，但未找到可自动安装的安装包。"
+            return
+        }
+
+        do {
+            try await self.downloadAndInstall(asset: asset, announcedVersion: update.version, showCompletionAlert: false)
+        } catch {
+            self.updateStatus.detail = "自动升级失败，可点“立即升级”重试。原因：\(error.localizedDescription)"
+        }
+    }
+
+    private func downloadAndInstall(
+        asset: ReleaseAsset,
+        announcedVersion: String,
+        showCompletionAlert: Bool) async throws
+    {
         guard !self.isInstalling else { return }
         self.isInstalling = true
-        defer { self.isInstalling = false }
+        self.updateStatus.isInstalling = true
+        self.updateStatus.detail = "正在下载并安装 \(announcedVersion)…"
+        defer {
+            self.isInstalling = false
+            self.updateStatus.isInstalling = false
+        }
 
-        let downloadsDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first ??
-            FileManager.default.temporaryDirectory
-        let destination = downloadsDir.appendingPathComponent(asset.name)
-        let tempDestination = downloadsDir.appendingPathComponent(".\(asset.name).download")
+        let updatesDir = HaoclawPaths.stateDirURL
+            .appendingPathComponent("updates", isDirectory: true)
+        try FileManager.default.createDirectory(at: updatesDir, withIntermediateDirectories: true)
+        let destination = updatesDir.appendingPathComponent(asset.name)
+        let tempDestination = updatesDir.appendingPathComponent(".\(asset.name).download")
 
         try? FileManager.default.removeItem(at: tempDestination)
         let (tmpURL, response) = try await self.session.download(from: asset.browserDownloadURL)
@@ -194,10 +257,14 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         let fileName = asset.name.lowercased()
         if fileName.hasSuffix(".pkg") {
             try self.installPackage(at: destination)
-            self.presentMessage(
-                title: "升级完成",
-                text: "Haoclaw 已完成升级，正在重新打开应用。",
-                style: .informational)
+            self.updateStatus.isUpdateReady = false
+            self.updateStatus.detail = "Haoclaw 已升级到 \(announcedVersion)，正在重新打开应用。"
+            if showCompletionAlert {
+                self.presentMessage(
+                    title: "升级完成",
+                    text: "Haoclaw 已完成升级，正在重新打开应用。",
+                    style: .informational)
+            }
             self.relaunchInstalledApp()
             return
         }
@@ -213,6 +280,21 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
             title: "安装包已打开",
             text: "当前版本不支持静默安装此格式，请按向导完成更新。安装包位置：\(destination.path)",
             style: .informational)
+        self.updateStatus.detail = "安装包已下载并打开，请按安装向导完成升级。"
+    }
+
+    private func configureBackgroundChecks() {
+        self.backgroundCheckTask?.cancel()
+        self.backgroundCheckTask = nil
+        guard self.automaticallyChecksForUpdates else { return }
+
+        self.backgroundCheckTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 6 * 60 * 60 * 1_000_000_000)
+                guard let self else { return }
+                await self.checkForUpdatesInteractive(manual: false)
+            }
+        }
     }
 
     private func installPackage(at packageURL: URL) throws {
@@ -266,7 +348,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
     }
 
-    private static func normalizedVersion(_ raw: String) -> String {
+    static func normalizedVersion(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("v") || trimmed.hasPrefix("V") {
             return String(trimmed.dropFirst())
@@ -274,7 +356,7 @@ final class GitHubReleaseUpdaterController: NSObject, UpdaterProviding {
         return trimmed
     }
 
-    private static func compareVersion(_ lhs: String, to rhs: String) -> ComparisonResult {
+    static func compareVersion(_ lhs: String, to rhs: String) -> ComparisonResult {
         let lhsParts = lhs.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
         let rhsParts = rhs.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
         let count = max(lhsParts.count, rhsParts.count)

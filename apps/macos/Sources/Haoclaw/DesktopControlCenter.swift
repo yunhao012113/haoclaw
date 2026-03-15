@@ -771,6 +771,27 @@ private struct DesktopControlUpdatesPane: View {
         return version
     }
 
+    private var actionTitle: String {
+        guard let updater else { return "检查更新" }
+        if updater.updateStatus.isInstalling { return "升级中…" }
+        if updater.updateStatus.isChecking { return "检查中…" }
+        if updater.updateStatus.isUpdateReady { return "立即升级" }
+        return "检查更新"
+    }
+
+    private var statusText: String {
+        guard let updater else { return "升级器未接入" }
+        if let detail = updater.updateStatus.detail, !detail.isEmpty {
+            return detail
+        }
+        if updater.updateStatus.isInstalling { return "正在下载安装新版本…" }
+        if updater.updateStatus.isChecking { return "正在检查最新版本…" }
+        if let version = updater.updateStatus.availableVersion, updater.updateStatus.isUpdateReady {
+            return "发现新版本 \(version)，已经准备好升级。"
+        }
+        return self.autoUpdateEnabled ? "已开启自动更新，发现新版本后会直接进入应用内升级。" : "自动更新已关闭。"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             DesktopControlCard(title: "版本与升级", subtitle: "以后从这版开始，后续更新尽量走应用内一键升级，不再每次手动去下载。") {
@@ -784,17 +805,25 @@ private struct DesktopControlUpdatesPane: View {
                         ])
 
                     if let updater, updater.isAvailable {
-                        SettingsToggleRow(title: "自动检查更新", subtitle: "后台检测新版本，并在应用内给出升级入口。", binding: self.$autoUpdateEnabled)
+                        SettingsToggleRow(title: "自动检查更新", subtitle: "后台检测新版本，发现正式安装包后直接进入应用内升级。", binding: self.$autoUpdateEnabled)
                             .onChange(of: self.autoUpdateEnabled) { _, newValue in
                                 updater.automaticallyChecksForUpdates = newValue
                                 updater.automaticallyDownloadsUpdates = newValue
                             }
 
+                        Text(self.statusText)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(12)
+                            .background(Color.secondary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
                         HStack(spacing: 10) {
-                            Button(updater.updateStatus.isUpdateReady ? "立即升级" : "检查更新") {
+                            Button(self.actionTitle) {
                                 updater.checkForUpdates(nil)
                             }
                             .buttonStyle(.borderedProminent)
+                            .disabled(updater.updateStatus.isChecking || updater.updateStatus.isInstalling)
 
                             Button("打开发布记录") {
                                 if let url = URL(string: "https://github.com/yunhao012113/haoclaw/releases/latest") {

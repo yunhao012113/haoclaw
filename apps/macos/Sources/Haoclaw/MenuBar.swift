@@ -359,9 +359,23 @@ final class DisabledUpdaterController: UpdaterProviding {
 final class UpdateStatus {
     static let disabled = UpdateStatus()
     var isUpdateReady: Bool
+    var isChecking: Bool
+    var isInstalling: Bool
+    var availableVersion: String?
+    var detail: String?
 
-    init(isUpdateReady: Bool = false) {
+    init(
+        isUpdateReady: Bool = false,
+        isChecking: Bool = false,
+        isInstalling: Bool = false,
+        availableVersion: String? = nil,
+        detail: String? = nil)
+    {
         self.isUpdateReady = isUpdateReady
+        self.isChecking = isChecking
+        self.isInstalling = isInstalling
+        self.availableVersion = availableVersion
+        self.detail = detail
     }
 }
 
