@@ -92,7 +92,6 @@ enum AgentWorkspace {
     }
 
     static func bootstrap(workspaceURL: URL) throws -> URL {
-        let shouldSeedBootstrap = self.isWorkspaceEmpty(workspaceURL: workspaceURL)
         try FileManager().createDirectory(at: workspaceURL, withIntermediateDirectories: true)
         let agentsURL = self.agentsURL(workspaceURL: workspaceURL)
         if !FileManager().fileExists(atPath: agentsURL.path) {
@@ -114,27 +113,12 @@ enum AgentWorkspace {
             try self.defaultUserTemplate().write(to: userURL, atomically: true, encoding: .utf8)
             self.logger.info("Created USER.md at \(userURL.path, privacy: .public)")
         }
-        let bootstrapURL = workspaceURL.appendingPathComponent(self.bootstrapFilename)
-        if shouldSeedBootstrap, !FileManager().fileExists(atPath: bootstrapURL.path) {
-            try self.defaultBootstrapTemplate().write(to: bootstrapURL, atomically: true, encoding: .utf8)
-            self.logger.info("Created BOOTSTRAP.md at \(bootstrapURL.path, privacy: .public)")
-        }
+        try self.migrateLegacyBootstrapIfNeeded(workspaceURL: workspaceURL)
         return agentsURL
     }
 
     static func needsBootstrap(workspaceURL: URL) -> Bool {
-        let fm = FileManager()
-        var isDir: ObjCBool = false
-        if !fm.fileExists(atPath: workspaceURL.path, isDirectory: &isDir) {
-            return true
-        }
-        guard isDir.boolValue else { return true }
-        if self.hasIdentity(workspaceURL: workspaceURL) {
-            return false
-        }
-        let bootstrapURL = workspaceURL.appendingPathComponent(self.bootstrapFilename)
-        guard fm.fileExists(atPath: bootstrapURL.path) else { return false }
-        return self.isTemplateOnlyWorkspace(workspaceURL: workspaceURL)
+        false
     }
 
     static func hasIdentity(workspaceURL: URL) -> Bool {
@@ -161,10 +145,10 @@ enum AgentWorkspace {
 
         This folder is the assistant's working directory.
 
-        ## First run (one-time)
-        - If BOOTSTRAP.md exists, follow its ritual and delete it once complete.
+        ## Ready to use
         - Your agent identity lives in IDENTITY.md.
         - Your profile lives in USER.md.
+        - The desktop app now skips the old first-run ritual so external channels can work immediately.
 
         ## Backup tip (recommended)
         If you treat this workspace as the agent's "memory", make it a git repo (ideally private) so identity
@@ -209,10 +193,10 @@ enum AgentWorkspace {
         let fallback = """
         # IDENTITY.md - Agent Identity
 
-        - Name:
-        - Creature:
-        - Vibe:
-        - Emoji:
+        - Name: Haoclaw
+        - Creature: Octopus assistant
+        - Vibe: Friendly, concise, reliable
+        - Emoji: 🐙
         """
         return self.loadTemplate(named: self.identityFilename, fallback: fallback)
     }
@@ -221,8 +205,8 @@ enum AgentWorkspace {
         let fallback = """
         # USER.md - User Profile
 
-        - Name:
-        - Preferred address:
+        - Name: 用户
+        - Preferred address: 你
         - Pronouns (optional):
         - Timezone (optional):
         - Notes:
@@ -275,6 +259,25 @@ enum AgentWorkspace {
         Delete BOOTSTRAP.md once this is complete.
         """
         return self.loadTemplate(named: self.bootstrapFilename, fallback: fallback)
+    }
+
+    private static func migrateLegacyBootstrapIfNeeded(workspaceURL: URL) throws {
+        let bootstrapURL = workspaceURL.appendingPathComponent(self.bootstrapFilename)
+        guard FileManager().fileExists(atPath: bootstrapURL.path) else { return }
+
+        let identityURL = workspaceURL.appendingPathComponent(self.identityFilename)
+        if !self.hasIdentity(workspaceURL: workspaceURL) {
+            try self.defaultIdentityTemplate().write(to: identityURL, atomically: true, encoding: .utf8)
+            self.logger.info("Updated IDENTITY.md with direct-use defaults at \(identityURL.path, privacy: .public)")
+        }
+
+        let bootstrapContents = (try? String(contentsOf: bootstrapURL, encoding: .utf8))
+            ?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let defaultBootstrap = self.defaultBootstrapTemplate().trimmingCharacters(in: .whitespacesAndNewlines)
+        if bootstrapContents.isEmpty || bootstrapContents == defaultBootstrap || self.isTemplateOnlyWorkspace(workspaceURL: workspaceURL) {
+            try? FileManager().removeItem(at: bootstrapURL)
+            self.logger.info("Removed legacy BOOTSTRAP.md at \(bootstrapURL.path, privacy: .public)")
+        }
     }
 
     private static func loadTemplate(named: String, fallback: String) -> String {
