@@ -10,6 +10,16 @@ Docs: https://docs.haoclaw.ai
 
 ### Fixes
 
+## 2026.3.79
+
+### Changes
+
+- macOS app: bundle CLI in app for out-of-box gateway auto-start.
+
+### Fixes
+
+- Gateway: default port changed to 3456 for better out-of-box experience.
+
 ## 2026.3.78
 
 ### Changes

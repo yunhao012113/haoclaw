@@ -117,6 +117,24 @@ enum CommandResolver {
         return paths
     }
 
+    static func bundledHaoclawPath() -> String? {
+        guard let execURL = Bundle.main.executableURL else { return nil }
+        let execDir = execURL.deletingLastPathComponent()
+        let bundleHaoclaw = execDir
+            .appendingPathComponent("MacOS/haoclaw")
+            .path
+        if FileManager().isExecutableFile(atPath: bundleHaoclaw) {
+            return bundleHaoclaw
+        }
+        let resourcesHaoclaw = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Resources/haoclaw")
+            .path
+        if FileManager().isExecutableFile(atPath: resourcesHaoclaw) {
+            return resourcesHaoclaw
+        }
+        return nil
+    }
+
     private static func nodeManagerBinPaths(home: URL) -> [String] {
         var bins: [String] = []
 
@@ -194,7 +212,10 @@ enum CommandResolver {
     }
 
     static func haoclawExecutable(searchPaths: [String]? = nil) -> String? {
-        self.findExecutable(named: self.helperName, searchPaths: searchPaths)
+        if let bundled = self.bundledHaoclawPath() {
+            return bundled
+        }
+        return self.findExecutable(named: self.helperName, searchPaths: searchPaths)
     }
 
     static func projectHaoclawExecutable(projectRoot: URL? = nil) -> String? {

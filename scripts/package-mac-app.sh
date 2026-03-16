@@ -259,6 +259,17 @@ else
   echo "WARN: HaoclawKit resource bundle not found at $HAOCLAWKIT_BUNDLE (continuing)" >&2
 fi
 
+echo "📦 Copying bundled CLI"
+mkdir -p "$APP_ROOT/Contents/Resources"
+if [ -d "$ROOT_DIR/dist" ]; then
+  rm -rf "$APP_ROOT/Contents/Resources/haoclaw"
+  cp -R "$ROOT_DIR/dist" "$APP_ROOT/Contents/Resources/haoclaw"
+  chmod +x "$APP_ROOT/Contents/Resources/haoclaw/haoclaw.mjs" 2>/dev/null || true
+  echo "✓ Bundled CLI copied to Resources/haoclaw"
+else
+  echo "WARN: dist folder not found, CLI will be installed on first run" >&2
+fi
+
 echo "📦 Copying Textual resources"
 TEXTUAL_BUNDLE_DIR="$(build_path_for_arch "$PRIMARY_ARCH")/$BUILD_CONFIG"
 TEXTUAL_BUNDLE=""
