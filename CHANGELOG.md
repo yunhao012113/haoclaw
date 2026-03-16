@@ -10,6 +10,16 @@ Docs: https://docs.haoclaw.ai
 
 ### Fixes
 
+## 2026.3.77
+
+### Changes
+
+- Gateway: change default port from 18789 to 3456 for better out-of-box experience.
+
+### Fixes
+
+- macOS app: add delete session functionality to chat UI.
+
 ## 2026.3.76
 
 ### Changes
