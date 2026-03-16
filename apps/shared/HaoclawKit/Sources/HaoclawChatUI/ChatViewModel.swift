@@ -95,6 +95,10 @@ public final class HaoclawChatViewModel {
         Task { await self.fetchSessions(limit: limit) }
     }
 
+    public func deleteSession(key: String) {
+        Task { await self.performDeleteSession(key: key) }
+    }
+
     public func switchSession(to sessionKey: String) {
         Task { await self.performSwitchSession(to: sessionKey) }
     }
@@ -433,6 +437,20 @@ public final class HaoclawChatViewModel {
         guard next != self.sessionKey else { return }
         self.sessionKey = next
         await self.bootstrap()
+    }
+
+    private func performDeleteSession(key: String) async {
+        do {
+            try await self.transport.deleteSession(sessionKey: key)
+            self.sessions.removeAll { $0.key == key }
+            if self.sessionKey == key {
+                if let firstSession = self.sessions.first {
+                    await self.performSwitchSession(to: firstSession.key)
+                }
+            }
+        } catch {
+            self.errorText = "删除会话失败: \(error.localizedDescription)"
+        }
     }
 
     private func placeholderSession(key: String) -> HaoclawChatSessionEntry {

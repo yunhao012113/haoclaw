@@ -46,6 +46,16 @@ struct MacGatewayChatTransport: HaoclawChatTransport {
         return try JSONDecoder().decode(HaoclawChatSessionsListResponse.self, from: data)
     }
 
+    func deleteSession(sessionKey: String) async throws {
+        _ = try await GatewayConnection.shared.request(
+            method: "sessions.delete",
+            params: [
+                "key": AnyCodable(sessionKey),
+                "deleteTranscript": AnyCodable(true),
+            ],
+            timeoutMs: 10000)
+    }
+
     func sendMessage(
         sessionKey: String,
         message: String,

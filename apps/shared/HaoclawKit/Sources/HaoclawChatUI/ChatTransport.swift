@@ -24,10 +24,19 @@ public protocol HaoclawChatTransport: Sendable {
     func events() -> AsyncStream<HaoclawChatTransportEvent>
 
     func setActiveSessionKey(_ sessionKey: String) async throws
+
+    func deleteSession(sessionKey: String) async throws
 }
 
 extension HaoclawChatTransport {
     public func setActiveSessionKey(_: String) async throws {}
+
+    public func deleteSession(sessionKey _: String) async throws {
+        throw NSError(
+            domain: "HaoclawChatTransport",
+            code: 0,
+            userInfo: [NSLocalizedDescriptionKey: "sessions.delete not supported by this transport"])
+    }
 
     public func abortRun(sessionKey _: String, runId _: String) async throws {
         throw NSError(
