@@ -10,6 +10,16 @@ Docs: https://docs.haoclaw.ai
 
 ### Fixes
 
+## 2026.3.76
+
+### Changes
+
+- Gateway: change default port from 18789 to 3456 for better out-of-box experience.
+
+### Fixes
+
+- macOS app: add delete session functionality to chat UI.
+
 - macOS/LaunchAgent install: tighten LaunchAgent directory and plist permissions during install so launchd bootstrap does not fail when the target home path or generated plist inherited group/world-writable modes.
 
 ## 2026.3.8
