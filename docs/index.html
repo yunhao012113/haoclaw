@@ -498,8 +498,11 @@
           const releases = await response.json();
           const downloadableReleases = findDownloadableReleases(releases);
           const requestedTag = new URL(window.location.href).searchParams.get("version");
-          const initialRelease =
-            downloadableReleases.find((release) => release.tag_name === requestedTag) || downloadableReleases[0];
+          const requestedRelease = downloadableReleases.find((release) => release.tag_name === requestedTag);
+          const macosRelease = downloadableReleases.find((release) => 
+            release.assets.some((asset) => asset.name.endsWith(".dmg") || asset.name.endsWith(".pkg"))
+          );
+          const initialRelease = requestedRelease || macosRelease || downloadableReleases[0];
           if (!initialRelease) {
             throw new Error("No release with downloadable desktop assets");
           }
