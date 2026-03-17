@@ -437,8 +437,8 @@ haoclaw pairing list feishu
 
 ## Gateway management commands
 
-| Command                    | Description                   |
-| -------------------------- | ----------------------------- |
+| Command                   | Description                   |
+| ------------------------- | ----------------------------- |
 | `haoclaw gateway status`  | Show gateway status           |
 | `haoclaw gateway install` | Install/start gateway service |
 | `haoclaw gateway stop`    | Stop gateway service          |

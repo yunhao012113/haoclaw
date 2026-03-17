@@ -42,8 +42,8 @@ Scope logic lives in `scripts/ci-changed-scope.mjs` and is covered by unit tests
 
 ## Runners
 
-| Runner                           | Jobs                                       |
-| -------------------------------- | ------------------------------------------ |
+| Runner           | Jobs                                       |
+| ---------------- | ------------------------------------------ |
 | `ubuntu-24.04`   | Most Linux jobs, including scope detection |
 | `windows-latest` | `checks-windows`                           |
 | `macos-latest`   | `macos`, `ios`                             |

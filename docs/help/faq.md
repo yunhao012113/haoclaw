@@ -1337,9 +1337,9 @@ Related: [Agent workspace](/concepts/agent-workspace), [Memory](/concepts/memory
 
 Everything lives under `$HAOCLAW_STATE_DIR` (default: `~/.haoclaw`):
 
-| Path                                                            | Purpose                                                            |
-| --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `$HAOCLAW_STATE_DIR/haoclaw.json`                             | Main config (JSON5)                                                |
+| Path                                                           | Purpose                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `$HAOCLAW_STATE_DIR/haoclaw.json`                              | Main config (JSON5)                                                |
 | `$HAOCLAW_STATE_DIR/credentials/oauth.json`                    | Legacy OAuth import (copied into auth profiles on first use)       |
 | `$HAOCLAW_STATE_DIR/agents/<agentId>/agent/auth-profiles.json` | Auth profiles (OAuth, API keys, and optional `keyRef`/`tokenRef`)  |
 | `$HAOCLAW_STATE_DIR/secrets.json`                              | Optional file-backed secret payload for `file` SecretRef providers |
