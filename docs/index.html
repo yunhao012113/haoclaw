@@ -519,10 +519,12 @@
           .filter((release) => {
             const assets = release.assets || [];
             return assets.some((asset) => {
+              const name = asset.name.toLowerCase();
               return (
-                asset.name.endsWith(".pkg") ||
-                asset.name.endsWith(".dmg") ||
-                asset.name.endsWith("-setup.exe")
+                name.endsWith(".pkg") ||
+                name.endsWith(".dmg") ||
+                name.endsWith("-setup.exe") ||
+                (name.endsWith(".zip") && name.includes("win"))
               );
             });
           })
@@ -550,6 +552,7 @@
         const macPkgAsset = assets.find((asset) => asset.name.endsWith(".pkg"));
         const macDmgAsset = assets.find((asset) => asset.name.endsWith(".dmg"));
         const winExeAsset = assets.find((asset) => asset.name.endsWith("-setup.exe"));
+        const winZipAsset = assets.find((asset) => asset.name.endsWith(".zip") && asset.name.includes("win"));
 
         const hasPkg = updateAssetLink(
           macPkg,
@@ -565,11 +568,22 @@
           "下载 DMG",
           "暂无 DMG",
         );
-        const hasExe = updateAssetLink(
+
+        let winDownloadAsset = null;
+        let winDownloadLabel = "暂无 EXE";
+        if (winExeAsset) {
+          winDownloadAsset = winExeAsset;
+          winDownloadLabel = "下载 EXE";
+        } else if (winZipAsset) {
+          winDownloadAsset = winZipAsset;
+          winDownloadLabel = "下载 ZIP";
+        }
+        
+        const hasWin = updateAssetLink(
           winExe,
-          winExeAsset,
+          winDownloadAsset,
           release.html_url,
-          "下载 EXE",
+          winDownloadLabel,
           "暂无 EXE",
         );
 
@@ -579,6 +593,20 @@
           macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name} · DMG：${macDmgAsset.name}`;
         } else {
           macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
+        }
+
+        if (winDownloadAsset) {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · ${winDownloadAsset.name}`;
+        } else {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
+        }
+
+        if (hasExe) {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · EXE：${winExeAsset.name}`;
+        } else if (hasZip) {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · ZIP：${winZipAsset.name}`;
+        } else {
+          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
         }
 
         if (hasExe) {
