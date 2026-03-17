@@ -524,7 +524,7 @@
                 name.endsWith(".pkg") ||
                 name.endsWith(".dmg") ||
                 name.endsWith("-setup.exe") ||
-                (name.endsWith(".zip") && name.includes("win"))
+                (name.endsWith(".zip") && (name.includes("win") || name.includes("mac")))
               );
             });
           })
@@ -551,23 +551,38 @@
         const assets = release.assets || [];
         const macPkgAsset = assets.find((asset) => asset.name.endsWith(".pkg"));
         const macDmgAsset = assets.find((asset) => asset.name.endsWith(".dmg"));
+        const macZipAsset = assets.find((asset) => asset.name.endsWith(".zip") && asset.name.toLowerCase().includes("mac"));
         const winExeAsset = assets.find((asset) => asset.name.endsWith("-setup.exe"));
-        const winZipAsset = assets.find((asset) => asset.name.endsWith(".zip") && asset.name.includes("win"));
+        const winZipAsset = assets.find((asset) => asset.name.endsWith(".zip") && asset.name.toLowerCase().includes("win"));
 
-        const hasPkg = updateAssetLink(
+        let macDownloadAsset = null;
+        let macDownloadLabel = "暂无 PKG";
+        if (macPkgAsset) {
+          macDownloadAsset = macPkgAsset;
+          macDownloadLabel = "下载 PKG";
+        } else if (macDmgAsset) {
+          macDownloadAsset = macDmgAsset;
+          macDownloadLabel = "下载 DMG";
+        } else if (macZipAsset) {
+          macDownloadAsset = macZipAsset;
+          macDownloadLabel = "下载 ZIP";
+        }
+
+        const hasMac = updateAssetLink(
           macPkg,
-          macPkgAsset,
+          macDownloadAsset,
           release.html_url,
-          "下载 PKG",
+          macDownloadLabel,
           "暂无 PKG",
         );
-        const hasDmg = updateAssetLink(
-          macDmg,
-          macDmgAsset,
-          release.html_url,
-          "下载 DMG",
-          "暂无 DMG",
-        );
+
+        // Update DMG button as well if zip is available
+        if (macZipAsset) {
+          macDmg.href = macZipAsset.browser_download_url;
+          macDmg.textContent = "下载 ZIP";
+          macDmg.style.pointerEvents = "auto";
+          macDmg.style.opacity = "1";
+        }
 
         let winDownloadAsset = null;
         let winDownloadLabel = "暂无 EXE";
@@ -587,30 +602,15 @@
           "暂无 EXE",
         );
 
-        if (hasPkg) {
-          macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name} · PKG：${macPkgAsset.name}`;
-        } else if (hasDmg) {
-          macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name} · DMG：${macDmgAsset.name}`;
+        if (macDownloadAsset) {
+          const assetName = macDownloadAsset.name;
+          macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name} · ${assetName}`;
         } else {
           macMeta.innerHTML = `<strong>macOS：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
         }
 
         if (winDownloadAsset) {
           winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · ${winDownloadAsset.name}`;
-        } else {
-          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
-        }
-
-        if (hasExe) {
-          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · EXE：${winExeAsset.name}`;
-        } else if (hasZip) {
-          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · ZIP：${winZipAsset.name}`;
-        } else {
-          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
-        }
-
-        if (hasExe) {
-          winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name} · EXE：${winExeAsset.name}`;
         } else {
           winMeta.innerHTML = `<strong>Windows：</strong>${release.tag_name}，当前没有找到可下载的安装包。`;
         }
