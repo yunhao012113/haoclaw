@@ -33,12 +33,16 @@ export function loadSettings(): UiSettings {
     return `${proto}://${location.host}${basePath}`;
   })();
 
+  const isDesktop =
+    typeof window !== "undefined" &&
+    (window as unknown as { haoclawDesktop?: { mode?: string } }).haoclawDesktop?.mode ===
+      "desktop";
   const defaults: UiSettings = {
     gatewayUrl: defaultUrl,
     token: "",
     sessionKey: "main",
     lastActiveSessionKey: "main",
-    theme: "system",
+    theme: isDesktop ? "light" : "system",
     chatFocusMode: false,
     chatShowThinking: true,
     splitRatio: 0.6,

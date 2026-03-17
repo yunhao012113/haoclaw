@@ -2078,6 +2078,31 @@
   cursor: not-allowed;
 }
 
+/* Windows Desktop Input Overrides */
+.shell--desktop-windows .field input,
+.shell--desktop-windows .field textarea,
+.shell--desktop-windows .field select {
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.shell--desktop-windows .field input:focus,
+.shell--desktop-windows .field textarea:focus,
+.shell--desktop-windows .field select:focus {
+  border-color: #34c759;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.2);
+}
+
+.shell--desktop-windows .field input::placeholder,
+.shell--desktop-windows .field textarea::placeholder {
+  color: #666666;
+}
+
 .chat-compose__actions {
   justify-content: flex-end;
   align-self: end;

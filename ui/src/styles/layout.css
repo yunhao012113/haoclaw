@@ -296,12 +296,22 @@
 }
 
 .shell--desktop .nav-item.active {
-  background: linear-gradient(135deg, rgba(255, 140, 92, 0.20), rgba(255, 81, 110, 0.12));
+  background: linear-gradient(135deg, rgba(255, 140, 92, 0.2), rgba(255, 81, 110, 0.12));
   color: var(--text-strong);
 }
 
 .shell--desktop .nav-item:hover {
-  background: rgba(255, 145, 96, 0.10);
+  background: rgba(255, 145, 96, 0.1);
+}
+
+/* ===========================================
+   Windows Desktop - Use same styles as macOS
+   =========================================== */
+
+.shell--desktop-windows.shell--chat {
+  grid-template-columns: var(--shell-nav-width) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  grid-template-areas: "nav content";
 }
 
 /* Nav collapse toggle */

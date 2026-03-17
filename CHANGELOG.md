@@ -10,6 +10,16 @@ Docs: https://docs.haoclaw.ai
 
 ### Fixes
 
+## 2026.3.80
+
+### Changes
+
+- Windows app: unified UI style with macOS (same light theme).
+
+### Fixes
+
+- Desktop apps: default gateway port changed to 3456.
+
 ## 2026.3.79
 
 ### Changes
