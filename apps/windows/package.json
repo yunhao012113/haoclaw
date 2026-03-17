@@ -1,7 +1,7 @@
 {
   "name": "haoclaw-windows-desktop",
   "private": true,
-  "version": "2026.3.80",
+  "version": "2026.3.81",
   "description": "Haoclaw desktop shell for Windows",
   "main": "main.cjs",
   "scripts": {
