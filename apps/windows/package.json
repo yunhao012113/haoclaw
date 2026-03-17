@@ -1,7 +1,7 @@
 {
   "name": "haoclaw-windows-desktop",
   "private": true,
-  "version": "2026.3.67",
+  "version": "2026.3.80",
   "description": "Haoclaw desktop shell for Windows",
   "main": "main.cjs",
   "scripts": {
@@ -35,10 +35,15 @@
         ]
       },
       {
-        "from": "../../skills",
-        "to": "skills",
+        "from": "../../dist",
+        "to": "dist",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/windows/**",
+          "!**/*.test.*",
+          "!**/test-*.js",
+          "!**/__tests__/**",
+          "!**/node_modules/**"
         ]
       }
     ],

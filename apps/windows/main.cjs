@@ -9,6 +9,9 @@ const { app, BrowserWindow, Menu, dialog, shell, ipcMain } = require("electron")
 const PRODUCT_NAME = "Haoclaw";
 const RELEASES_API = "https://api.github.com/repos/yunhao012113/haoclaw/releases?per_page=12";
 const RELEASES_PAGE = "https://github.com/yunhao012113/haoclaw/releases/latest";
+const DEFAULT_GATEWAY_PORT = 3456;
+let gatewayProcess = null;
+let _mainWindow = null;
 let updateCheckRunning = false;
 const FALLBACK_SKILL_KEYS = [
   "1password",
@@ -324,6 +327,180 @@ async function checkForUpdates({ manual = false } = {}) {
   }
 }
 
+function _findBundledHaoclaw() {
+  if (!app.isPackaged) {
+    return null;
+  }
+  
+  const candidates = [
+    path.join(process.resourcesPath, "dist", "index.js"),
+    path.join(process.resourcesPath, "haoclaw.exe"),
+    path.join(process.resourcesPath, "dist", "haoclaw.mjs"),
+    path.join(process.resourcesPath, "dist", "haoclaw.js"),
+  ];
+  
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function findNodeExecutable() {
+  const nodeNames = process.platform === "win32" 
+    ? ["node.exe", "node"] 
+    : ["node"];
+  
+  const pathEnv = process.env.PATH || "";
+  const pathDirs = pathEnv.split(process.platform === "win32" ? ";" : ":");
+
+  const commonNodePaths = process.platform === "win32" ? [
+    path.join(process.env.LOCALAPPDATA || "", "Programs", "nodejs"),
+    path.join(process.env.LOCALAPPDATA || "", "Programs", "node"),
+    "C:\\Program Files\\nodejs",
+    "C:\\Program Files (x86)\\nodejs",
+    path.join(os.homedir(), "AppData", "Local", "Programs", "nodejs"),
+    path.join(os.homedir(), "AppData", "Local", "Programs", "node"),
+  ] : [
+    "/usr/local/bin",
+    "/usr/bin",
+    path.join(os.homedir(), ".nvm", "versions", "node", "*", "bin"),
+    path.join(os.homedir(), ".fnm", "nodejs"),
+    path.join(os.homedir(), "Library", "Application Support", "fnm", "nodejs"),
+  ];
+
+  for (const dir of commonNodePaths) {
+    if (!dir || !fs.existsSync(dir)) {continue;}
+    try {
+      const entries = fs.readdirSync(dir);
+      for (const entry of entries) {
+        if (nodeNames.includes(entry.toLowerCase())) {
+          const fullPath = path.join(dir, entry);
+          try {
+            if (fs.statSync(fullPath).isFile()) {
+              return fullPath;
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+  
+  for (const dir of pathDirs) {
+    if (!dir) {continue;}
+    for (const nodeName of nodeNames) {
+      const nodePath = path.join(dir, nodeName);
+      try {
+        if (fs.existsSync(nodePath)) {
+          return nodePath;
+        }
+      } catch {}
+    }
+  }
+  return null;
+}
+
+async function waitForGateway(port, maxAttempts = 30) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/health`, {
+        method: "GET",
+        signal: AbortSignal.timeout(2000),
+      });
+      if (response.ok) {
+        return true;
+      }
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+  return false;
+}
+
+function getLogPath() {
+  const logDir = path.join(os.homedir(), ".haoclaw", "logs");
+  try {
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+  } catch {}
+  return path.join(logDir, "haoclaw-desktop.log");
+}
+
+function logToFile(message) {
+  const timestamp = new Date().toISOString();
+  const logLine = `[${timestamp}] ${message}\n`;
+  try {
+    fs.appendFileSync(getLogPath(), logLine);
+  } catch {}
+  console.log(message);
+}
+
+async function startGateway() {
+  logToFile("[Gateway] Starting Gateway auto-start...");
+  
+  const nodePath = findNodeExecutable();
+  
+  if (!nodePath) {
+    logToFile("[Gateway] Node.js not found. Checking common install locations...");
+    logToFile("[Gateway] User needs to install Node.js from https://nodejs.org");
+    return;
+  }
+  
+  logToFile("[Gateway] Found Node.js: " + nodePath);
+  
+  const distPath = path.join(process.resourcesPath, "dist", "index.js");
+  
+  if (!fs.existsSync(distPath)) {
+    logToFile("[Gateway] CLI not bundled at: " + distPath);
+    return;
+  }
+  
+  logToFile("[Gateway] Starting Gateway from: " + distPath);
+  
+  return new Promise((resolve) => {
+    gatewayProcess = spawn(nodePath, [
+      distPath,
+      "gateway", "run",
+      "--port", String(DEFAULT_GATEWAY_PORT),
+      "--bind", "127.0.0.1",
+      "--allow-unconfigured"
+    ], {
+      cwd: path.join(process.resourcesPath, "dist"),
+      detached: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: false
+    });
+
+    gatewayProcess.stdout.on("data", (data) => {
+      logToFile("[Gateway stdout] " + data.toString().trim());
+    });
+
+    gatewayProcess.stderr.on("data", (data) => {
+      logToFile("[Gateway stderr] " + data.toString().trim());
+    });
+
+    gatewayProcess.on("error", (err) => {
+      logToFile("[Gateway] Failed to start: " + err.message);
+      resolve();
+    });
+
+    gatewayProcess.on("exit", (code) => {
+      logToFile("[Gateway] Exit with code: " + code);
+    });
+
+    void waitForGateway(DEFAULT_GATEWAY_PORT).then((ok) => {
+      if (ok) {
+        logToFile("[Gateway] Started successfully on port " + DEFAULT_GATEWAY_PORT);
+      } else {
+        logToFile("[Gateway] Started but not ready yet, waiting...");
+      }
+      resolve();
+    });
+  });
+}
+
 function resolveUiEntry() {
   const candidates = app.isPackaged
     ? [path.join(process.resourcesPath, "control-ui", "index.html")]
@@ -414,10 +591,20 @@ function buildApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
+  logToFile("[App] Haoclaw Desktop starting...");
+  logToFile("[App] Version: " + app.getVersion());
+  logToFile("[App] Packaged: " + app.isPackaged);
+  logToFile("[App] Resources path: " + process.resourcesPath);
+  
   ipcMain.handle("haoclaw:list-bundled-skills", () => listBundledSkills());
   buildApplicationMenu();
-  createMainWindow();
+  
+  logToFile("[App] Starting gateway...");
+  await startGateway();
+  logToFile("[App] Gateway start complete, creating window...");
+  
+  _mainWindow = createMainWindow();
   void checkForUpdates({ manual: false });
 
   app.on("activate", () => {
@@ -428,6 +615,10 @@ void app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  if (gatewayProcess) {
+    gatewayProcess.kill();
+    gatewayProcess = null;
+  }
   if (process.platform !== "darwin") {
     app.quit();
   }
