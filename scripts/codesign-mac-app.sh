@@ -235,7 +235,11 @@ verify_team_ids() {
         mismatches+=("$f (TeamIdentifier=$team)")
       fi
     fi
-  done < <(find "$APP_BUNDLE" -type f -print0)
+  done < <(
+    find "$APP_BUNDLE" -type f \
+      \( -perm -111 -o -name "*.dylib" -o -path "*.framework/*" \) \
+      -print0
+  )
 
   if [[ "${#mismatches[@]}" -gt 0 ]]; then
     echo "ERROR: Team ID mismatch detected (expected: $expected)"

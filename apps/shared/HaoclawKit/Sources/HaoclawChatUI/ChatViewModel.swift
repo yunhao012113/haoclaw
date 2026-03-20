@@ -99,6 +99,10 @@ public final class HaoclawChatViewModel {
         Task { await self.performSwitchSession(to: sessionKey) }
     }
 
+    public func deleteSession(key sessionKey: String) {
+        Task { await self.performDeleteSession(key: sessionKey) }
+    }
+
     public var sessionChoices: [HaoclawChatSessionEntry] {
         let now = Date().timeIntervalSince1970 * 1000
         let cutoff = now - (24 * 60 * 60 * 1000)
@@ -433,6 +437,29 @@ public final class HaoclawChatViewModel {
         guard next != self.sessionKey else { return }
         self.sessionKey = next
         await self.bootstrap()
+    }
+
+    private func performDeleteSession(key sessionKey: String) async {
+        let target = sessionKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return }
+
+        do {
+            try await self.transport.deleteSession(sessionKey: target)
+            self.errorText = nil
+            self.sessions.removeAll { $0.key == target }
+
+            if self.sessionKey == target {
+                let fallbackKey = self.sessions.first?.key ?? "main"
+                self.sessionKey = fallbackKey
+                await self.bootstrap()
+                return
+            }
+
+            await self.fetchSessions(limit: 200)
+        } catch {
+            self.errorText = ChatDisplayLocalizer.localize(error.localizedDescription)
+            chatUILogger.error("chat.deleteSession failed \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func placeholderSession(key: String) -> HaoclawChatSessionEntry {

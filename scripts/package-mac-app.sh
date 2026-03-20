@@ -263,7 +263,16 @@ echo "📦 Copying bundled CLI"
 mkdir -p "$APP_ROOT/Contents/Resources"
 if [ -d "$ROOT_DIR/dist" ]; then
   rm -rf "$APP_ROOT/Contents/Resources/haoclaw"
-  cp -R "$ROOT_DIR/dist" "$APP_ROOT/Contents/Resources/haoclaw"
+  mkdir -p "$APP_ROOT/Contents/Resources/haoclaw"
+  rsync -a \
+    --exclude "Haoclaw.app" \
+    --exclude "Haoclaw-*.zip" \
+    --exclude "Haoclaw-*.dmg" \
+    --exclude "Haoclaw-*.pkg" \
+    --exclude "Haoclaw-*.notary.zip" \
+    --exclude "Haoclaw-*.dSYM.zip" \
+    --exclude "windows/" \
+    "$ROOT_DIR/dist/" "$APP_ROOT/Contents/Resources/haoclaw/"
   chmod +x "$APP_ROOT/Contents/Resources/haoclaw/haoclaw.mjs" 2>/dev/null || true
   echo "✓ Bundled CLI copied to Resources/haoclaw"
 else
