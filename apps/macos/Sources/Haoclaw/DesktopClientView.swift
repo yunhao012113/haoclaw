@@ -629,6 +629,8 @@ final class DesktopClientModel {
         await self.loadModelCatalog()
         await self.refreshEndpoint()
         self.chatViewModel.refreshSessions(limit: 50)
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        await self.repairSelectedSessionModelIfNeeded()
         if Self.autoDiagnosticsEnabled {
             await self.runDiagnostics(manual: false)
         }
@@ -885,7 +887,9 @@ final class DesktopClientModel {
     }
 
     func selectSessionModel(_ modelRef: String) async {
-        let trimmedModelRef = modelRef.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedModelRef = Self.canonicalModelRef(
+            modelRef.trimmingCharacters(in: .whitespacesAndNewlines),
+            choices: self.availableModels)
         guard !trimmedModelRef.isEmpty else { return }
         guard trimmedModelRef != self.selectedSessionModelRef else { return }
 
@@ -1255,6 +1259,23 @@ final class DesktopClientModel {
         let paths = await GatewayConnection.shared.snapshotPaths()
         self.stateDirectory = paths.stateDir ?? self.stateDirectory
         self.configPath = paths.configPath ?? self.configPath
+    }
+
+    private func repairSelectedSessionModelIfNeeded() async {
+        let rawModelRef = self.rawSelectedSessionModelRef.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canonicalModelRef = self.selectedSessionModelRef.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawModelRef.isEmpty, rawModelRef != "未配置" else { return }
+        guard !canonicalModelRef.isEmpty, canonicalModelRef != "未配置" else { return }
+        guard rawModelRef != canonicalModelRef else { return }
+
+        do {
+            try await GatewayConnection.shared.patchSessionModel(
+                sessionKey: self.chatViewModel.sessionKey,
+                modelRef: canonicalModelRef)
+            self.currentModelRef = canonicalModelRef
+        } catch {
+            // Best-effort repair for older session overrides persisted with a shortened model id.
+        }
     }
 
     func applyProviderPreset() {
@@ -1783,7 +1804,8 @@ final class DesktopClientModel {
         let trimmedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedModelID.isEmpty else { return "" }
         let canonicalProviderID = self.canonicalProviderID(providerID)
-        if let stripped = self.stripProviderPrefixIfNeeded(providerID: canonicalProviderID, modelID: trimmedModelID),
+        if canonicalProviderID != "nvidia",
+           let stripped = self.stripProviderPrefixIfNeeded(providerID: canonicalProviderID, modelID: trimmedModelID),
            !stripped.isEmpty
         {
             return stripped
@@ -1796,19 +1818,83 @@ final class DesktopClientModel {
         return trimmedModelID
     }
 
+    private static func canonicalChoiceModelID(
+        providerID: String,
+        modelID: String,
+        knownModelIDs: Set<String>) -> String
+    {
+        let canonicalProviderID = self.canonicalProviderID(providerID)
+        let preferred = self.preferredModelID(providerID: canonicalProviderID, modelID: modelID)
+        guard !preferred.isEmpty else { return preferred }
+        guard !preferred.contains("/") else { return preferred }
+
+        let prefixed = "\(canonicalProviderID)/\(preferred)"
+        if knownModelIDs.contains(prefixed.lowercased()) {
+            return prefixed
+        }
+        return preferred
+    }
+
+    private static func canonicalModelRef(_ raw: String, choices: [ModelChoice]) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != "未配置" else { return trimmed }
+        let parts = trimmed.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return trimmed }
+
+        let providerID = self.canonicalProviderID(parts[0])
+        let knownModelIDs = Set(
+            choices
+                .filter { self.canonicalProviderID($0.provider) == providerID }
+                .map { $0.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+        let canonicalModelID = self.canonicalChoiceModelID(
+            providerID: providerID,
+            modelID: parts[1],
+            knownModelIDs: knownModelIDs)
+        guard !canonicalModelID.isEmpty else { return trimmed }
+        return "\(providerID)/\(canonicalModelID)"
+    }
+
     private static func mergeModelChoices(
         _ groups: [ModelChoice]...,
         currentModelRef: String? = nil) -> [ModelChoice]
     {
+        let flattened = groups.flatMap { $0 }
+        var knownModelIDsByProvider: [String: Set<String>] = [:]
+        for choice in flattened {
+            let providerID = self.canonicalProviderID(choice.provider)
+            let modelID = choice.id.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !providerID.isEmpty, !modelID.isEmpty else { continue }
+            knownModelIDsByProvider[providerID, default: []].insert(modelID.lowercased())
+        }
+
         var ordered: [ModelChoice] = []
         var seen = Set<String>()
 
         for group in groups {
             for choice in group {
-                let key = choice.providerAndID
+                let providerID = self.canonicalProviderID(choice.provider)
+                let rawModelID = choice.id.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !providerID.isEmpty, !rawModelID.isEmpty else { continue }
+
+                let normalizedModelID = self.canonicalChoiceModelID(
+                    providerID: providerID,
+                    modelID: rawModelID,
+                    knownModelIDs: knownModelIDsByProvider[providerID] ?? [])
+                guard !normalizedModelID.isEmpty else { continue }
+
+                let key = "\(providerID)/\(normalizedModelID)"
                 guard !seen.contains(key) else { continue }
                 seen.insert(key)
-                ordered.append(choice)
+
+                let trimmedName = choice.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalizedName = (trimmedName.isEmpty || trimmedName == rawModelID)
+                    ? normalizedModelID : trimmedName
+                ordered.append(
+                    ModelChoice(
+                        id: normalizedModelID,
+                        name: normalizedName,
+                        provider: providerID,
+                        contextWindow: choice.contextWindow))
             }
         }
 
@@ -1816,8 +1902,11 @@ final class DesktopClientModel {
         if !trimmedCurrent.isEmpty, trimmedCurrent != "未配置" {
             let parts = trimmedCurrent.split(separator: "/", maxSplits: 1).map(String.init)
             if parts.count == 2 {
-                let provider = parts[0]
-                let model = parts[1]
+                let provider = self.canonicalProviderID(parts[0])
+                let model = self.canonicalChoiceModelID(
+                    providerID: provider,
+                    modelID: parts[1],
+                    knownModelIDs: knownModelIDsByProvider[provider] ?? [])
                 let key = "\(provider)/\(model)"
                 if !seen.contains(key) {
                     ordered.insert(
@@ -1851,7 +1940,7 @@ final class DesktopClientModel {
         }
     }
 
-    var selectedSessionModelRef: String {
+    private var rawSelectedSessionModelRef: String {
         let sessionModel = self.chatViewModel.sessionChoices
             .first(where: { $0.key == self.chatViewModel.sessionKey })?
             .model?
@@ -1860,6 +1949,12 @@ final class DesktopClientModel {
             return sessionModel
         }
         return self.currentModelRef
+    }
+
+    var selectedSessionModelRef: String {
+        Self.canonicalModelRef(
+            self.rawSelectedSessionModelRef,
+            choices: Self.mergeModelChoices(self.configuredModels, self.runtimeModels))
     }
 
     private static var autoDiagnosticsEnabled: Bool {

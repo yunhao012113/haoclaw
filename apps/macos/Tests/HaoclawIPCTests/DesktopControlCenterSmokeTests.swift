@@ -116,6 +116,30 @@ struct DesktopControlCenterSmokeTests {
         #expect(model.settingsDraft.modelID == "deepseek-v3.2")
     }
 
+    @Test func `nvidia session model keeps nested provider segment when available`() {
+        let state = AppState(preview: true)
+        let chatViewModel = HaoclawChatViewModel(sessionKey: "main", transport: TestTransport())
+        let model = DesktopClientModel(appState: state, chatViewModel: chatViewModel)
+
+        model.runtimeModels = [
+            ModelChoice(
+                id: "nvidia/nemotron-3-super-120b-a12b",
+                name: "nvidia/nemotron-3-super-120b-a12b",
+                provider: "nvidia",
+                contextWindow: nil),
+            ModelChoice(
+                id: "nemotron-3-super-120b-a12b",
+                name: "nemotron-3-super-120b-a12b",
+                provider: "nvidia",
+                contextWindow: nil),
+        ]
+        model.currentModelRef = "nvidia/nemotron-3-super-120b-a12b"
+
+        #expect(model.selectedSessionModelRef == "nvidia/nvidia/nemotron-3-super-120b-a12b")
+        #expect(model.selectedSessionModelDisplayRef == "nvidia/nemotron-3-super-120b-a12b")
+        #expect(model.availableModels.first?.providerAndID == "nvidia/nvidia/nemotron-3-super-120b-a12b")
+    }
+
     @Test func `opening model settings restores applied config instead of stale draft`() {
         let state = AppState(preview: true)
         let chatViewModel = HaoclawChatViewModel(sessionKey: "main", transport: TestTransport())

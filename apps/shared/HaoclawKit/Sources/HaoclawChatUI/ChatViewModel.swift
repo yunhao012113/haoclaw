@@ -95,10 +95,6 @@ public final class HaoclawChatViewModel {
         Task { await self.fetchSessions(limit: limit) }
     }
 
-    public func deleteSession(key: String) {
-        Task { await self.performDeleteSession(key: key) }
-    }
-
     public func switchSession(to sessionKey: String) {
         Task { await self.performSwitchSession(to: sessionKey) }
     }
@@ -439,20 +435,6 @@ public final class HaoclawChatViewModel {
         await self.bootstrap()
     }
 
-    private func performDeleteSession(key: String) async {
-        do {
-            try await self.transport.deleteSession(sessionKey: key)
-            self.sessions.removeAll { $0.key == key }
-            if self.sessionKey == key {
-                if let firstSession = self.sessions.first {
-                    await self.performSwitchSession(to: firstSession.key)
-                }
-            }
-        } catch {
-            self.errorText = "删除会话失败: \(error.localizedDescription)"
-        }
-    }
-
     private func placeholderSession(key: String) -> HaoclawChatSessionEntry {
         HaoclawChatSessionEntry(
             key: key,
@@ -525,6 +507,8 @@ public final class HaoclawChatViewModel {
         case "final", "aborted", "error":
             if chat.state == "error" {
                 self.errorText = ChatDisplayLocalizer.localize(chat.errorMessage ?? "Chat failed")
+            } else {
+                self.errorText = nil
             }
             if let runId = chat.runId {
                 self.clearPendingRun(runId)

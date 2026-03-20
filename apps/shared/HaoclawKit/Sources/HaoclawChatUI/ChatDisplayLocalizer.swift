@@ -81,6 +81,14 @@ enum ChatDisplayLocalizer {
             template: "401 鉴权失败：当前模型接口拒绝了请求，请检查 API Key、服务商和模型是否匹配。")
         text = self.replace(
             text,
+            pattern: #"HTTP 404:\s*404 page not found"#,
+            template: "404 模型不可用：当前服务商接口找不到这个模型，请重新选择可用模型。")
+        text = self.replace(
+            text,
+            pattern: #"404 404 page not found"#,
+            template: "404 模型不可用：当前服务商接口找不到这个模型，请重新选择可用模型。")
+        text = self.replace(
+            text,
             pattern: #"([45][0-9]{2}) status code \(no body\)"#,
             template: "请求失败：HTTP $1，服务端没有返回更多说明。")
 

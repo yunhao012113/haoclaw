@@ -481,6 +481,37 @@ extension TestChatTransportState {
         try await waitUntil("streaming cleared") { await MainActor.run { vm.streamingAssistantText == nil } }
     }
 
+    @Test func clearsStaleErrorBannerAfterSuccessfulFinalReply() async throws {
+        let sessionId = "sess-main"
+        let now = Date().timeIntervalSince1970 * 1000
+        let history1 = historyPayload(sessionId: sessionId)
+        let history2 = historyPayload(
+            sessionId: sessionId,
+            messages: [
+                chatTextMessage(role: "assistant", text: "hello again", timestamp: now),
+            ])
+
+        let (transport, vm) = await makeViewModel(historyResponses: [history1, history2])
+        try await loadAndWaitBootstrap(vm: vm, sessionId: sessionId)
+
+        await MainActor.run { vm.errorText = "HTTP 404: 404 page not found" }
+        await sendUserMessage(vm, text: "你好")
+        let runId = try #require(await transport.lastSentRunId())
+
+        transport.emit(
+            .chat(
+                HaoclawChatEventPayload(
+                    runId: runId,
+                    sessionKey: "main",
+                    state: "final",
+                    message: nil,
+                    errorMessage: nil)))
+
+        try await waitUntil("successful final clears stale error") {
+            await MainActor.run { vm.errorText == nil && vm.pendingRunCount == 0 }
+        }
+    }
+
     @Test func stripsInboundMetadataFromHistoryMessages() async throws {
         let history = HaoclawChatHistoryPayload(
             sessionKey: "main",
