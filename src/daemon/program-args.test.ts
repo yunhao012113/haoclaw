@@ -42,6 +42,7 @@ describe("resolveGatewayProgramArguments", () => {
       "gateway",
       "--port",
       "18789",
+      "--allow-unconfigured",
     ]);
   });
 
@@ -63,6 +64,12 @@ describe("resolveGatewayProgramArguments", () => {
     // Should use the symlinked path, not the realpath-resolved versioned path
     expect(result.programArguments[1]).toBe(symlinkPath);
     expect(result.programArguments[1]).not.toContain("@2026.1.21-2");
+    expect(result.programArguments.slice(2)).toEqual([
+      "gateway",
+      "--port",
+      "18789",
+      "--allow-unconfigured",
+    ]);
   });
 
   it("falls back to node_modules package dist when .bin path is not resolved", async () => {
@@ -85,6 +92,7 @@ describe("resolveGatewayProgramArguments", () => {
       "gateway",
       "--port",
       "18789",
+      "--allow-unconfigured",
     ]);
   });
 });
