@@ -15,7 +15,6 @@ enum AgentWorkspace {
         AgentWorkspace.soulFilename,
         AgentWorkspace.identityFilename,
         AgentWorkspace.userFilename,
-        AgentWorkspace.bootstrapFilename,
     ]
     struct BootstrapSafety: Equatable {
         let unsafeReason: String?
@@ -275,10 +274,40 @@ enum AgentWorkspace {
         let bootstrapContents = bootstrapRawContents?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let defaultBootstrap = self.defaultBootstrapTemplate().trimmingCharacters(in: .whitespacesAndNewlines)
-        if bootstrapContents.isEmpty || bootstrapContents == defaultBootstrap || self.isTemplateOnlyWorkspace(workspaceURL: workspaceURL) {
-            try? FileManager().removeItem(at: bootstrapURL)
-            self.logger.info("Removed legacy BOOTSTRAP.md at \(bootstrapURL.path, privacy: .public)")
+        let shouldArchive = !bootstrapContents.isEmpty &&
+            bootstrapContents != defaultBootstrap &&
+            !self.isTemplateOnlyWorkspace(workspaceURL: workspaceURL)
+
+        if shouldArchive {
+            let archivedURL = self.uniqueLegacyBootstrapURL(workspaceURL: workspaceURL)
+            do {
+                try FileManager().moveItem(at: bootstrapURL, to: archivedURL)
+                self.logger.info(
+                    "Archived legacy BOOTSTRAP.md to \(archivedURL.path, privacy: .public)"
+                )
+                return
+            } catch {
+                self.logger.error(
+                    "Failed to archive BOOTSTRAP.md from \(bootstrapURL.path, privacy: .public): \(String(describing: error), privacy: .public)"
+                )
+            }
         }
+
+        try? FileManager().removeItem(at: bootstrapURL)
+        self.logger.info("Removed legacy BOOTSTRAP.md at \(bootstrapURL.path, privacy: .public)")
+    }
+
+    private static func uniqueLegacyBootstrapURL(workspaceURL: URL) -> URL {
+        let fm = FileManager()
+        let preferred = workspaceURL.appendingPathComponent("BOOTSTRAP.legacy.md")
+        if !fm.fileExists(atPath: preferred.path) {
+            return preferred
+        }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let stamp = formatter.string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        return workspaceURL.appendingPathComponent("BOOTSTRAP.legacy-\(stamp).md")
     }
 
     private static func loadTemplate(named: String, fallback: String) -> String {

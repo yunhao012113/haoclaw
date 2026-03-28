@@ -29,7 +29,18 @@ struct ChannelsSetupGuidanceTests {
         let summary = store.channelSetupSummary(for: "telegram")
 
         #expect(summary.state == .incomplete)
-        #expect(summary.detail.contains("Bot Token"))
+        #expect(summary.detail.contains("机器人 Token"))
+    }
+
+    @Test func `telegram next steps only mention direct token flow`() {
+        let store = makeGuidanceStore()
+
+        let steps = store.channelNextSteps(for: "telegram")
+        let required = store.channelRequiredFieldSummary(for: "telegram")
+
+        #expect(steps.contains(where: { $0.contains("机器人 Token") }))
+        #expect(!steps.contains(where: { $0.localizedCaseInsensitiveContains("webhook") }))
+        #expect(required == "机器人 Token")
     }
 
     @Test func `telegram summary reports successful probe`() {

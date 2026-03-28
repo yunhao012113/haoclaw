@@ -140,4 +140,25 @@ struct AgentWorkspaceTests {
         #expect(identityContents.contains("Haoclaw"))
         #expect(identityContents.contains("🐙"))
     }
+
+    @Test
+    func `bootstrap archives custom legacy bootstrap so desktop flow can continue`() throws {
+        let tmp = FileManager().temporaryDirectory
+            .appendingPathComponent("haoclaw-ws-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager().removeItem(at: tmp) }
+        try FileManager().createDirectory(at: tmp, withIntermediateDirectories: true)
+
+        let bootstrapURL = tmp.appendingPathComponent(AgentWorkspace.bootstrapFilename)
+        try """
+        # BOOTSTRAP.md
+
+        Keep this note for reference, but don't block direct use.
+        """.write(to: bootstrapURL, atomically: true, encoding: .utf8)
+
+        _ = try AgentWorkspace.bootstrap(workspaceURL: tmp)
+
+        let archivedURL = tmp.appendingPathComponent("BOOTSTRAP.legacy.md")
+        #expect(!FileManager().fileExists(atPath: bootstrapURL.path))
+        #expect(FileManager().fileExists(atPath: archivedURL.path))
+    }
 }

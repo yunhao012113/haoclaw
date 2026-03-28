@@ -14,10 +14,8 @@ extension OnboardingView {
             }
             guard self.onboardingChatModel.messages.isEmpty else { return }
             let kickoff =
-                "Hi! I just installed Haoclaw and you’re my brand‑new agent. " +
-                "Skip any first-run ritual or bootstrap questionnaire. " +
-                "Use the default workspace identity, help me confirm the tone in SOUL.md if needed, " +
-                "and then guide me straight to choosing how we should talk (web-only, WhatsApp, or Telegram)."
+                "你好，我刚安装 Haoclaw。请直接使用默认工作区身份，不要再发首次初始化问答或 bootstrap 提问。"
+                + "如果需要，只帮我确认 SOUL.md 的语气是否合适，然后直接引导我选择沟通方式：网页、WhatsApp 或 Telegram。"
             self.onboardingChatModel.input = kickoff
             self.onboardingChatModel.send()
         }

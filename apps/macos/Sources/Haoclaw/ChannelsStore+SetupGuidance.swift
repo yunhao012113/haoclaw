@@ -31,8 +31,8 @@ extension ChannelsStore {
             ]
         case "telegram":
             return [
-                "先给机器人发一条私信，方便后面直接从 Telegram 控制 Haoclaw。",
-                "如果你用 webhook，再确认公网地址已经能被 Telegram 访问。",
+                "填好机器人 Token 后直接保存，Haoclaw 会自动补齐默认配置并开始探测。",
+                "再给机器人发一条私信，确认 Telegram 会话已经打通。",
             ]
         case "slack":
             let mode = self.channelDraftText(channelId, path: ["mode"]).lowercased()
@@ -141,7 +141,7 @@ extension ChannelsStore {
             let mode = self.channelDraftText(channelId, path: ["connectionMode"]).lowercased()
             return mode == "webhook" ? "App ID、App Secret、校验 Token" : "App ID、App Secret"
         case "telegram":
-            return "机器人 Token 或 Token 文件"
+            return "机器人 Token"
         case "slack":
             let mode = self.channelDraftText(channelId, path: ["mode"]).lowercased()
             return mode == "http" ? "机器人 Token、签名密钥" : "机器人 Token、应用 Token"
@@ -391,7 +391,7 @@ extension ChannelsStore {
             ])
         case "telegram":
             return anyText([
-                ("机器人 Token 或 Token 文件", [["botToken"], ["tokenFile"]]),
+                ("机器人 Token", [["botToken"]]),
             ])
         case "slack":
             let mode = self.channelDraftText(channelId, path: ["mode"]).lowercased()
